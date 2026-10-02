@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Guia operacional para agentes (Claude Code e afins) neste repositório.
-**Leia `specs/00-constitution.md` antes de qualquer tarefa.** Regras de stack,
+**Leia `.specify/memory/constitution.md` antes de qualquer tarefa.** Regras de stack,
 segurança, arquitetura e UX estão lá e não são repetidas aqui. Em conflito,
 a constitution vence.
 
@@ -30,7 +30,8 @@ roda em Node e pode mascarar incompatibilidades do workerd.
 ## Estrutura
 
 ```
-specs/                    # fonte de verdade: o que o sistema DEVE fazer
+specs/                    # fonte de verdade: specs de feature (NNN-nome/) e ADRs (adr/)
+.specify/                 # Spec Kit: constitution (memory/), templates e scripts
 docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
@@ -48,7 +49,7 @@ Estado atual: apenas o scaffold do OpenNext.
 
 ## Fluxo de feature (obrigatório)
 
-1. A feature tem spec em `specs/features/FXX-*.md` com critérios de aceite
+1. A feature tem spec em `specs/NNN-nome/spec.md` com critérios de aceite
    Given/When/Then. Sem spec aprovada, não há implementação.
 2. Testes escritos a partir dos critérios de aceite, ANTES da implementação
    (Red → Green → Refactor).
@@ -57,6 +58,18 @@ Estado atual: apenas o scaffold do OpenNext.
 5. Commit da feature em Conventional Commits, sem trailer de co-autoria.
 6. Se a mudança for significativa (ver "Documentação"), acionar o
    `doc-sync-onboarding` e commitar os docs em commit próprio (`docs(...)`).
+
+## Spec Kit
+
+Constitution em `.specify/memory/constitution.md` (versionada; emenda só por
+humano, via `/speckit-constitution`). Ordem por feature:
+
+1. `/speckit-specify` → `specs/NNN-nome/spec.md`
+2. `/speckit-clarify` → resolve ambiguidades antes do plano
+3. `/speckit-plan` → `plan.md` (passa pelo Constitution Check)
+4. `/speckit-tasks` → `tasks.md`
+5. `/speckit-analyze` → consistência entre spec, plano e tarefas
+6. Implementação segundo o "Fluxo de feature" acima (testes primeiro).
 
 ## Documentação
 

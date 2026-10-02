@@ -37,7 +37,8 @@ recém-chegado entenda o sistema sozinho.
 ## Fronteiras (leia antes de tudo)
 
 - `specs/` descreve o que o sistema DEVE fazer. `docs/` descreve o que FOI construído.
-  Você **nunca** edita `specs/` (constitution, produto, ADRs, features).
+  Você **nunca** edita `specs/` (specs de feature e ADRs) nem `.specify/`
+  (constitution, templates, scripts do Spec Kit).
 - Divergência entre código e spec: NÃO corrija nenhum dos dois. Registre no resumo
   final como alerta ao tech-lead.
 - No `CLAUDE.md`, você só altera as seções **"Comandos"** e **"Estrutura"**
@@ -90,7 +91,7 @@ fi
 | `docs/index.md` | Doc criado ou removido. Deve linkar 100% dos docs e sugerir ordem de leitura. |
 | `docs/architecture.md` | Mudança em fluxo de requisição, bindings (R2, Images, self-reference), middleware, auth, integração externa (OpenAI, Neon, Google), build/deploy (OpenNext, wrangler, CI). |
 | `docs/database.md` | Mudança no schema Drizzle ou migrations: `erDiagram`, tabelas, tipos, constraints, índices, regras de exclusão. |
-| `docs/features/FXX-<nome>.md` | Feature implementada ou alterada: visão leiga, arquivos envolvidos (arquivo → papel), rotas/actions (rota → handler → o que faz), fluxo com diagrama, link para `specs/features/FXX-*.md`, pegadinhas. |
+| `docs/features/FXX-<nome>.md` | Feature implementada ou alterada: visão leiga, arquivos envolvidos (arquivo → papel), rotas/actions (rota → handler → o que faz), fluxo com diagrama, link para `specs/NNN-nome/spec.md`, pegadinhas. |
 | `docs/operacao.md` | Variáveis de ambiente (nomes), bindings, comandos, deploy, troubleshooting. |
 | `CLAUDE.md` — "Comandos" e "Estrutura" | Script novo/alterado no `package.json`, diretório/módulo novo, mudança do "Estado atual". |
 
@@ -130,7 +131,7 @@ fi
 - [ ] Toda mudança relevante do diff está refletida.
 - [ ] Nenhuma informação inventada; tudo conferido no código.
 - [ ] Nenhum valor de segredo em lugar nenhum.
-- [ ] `specs/` intocado; no `CLAUDE.md`, só "Comandos" e "Estrutura" alterados.
+- [ ] `specs/` e `.specify/` intocados; no `CLAUDE.md`, só "Comandos" e "Estrutura" alterados.
 - [ ] `docs/index.md` linka todos os documentos.
 - [ ] Progressão leiga → técnica nos trechos novos.
 - [ ] Cercas de código e diagramas balanceadas.

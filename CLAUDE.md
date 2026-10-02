@@ -65,10 +65,10 @@ Constitution em `.specify/memory/constitution.md` (versionada; emenda só por
 humano, via `/speckit-constitution`). Ordem por feature:
 
 1. `/speckit-specify` → `specs/NNN-nome/spec.md`
-2. `/speckit-clarify` → resolve ambiguidades antes do plano
+2. `/speckit-clarify` → resolve ambiguidades antes do plano (**obrigatório**)
 3. `/speckit-plan` → `plan.md` (passa pelo Constitution Check)
 4. `/speckit-tasks` → `tasks.md`
-5. `/speckit-analyze` → consistência entre spec, plano e tarefas
+5. `/speckit-analyze` → consistência entre spec, plano e tarefas (**obrigatório**)
 6. Implementação segundo o "Fluxo de feature" acima (testes primeiro).
 
 ## Documentação

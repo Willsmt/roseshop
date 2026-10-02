@@ -27,17 +27,10 @@ da Cloudflare e, futuramente, publicar.
 Scripts ainda **não existem** (pendentes de Fase 0, ver CLAUDE.md): `typecheck`,
 `test`, `check`, qualquer comando de migration Drizzle.
 
-## Bindings (`wrangler.jsonc`)
+## Bindings
 
-| Binding | Tipo | Aponta para |
-|---|---|---|
-| `ASSETS` | assets estáticos | `.open-next/assets` |
-| `IMAGES` | Cloudflare Images | otimização de imagem do `next/image` |
-| `WORKER_SELF_REFERENCE` | service binding | o próprio worker `roseshop` (usado pelo cache do OpenNext) |
-
-Nenhum binding de banco, R2 (storage de produto) ou segredo de IA existe ainda.
-Observability está habilitada (`observability.enabled: true`) e source maps são
-enviados no deploy (`upload_source_maps: true`).
+Detalhados em um só lugar: [architecture.md, seção "Build e deploy"](./architecture.md#build-e-deploy-opennext--wrangler).
+Para regenerar os tipos após mudar bindings, use `npm run cf-typegen`.
 
 ## Variáveis de ambiente
 
@@ -69,3 +62,16 @@ também não tem blocos `env` separando dev/produção (ver alerta em
 - **`.dev.vars` ausente ou incompleto**: não há `.dev.vars.example` ainda
   para comparar (ver seção acima) — como ainda não há segredo nenhum exigido
   pelo app, isso não bloqueia nada em Fase 0.
+- **Desenvolvimento somente no WSL**: o OpenNext não é suportado oficialmente
+  em Windows nativo (`specs/00-constitution.md`, seção 8; `CLAUDE.md`, seção
+  "Ambiente"). Rode `dev`, `preview`, `build` e `deploy` sempre no terminal do
+  WSL, nunca no PowerShell/CMD.
+- **Erro "dubious ownership" ao rodar `git` pelo PowerShell via
+  `\\wsl.localhost\...`**: o repositório pertence ao usuário do WSL e o Git do
+  Windows o vê como de outro dono. Solução: usar o terminal do WSL para o
+  git, em vez de adicionar o caminho em `safe.directory`. (Orientação do
+  mantenedor; não está registrada em nenhum arquivo do repositório.)
+- **`next lint` não existe no Next 16**: o comando foi removido, por isso o
+  script é `"lint": "eslint ."` em `package.json`, com `eslint.config.mjs`
+  (flat config). Confirmado: a CLI instalada (`next@16.3.8`) não traz
+  `next-lint`. Não "restaure" o script para `next lint`.

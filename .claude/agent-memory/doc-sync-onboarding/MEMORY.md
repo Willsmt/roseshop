@@ -1,2 +1,3 @@
 - [Divergências conhecidas](known_divergences.md) — ADR-006 vs wrangler.jsonc sem `env`; `.dev.vars.example` ausente. Não reportar de novo até mudar.
 - [Convenções de formatação dos docs](doc_conventions.md) — ordem de seções, tabelas, quando usar mermaid, onde registrar divergências.
+- [Feedback do humano sobre docs](feedback_docs_style.md) — priorizar troubleshooting operacional; não duplicar conteúdo entre docs.

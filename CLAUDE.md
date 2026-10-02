@@ -34,7 +34,7 @@ specs/                    # fonte de verdade: o que o sistema DEVE fazer
 docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
-src/app/                  # rotas (App Router)
+src/app/                  # rotas (App Router) — hoje só layout.tsx, page.tsx, globals.css (boilerplate)
   (public)/               # catálogo público + sacola          [planejado]
   painel/                 # área das administradoras           [planejado]
 src/components/ui/        # componentes base — única fonte de primitivos [planejado]

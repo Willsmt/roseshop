@@ -30,7 +30,10 @@ roda em Node e pode mascarar incompatibilidades do workerd.
 ## Estrutura
 
 ```
-specs/                    # fonte de verdade (constitution, produto, ADRs, features)
+specs/                    # fonte de verdade: o que o sistema DEVE fazer
+docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
+.claude/agents/           # definições de agentes
+.claude/agent-memory/     # memória dos agentes (versionada)
 src/app/                  # rotas (App Router)
   (public)/               # catálogo público + sacola          [planejado]
   painel/                 # área das administradoras           [planejado]
@@ -41,7 +44,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: apenas o scaffold do OpenNext. Atualize esta seção ao fechar cada feature.
+Estado atual: apenas o scaffold do OpenNext.
 
 ## Fluxo de feature (obrigatório)
 
@@ -51,8 +54,29 @@ Estado atual: apenas o scaffold do OpenNext. Atualize esta seção ao fechar cad
    (Red → Green → Refactor).
 3. Implementação mínima para os testes passarem.
 4. "Pronto" = lint + typecheck + testes passando, com output real.
-5. Atualizar `README.md` e a seção "Estrutura" deste arquivo.
-6. Commit em Conventional Commits, sem trailer de co-autoria.
+5. Commit da feature em Conventional Commits, sem trailer de co-autoria.
+6. Se a mudança for significativa (ver "Documentação"), acionar o
+   `doc-sync-onboarding` e commitar os docs em commit próprio (`docs(...)`).
+
+## Documentação
+
+`docs/` é mantido pelo agente `doc-sync-onboarding` (`.claude/agents/`).
+Ele roda **só em mudança estrutural ou significativa**, nunca a cada alteração.
+
+**Aciona** quando a mudança inclui ao menos um destes itens:
+- Feature da spec fechada (FXX concluída).
+- Schema Drizzle ou migration alterados.
+- Rota, Server Action ou route handler criados ou removidos.
+- Variável de ambiente ou binding novo/alterado (`wrangler.jsonc`, `.dev.vars.example`).
+- Dependência de runtime adicionada ou removida.
+- Mudança em zona protegida (auth, R2, IA, middleware).
+- Mudança em build, deploy, CI ou hooks de git.
+- Diretório ou módulo novo em `src/`.
+
+**Não aciona**: texto/copy, estilo, refactor interno sem mudança de contrato,
+mudança só em testes, bump patch de dependência, fix que não altera comportamento
+documentado. Várias pequenas mudanças acumuladas ou pedido explícito do humano
+também justificam uma sync.
 
 ## Orquestração de agentes
 
@@ -66,6 +90,7 @@ complexidade, suba um nível.
   `src/lib/ai/`, `src/lib/db/` (schema e migrations), `src/middleware.ts`,
   `wrangler.jsonc`, `.dev.vars*`.
 - Define o contrato que os demais consomem: tipos, Server Actions, componentes base.
+- Decide quando acionar o `doc-sync-onboarding`, pelos critérios acima.
 
 ### Escritor de testes — `sonnet`
 - Escreve testes (unitários, integração, componentes) a partir dos critérios
@@ -77,6 +102,10 @@ complexidade, suba um nível.
 - Consome apenas o contrato existente: Server Actions, tipos e
   `src/components/ui/`. Não cria action, não importa Drizzle, não toca `src/lib/`.
 - Precisa de campo ou action que não existe: para e reporta.
+
+### Documentação — `sonnet` (`doc-sync-onboarding`)
+- Sincroniza `docs/` e as seções "Comandos"/"Estrutura" deste arquivo.
+- Nunca edita `specs/`, código, testes ou configs.
 
 ### Redator — `haiku`
 - Mensagens de commit, changelog, atualização de `README.md`.
@@ -92,5 +121,4 @@ complexidade, suba um nível.
 
 - Merge em `main` só por humano.
 - Nunca simular output de comando. Sem output real, a tarefa não está concluída.
-- Documentação (README + "Estrutura" deste arquivo) é atualizada ao fechar cada
-  feature. Agente dedicado de doc-sync: [a definir].
+- Agentes não commitam documentação sozinhos: propõem a mensagem, o humano commita.

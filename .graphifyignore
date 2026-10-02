@@ -1,0 +1,18 @@
+# Segredos (defesa em profundidade — já estão no .gitignore)
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Artefatos de build e dependências
+node_modules/
+.next/
+.open-next/
+.wrangler/
+graphify-out/
+
+# Gerados / ruído
+cloudflare-env.d.ts
+package-lock.json
+
+# A própria skill do graphify (evita o grafo indexar a si mesmo)
+.claude/skills/graphify/

@@ -50,3 +50,9 @@ next-env.d.ts
 
 
 !.dev.vars.example
+
+# Claude Code — configuração pessoal da máquina
+.claude/settings.local.json
+
+# graphify — grafo local e regenerável
+graphify-out/

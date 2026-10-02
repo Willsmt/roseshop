@@ -45,7 +45,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: apenas o scaffold do OpenNext.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

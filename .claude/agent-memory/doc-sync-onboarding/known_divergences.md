@@ -10,14 +10,18 @@ documentadas em `docs/architecture.md` e `docs/operacao.md`. Não as reporte
 como achado novo em syncs futuras — só verifique se ainda existem e, se
 resolvidas, remova a nota dos docs (e desta memória).
 
-1. **ADR-006 (ambientes dev/produção) vs `wrangler.jsonc`**: a ADR decide dois
-   workers (`roseshop-dev`, `roseshop`) com bindings por `env`. O
-   `wrangler.jsonc` atual não tem bloco `env` nenhum — só config top-level de
-   um worker `roseshop`. Esperado em Fase 0 (sem CI ainda); conferir de novo
-   quando `specs/adr/006` for implementada ou quando `wrangler.jsonc` ganhar
-   blocos `env`.
+1. **ADR-006 (ambientes, revisado em 2026-10-02 para três camadas) vs
+   `wrangler.jsonc`**: a ADR decide local (Docker) + dev online
+   (`roseshop-dev`) + produção (`roseshop`), com bindings por `env`. O
+   `wrangler.jsonc` atual não tem bloco `env` nenhum, e também não há
+   `docker-compose` (ADR-002) nem CI. Reavaliado na sync de 2026-10-02: a
+   revisão NÃO resolveu a divergência, só ampliou o que falta. Já documentada
+   em `docs/architecture.md` ("Ambientes decididos nos ADRs 002 e 006").
+   Conferir de novo quando `wrangler.jsonc` ganhar `env`, ou quando surgir
+   compose/CI.
 
-2. **`.dev.vars.example` ausente**: `specs/00-constitution.md` (seção 4.1)
+2. **`.dev.vars.example` ausente**: `.specify/memory/constitution.md` (princípio III.1; antes seção 4.1 de
+   `specs/00-constitution.md`, que foi removido)
    diz que `.dev.vars.example` lista as chaves esperadas sem valor. O arquivo
    não existe no repo ainda (só `.dev.vars`, local e ignorado pelo git). Sem
    variável alguma exigida pelo app ainda, isso não bloqueia nada — mas na

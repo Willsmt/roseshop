@@ -2,7 +2,7 @@
 
 > Estado: **Fase 0 — scaffold**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, auth, R2, IA,
-> banco), ver `specs/00-constitution.md` e os ADRs em `specs/adr/`.
+> banco), ver `.specify/memory/constitution.md` e os ADRs em `specs/adr/`.
 
 ## Visão leiga
 
@@ -78,24 +78,67 @@ Nenhum binding de banco (Neon/Hyperdrive), R2 (storage) ou segredo de IA existe
 ainda em `wrangler.jsonc` — eles entram junto com as features que os usam
 (F0x de catálogo/imagens/IA, conforme `specs/`).
 
+### Ambientes decididos nos ADRs 002 e 006 (ainda não implementados)
+
+A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
+isoladas**. Nada abaixo, exceto o `preview`, existe no repositório hoje.
+
+| Recurso | Local | Dev online | Produção |
+|---|---|---|---|
+| Runtime | `npm run preview` (workerd) | Worker `roseshop-dev` | Worker `roseshop` |
+| Banco | Postgres em Docker (ADR-002) | Neon, branch `dev` | Neon, branch `main` |
+| Imagens | R2 simulado pelo wrangler (`.wrangler/state/`) | R2 `roseshop-dev` | R2 `roseshop-prod` |
+| OpenAI | chave dev, limite baixo | chave dev, limite baixo | chave prod |
+| Segredos | `.dev.vars` | `wrangler secret --env dev` | `wrangler secret --env production` |
+| Login | Google, callback `localhost` | Google, callback dev | Google, callback produção |
+
+Pontos-chave:
+
+- **Banco (ADR-002)**: Postgres em todas as camadas, com um único driver,
+  `@neondatabase/serverless` (HTTP). No local, o Postgres do Docker é exposto
+  por um proxy HTTP compatível com o protocolo do Neon no mesmo
+  `docker-compose`; o endpoint vem de variável de ambiente, sem ramificação no
+  código. Migrations (Drizzle + `drizzle-kit`) são SQL versionado, aplicado
+  local → dev → produção, usando conexão direta (não o proxy).
+- **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes) → migration no Neon
+  `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
+  Neon `main` → deploy em `roseshop`. Segredos de deploy em GitHub
+  Environments; segredos de runtime só na Cloudflare.
+- **Regras**: a máquina local nunca acessa dev online nem produção; bindings
+  do wrangler são declarados por environment (não herdados) e
+  `WORKER_SELF_REFERENCE` aponta para o worker do próprio ambiente; mudança
+  destrutiva de schema segue expand/contract.
+- **Cota compartilhada**: os limites do free tier da Cloudflare são da conta,
+  então dev e produção disputam a mesma cota; teste de carga roda só na stack
+  Docker local.
+
 ### Divergência com ADR-006 (alerta ao tech-lead)
 
-`specs/adr/006-ambientes-dev-producao.md` decide que dev e produção são dois
-workers Cloudflare separados (`roseshop-dev` e `roseshop`), cada um com seus
-próprios bindings declarados "por environment (não são herdados)". O
-`wrangler.jsonc` atual **não tem blocos `env` nenhum** — só a configuração
-top-level de um único worker chamado `roseshop`, que seria a configuração de
-produção. Ainda não há `env.dev` nem worker `roseshop-dev` configurados. Isso
-é esperado em Fase 0 (ainda não há CI nem ambiente dev real), mas fica
-registrado para quando a ADR-006 for implementada de fato.
+O `wrangler.jsonc` atual **não tem blocos `env` nenhum** — só a configuração
+top-level de um worker `roseshop` (o que corresponderia à produção). Não há
+`env.dev`, worker `roseshop-dev`, `docker-compose` nem workflow de CI. A
+revisão do ADR-006 (camada local em Docker) **não resolve** a divergência:
+ela amplia o que falta implementar. É esperado em Fase 0; fica registrado até
+a ADR ser implementada.
 
-### Ambientes (planejado, ver ADR-006)
+### Processo de especificação (Spec Kit)
 
-Dev local roda `next dev` ou `npm run preview` (workerd local) usando
-`.dev.vars`. Banco (Neon), storage (R2) e IA (OpenAI) com credenciais
-separadas de produção e pipeline de CI por ambiente (`dev`/`production`) via
-GitHub Actions — nada disso está implementado ainda; ver `specs/adr/
-006-ambientes-dev-producao.md` para o desenho completo.
+O repositório adotou o Spec Kit (v1.0.6, integração `claude`):
+
+| Caminho | Papel |
+|---|---|
+| `.specify/memory/constitution.md` | Constitution v1.0.0 (princípios I a VIII); fonte das regras não negociáveis. Substitui o antigo `specs/00-constitution.md`, que não existe mais. |
+| `.specify/templates/` | Templates de spec, plan, tasks, checklist e constitution. |
+| `.specify/scripts/bash/` | Scripts usados pelas skills (criar feature, pré-requisitos, setup de plan/tasks). |
+| `.specify/workflows/`, `.specify/*.json` | Workflow e estado/manifestos da integração. |
+| `.claude/skills/speckit-*` | Skills `/speckit-specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, `converge`, `checklist`, `constitution`, `taskstoissues`. |
+| `specs/NNN-nome/` | Uma pasta por feature (`spec.md`, `plan.md`, `tasks.md`). Hoje nenhuma existe. |
+| `specs/adr/` | ADRs: hoje `002-neon-drizzle.md` e `006-ambientes-dev-producao.md`. |
+
+O `plan.md` de cada feature passa pelo Constitution Check. A ordem de uso está
+no `CLAUDE.md`, seção "Spec Kit". Mapeamento da numeração antiga da
+constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
+8 = VII (Ambiente e plataforma), 9 = VIII (Ambientes).
 
 ### Dívidas técnicas
 
@@ -108,6 +151,6 @@ GitHub Actions — nada disso está implementado ainda; ver `specs/adr/
 
 Catálogo público, sacola, autenticação (Auth.js + allowlist `ADMIN_EMAILS`),
 upload de imagens via R2 (URL pré-assinada) e integração de IA (OpenAI) são
-descritos em `specs/00-constitution.md` (seção "Stack fechada") mas **não têm
+descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

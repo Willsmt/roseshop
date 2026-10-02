@@ -19,7 +19,7 @@ da Cloudflare e, futuramente, publicar.
 | `npm run build` | `next build` puro (build Next.js, sem empacotar para Cloudflare). |
 | `npm run start` | `next start` — serve o build Next.js padrão (Node), não o worker. |
 | `npm run preview` | `opennextjs-cloudflare build && opennextjs-cloudflare preview` — builda e sobe o worker localmente via workerd (`http://localhost:8787` por padrão). É o runtime mais próximo de produção disponível localmente. |
-| `npm run deploy` | `opennextjs-cloudflare build && opennextjs-cloudflare deploy` — builda e publica na Cloudflare. **Hoje não há pipeline de CI**; rodar isso manualmente iria contra a regra da constitution (`specs/00-constitution.md`, seção 9: deploy de produção só via merge em `main` pelo CI). |
+| `npm run deploy` | `opennextjs-cloudflare build && opennextjs-cloudflare deploy` — builda e publica na Cloudflare. **Hoje não há pipeline de CI**; rodar isso manualmente iria contra a regra da constitution (`.specify/memory/constitution.md`, princípio VIII: deploy de produção só via merge em `main` pelo CI). |
 | `npm run upload` | `opennextjs-cloudflare build && opennextjs-cloudflare upload` — builda e envia a versão ao Cloudflare sem promovê-la a deploy ativo. |
 | `npm run lint` | `eslint .` — flat config nativa do Next 16 (`eslint.config.mjs`), com `eslint-config-next` para core-web-vitals e TypeScript. |
 | `npm run cf-typegen` | `wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts` — regenera os tipos TypeScript dos bindings declarados em `wrangler.jsonc`. Rodar sempre após alterar bindings. |
@@ -51,6 +51,12 @@ migration → deploy em `roseshop-dev` por PR; merge em `main` → deploy em
 também não tem blocos `env` separando dev/produção (ver alerta em
 `docs/architecture.md`).
 
+Resumo das três camadas decididas no ADR-006 (detalhes em
+[architecture.md, "Ambientes"](./architecture.md#ambientes-decididos-nos-adrs-002-e-006-ainda-não-implementados)):
+local (Docker + `npm run preview`), dev online (`roseshop-dev`) e produção
+(`roseshop`). Hoje só existe, de fato, o `npm run preview` local; não há
+`docker-compose`, Neon, R2 nem workers de dev/produção configurados.
+
 ## Troubleshooting
 
 - **`next dev` funcionando mas `preview` quebrando**: esperado às vezes —
@@ -63,7 +69,7 @@ também não tem blocos `env` separando dev/produção (ver alerta em
   para comparar (ver seção acima) — como ainda não há segredo nenhum exigido
   pelo app, isso não bloqueia nada em Fase 0.
 - **Desenvolvimento somente no WSL**: o OpenNext não é suportado oficialmente
-  em Windows nativo (`specs/00-constitution.md`, seção 8; `CLAUDE.md`, seção
+  em Windows nativo (`.specify/memory/constitution.md`, princípio VII; `CLAUDE.md`, seção
   "Ambiente"). Rode `dev`, `preview`, `build` e `deploy` sempre no terminal do
   WSL, nunca no PowerShell/CMD.
 - **Erro "dubious ownership" ao rodar `git` pelo PowerShell via

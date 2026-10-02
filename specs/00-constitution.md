@@ -99,3 +99,10 @@ tem baixa familiaridade. O painel DEVE:
   qualquer solução que dependa de recurso pago, CPU por request elevada ou
   processamento pesado no servidor (ex.: redimensionar imagem no Worker);
   compressão de imagem acontece no client.
+
+## 9. Ambientes
+
+Dois ambientes isolados, dev e produção (ver ADR-006). Nada chega a produção sem
+ter passado pelo dev. A máquina local usa apenas recursos de dev. Deploy de
+produção acontece somente pelo merge em `main` via CI; deploy manual em produção
+é proibido.

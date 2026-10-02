@@ -21,7 +21,7 @@ em Next.js, vira um Worker rodando na Cloudflare.
 | Peça | Versão/pacote |
 |---|---|
 | Next.js | `16.3.8` (App Router, Turbopack) |
-| React | `19.1.7` |
+| React | `^19.1.7` |
 | TypeScript | `^5.7.4` (modo `strict`, `target: es2024`) |
 | Adaptador Cloudflare | `@opennextjs/cloudflare` `^1.20.3` |
 | Wrangler (CLI Cloudflare) | `^4.147.0` |
@@ -96,6 +96,13 @@ Dev local roda `next dev` ou `npm run preview` (workerd local) usando
 separadas de produção e pipeline de CI por ambiente (`dev`/`production`) via
 GitHub Actions — nada disso está implementado ainda; ver `specs/adr/
 006-ambientes-dev-producao.md` para o desenho completo.
+
+### Dívidas técnicas
+
+- **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o
+  layout raiz declara `lang="en"` (herança do `create-next-app`). Afeta
+  leitores de tela e SEO. Também permanecem `title`/`description` genéricos
+  ("Create Next App") em `metadata`. Corrigir ao implementar a primeira tela.
 
 ### Planejado, não implementado
 

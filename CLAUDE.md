@@ -1,0 +1,96 @@
+# CLAUDE.md
+
+Guia operacional para agentes (Claude Code e afins) neste repositório.
+**Leia `specs/00-constitution.md` antes de qualquer tarefa.** Regras de stack,
+segurança, arquitetura e UX estão lá e não são repetidas aqui. Em conflito,
+a constitution vence.
+
+## Ambiente
+
+- Next.js 16 (App Router, Turbopack) + TypeScript, deploy em Cloudflare Workers
+  via OpenNext (`@opennextjs/cloudflare`).
+- Desenvolvimento em Linux (WSL). Não rodar build/preview em Windows nativo.
+- Segredos de dev em `.dev.vars` (lido pelo wrangler/workerd). Nunca ler,
+  imprimir, copiar ou commitar esse arquivo. Chaves esperadas: `.dev.vars.example`.
+- Line endings LF (`.gitattributes`).
+
+## Comandos
+
+```bash
+npm run dev          # next dev (rápido, runtime Node — não é o runtime de produção)
+npm run preview      # build OpenNext + workerd local em http://localhost:8787
+npm run lint         # eslint (flat config nativa do Next 16)
+npm run cf-typegen   # regenera cloudflare-env.d.ts após mudar bindings
+# PENDENTE (Fase 0): npm run typecheck, npm test, npm run check, migrations Drizzle
+```
+
+Valide no `preview` tudo que toca runtime (bindings, R2, auth, IA): o `dev`
+roda em Node e pode mascarar incompatibilidades do workerd.
+
+## Estrutura
+
+```
+specs/                    # fonte de verdade (constitution, produto, ADRs, features)
+src/app/                  # rotas (App Router)
+  (public)/               # catálogo público + sacola          [planejado]
+  painel/                 # área das administradoras           [planejado]
+src/components/ui/        # componentes base — única fonte de primitivos [planejado]
+src/lib/db/               # schema e queries Drizzle            [planejado, protegido]
+src/lib/auth/             # Auth.js + allowlist                 [planejado, protegido]
+src/lib/r2/               # URLs pré-assinadas                  [planejado, protegido]
+src/lib/ai/               # integração OpenAI                   [planejado, protegido]
+```
+
+Estado atual: apenas o scaffold do OpenNext. Atualize esta seção ao fechar cada feature.
+
+## Fluxo de feature (obrigatório)
+
+1. A feature tem spec em `specs/features/FXX-*.md` com critérios de aceite
+   Given/When/Then. Sem spec aprovada, não há implementação.
+2. Testes escritos a partir dos critérios de aceite, ANTES da implementação
+   (Red → Green → Refactor).
+3. Implementação mínima para os testes passarem.
+4. "Pronto" = lint + typecheck + testes passando, com output real.
+5. Atualizar `README.md` e a seção "Estrutura" deste arquivo.
+6. Commit em Conventional Commits, sem trailer de co-autoria.
+
+## Orquestração de agentes
+
+Delegue pelo tipo de tarefa e passe o `model` correspondente. Em dúvida sobre
+complexidade, suba um nível.
+
+### Tech-lead — `opus`
+- Decide quem executa cada tarefa e revisa tudo antes de considerar concluído.
+- Escreve/atualiza specs e ADRs (com aprovação humana).
+- Dono exclusivo das zonas protegidas: `src/lib/auth/`, `src/lib/r2/`,
+  `src/lib/ai/`, `src/lib/db/` (schema e migrations), `src/middleware.ts`,
+  `wrangler.jsonc`, `.dev.vars*`.
+- Define o contrato que os demais consomem: tipos, Server Actions, componentes base.
+
+### Escritor de testes — `sonnet`
+- Escreve testes (unitários, integração, componentes) a partir dos critérios
+  de aceite da spec.
+- Não altera código de produção. Achou bug: reporta ao tech-lead.
+
+### Dev de UI — `sonnet`
+- Implementa páginas e componentes em `src/app/(public)/` e `src/app/painel/`.
+- Consome apenas o contrato existente: Server Actions, tipos e
+  `src/components/ui/`. Não cria action, não importa Drizzle, não toca `src/lib/`.
+- Precisa de campo ou action que não existe: para e reporta.
+
+### Redator — `haiku`
+- Mensagens de commit, changelog, atualização de `README.md`.
+- Ajustes triviais de texto/typo/classe Tailwind simples.
+
+### Júnior — `haiku`
+- Rodar comandos de verificação (`lint`, `typecheck`, `test`, `preview`) e
+  devolver o output real, sem interpretar como sucesso o que falhou.
+- Não instala dependências, não cria/edita `.dev.vars*`, não roda migrations.
+  Tarefa que se revelar complexa ou crítica volta ao tech-lead.
+
+## Regras gerais
+
+- Merge em `main` só por humano.
+- Nunca simular output de comando. Sem output real, a tarefa não está concluída.
+- Documentação (README + "Estrutura" deste arquivo) é atualizada ao fechar cada
+  feature. Agente dedicado de doc-sync: [a definir].

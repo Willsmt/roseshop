@@ -1,4 +1,4 @@
-# Netapee — Constitution
+# Roseshop — Constitution
 
 Princípios não negociáveis do projeto. Todo agente, skill ou pessoa que contribuir
 com código DEVE ler este arquivo antes de começar. Alterações aqui são feitas

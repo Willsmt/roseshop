@@ -5,7 +5,7 @@
 
 ## Contexto
 
-O Netapee terá usuárias reais (administradoras e clientes). Mudanças precisam ser
+O Roseshop terá usuárias reais (administradoras e clientes). Mudanças precisam ser
 validadas em um ambiente igual ao de produção antes de chegar a elas, sem risco
 de escrever em dados reais ou gerar custo inesperado.
 
@@ -15,9 +15,9 @@ Dois ambientes isolados em todos os recursos:
 
 | Recurso   | Dev                         | Produção                     |
 |-----------|-----------------------------|------------------------------|
-| Worker    | `netapee-dev`               | `netapee`                    |
+| Worker    | `roseshop-dev`               | `roseshop`                    |
 | Banco     | Neon, branch `dev`          | Neon, branch `main`          |
-| Imagens   | R2 `netapee-dev`            | R2 `netapee-prod`            |
+| Imagens   | R2 `roseshop-dev`            | R2 `roseshop-prod`            |
 | OpenAI    | projeto/chave dev, limite baixo | projeto/chave prod, limite próprio |
 | Segredos  | `wrangler secret --env dev` | `wrangler secret --env production` |
 | Local     | `.dev.vars` aponta para recursos de **dev** | — |
@@ -29,9 +29,9 @@ Login Google: um único OAuth client com callbacks de localhost, dev e produçã
 
 1. Trabalho em branch `feature/*`, `fix/*` etc. → Pull Request para `main`.
 2. A cada push no PR: lint + typecheck + testes → migration no Neon `dev` →
-   deploy em `netapee-dev`. Validação humana no ambiente dev.
+   deploy em `roseshop-dev`. Validação humana no ambiente dev.
 3. Merge em `main` (somente humano): CI → migration no Neon `main` → deploy em
-   `netapee`.
+   `roseshop`.
 
 Segredos de deploy/migration ficam em GitHub Environments (`dev`, `production`).
 Segredos de runtime do app ficam somente na Cloudflare.

@@ -1,9 +1,10 @@
 # Operação
 
 > Estado: **Fase 0 — scaffold**. Comandos e bindings abaixo refletem o que
-> existe hoje em `package.json` e `wrangler.jsonc`. Já existe a stack local de
-> banco (Docker, ver "Banco local"), mas o app ainda não a consome: não há
-> driver, schema nem migrations. R2, auth e IA não estão configurados.
+> existe hoje em `package.json` e `wrangler.jsonc`. Já existem a stack local de
+> banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
+> exercitada só pela rota `/api/health`. O schema está vazio de propósito e
+> ainda não há migrations. R2, auth e IA não estão configurados.
 
 ## Visão leiga
 
@@ -25,7 +26,8 @@ da Cloudflare e, futuramente, publicar.
 | `npm run lint` | `eslint .` — flat config nativa do Next 16 (`eslint.config.mjs`), com `eslint-config-next` para core-web-vitals e TypeScript. |
 | `npm run cf-typegen` | `wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts` — regenera os tipos TypeScript dos bindings declarados em `wrangler.jsonc`. Rodar sempre após alterar bindings. |
 | `npm run typecheck` | `tsc --noEmit` — checagem de tipos de todo o projeto (`tsconfig.json`, modo `strict`). |
-| `npm test` | `vitest run` — roda a suíte uma vez (modo CI). Com zero testes, termina com sucesso (`passWithNoTests`). |
+| `npm test` | `vitest run` — roda os testes **unitários** (`*.test.ts`, sem banco) uma vez (modo CI). Exclui `*.int.test.ts`. Sem `passWithNoTests`: suíte vazia agora falha. |
+| `npm run test:int` | `vitest run --config vitest.int.config.mts` — roda os testes de **integração** (`*.int.test.ts`), que exigem `npm run db:up` e `DATABASE_URL` no `.dev.vars`. Não faz parte do `check` nem do `pre-push`. |
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
@@ -34,8 +36,13 @@ da Cloudflare e, futuramente, publicar.
 | `npm run db:reset` | `docker compose down -v && docker compose up -d --wait` — **DESTRUTIVO: apaga o volume `pgdata` e todos os dados do banco local**, e sobe um banco vazio. Só afeta o local. |
 | `npm run db:psql` | `docker compose exec postgres psql -U roseshop -d roseshop` — shell SQL no container (requer `db:up` antes). |
 
-Scripts ainda **não existem** (pendentes de Fase 0, ver CLAUDE.md): qualquer
-comando de migration Drizzle.
+| `npm run db:generate` | `drizzle-kit generate` — gera migration SQL em `src/lib/db/migrations/` a partir de `src/lib/db/schema.ts`. Com o schema vazio, não há o que gerar (o diretório ainda não existe). |
+| `npm run db:migrate` | `drizzle-kit migrate` — aplica as migrations no banco de `DATABASE_URL`, por conexão TCP direta (não passa pelo proxy HTTP). |
+
+`drizzle.config.ts` lê `DATABASE_URL` do ambiente e, se ausente, carrega o
+`.dev.vars` (`process.loadEnvFile`); sem a variável, falha com erro explícito.
+Em CI/dev online/produção a variável vem do ambiente e deve ser a connection
+string **direta** do Neon, não a pooled (ADR-002).
 
 ## Banco local (Docker)
 
@@ -45,7 +52,9 @@ Para desenvolver sem tocar no banco real, o projeto traz um banco de dados de
 mentirinha que roda no seu computador, dentro do Docker. Um comando
 (`npm run db:up`) liga, outro (`npm run db:down`) desliga. Um segundo
 container faz o "tradutor" para o driver HTTP do Neon, o mesmo usado em
-produção (ADR-002). Hoje o app ainda não usa esse banco: só a infra existe.
+produção (ADR-002). Hoje o único uso pelo app é a rota `/api/health`, que
+faz um `select 1` para confirmar que o banco responde (ver
+[architecture.md, "Camada de banco"](./architecture.md#camada-de-banco-e-health-check)).
 
 ### Aprofundamento técnico
 
@@ -85,11 +94,10 @@ Decisões e pegadinhas:
   `{"ok":1}`. Ou seja, o protocolo HTTP do Neon responde via proxy usando
   `localhost`, funcionando offline, sem depender do DNS do `localtest.me`.
   A verificação foi manual; não há teste automatizado no repositório.
-- **Risco aberto (Fase 0.4)**: `wrangler.jsonc` tem a flag
-  `global_fetch_strictly_public`, que pode impedir o worker de fazer `fetch`
-  para `localhost:4444` no `npm run preview`. **Não confirmado** — validar
-  quando o driver for integrado; pode exigir ajuste na config (zona protegida,
-  decisão do tech-lead).
+- **`global_fetch_strictly_public` não bloqueia o proxy local (resolvido)**:
+  a flag em `wrangler.jsonc` era um risco para o `fetch` do worker a
+  `localhost:4444`. Validado no workerd: `npm run preview` com `/api/health`
+  respondeu 200 `{db: ok}` (corpo do commit `6ed2cfc`).
 - Primeira subida baixa as imagens; `db:up` precisa de Docker disponível no WSL.
 
 ## Hooks de git (husky)
@@ -167,8 +175,16 @@ relatório versionado no repositório.)
 
 ## Testes (Vitest)
 
-Infra de testes pronta, mas **sem nenhum teste escrito ainda** (não há feature
-em `specs/NNN-nome/`). Configuração em `vitest.config.mts` e `vitest.setup.ts`:
+Há dois tipos de teste, cada um com sua config:
+
+| Tipo | Arquivos | Config | Como roda | Banco |
+|---|---|---|---|---|
+| Unitário | `src/**/*.test.{ts,tsx}` | `vitest.config.mts` + `vitest.setup.ts` | `npm test`; entra no `npm run check` e no `pre-push` | Não precisa |
+| Integração | `src/**/*.int.test.{ts,tsx}` | `vitest.int.config.mts` + `vitest.int.setup.ts` | `npm run test:int`, manual; **fora** do `pre-push` | Exige `npm run db:up`; o setup falha se `DATABASE_URL` faltar (lê `.dev.vars` se existir), `testTimeout` de 15 s |
+
+Hoje existem `src/lib/db/health.test.ts` (unitário) e
+`src/lib/db/client.int.test.ts` (integração, via proxy local). Configuração
+do tipo unitário (`vitest.config.mts`):
 
 | Aspecto | Configuração | Observação |
 |---|---|---|
@@ -176,9 +192,8 @@ em `specs/NNN-nome/`). Configuração em `vitest.config.mts` e `vitest.setup.ts`
 | Ambiente padrão | `node` | Testes de componente devem usar `jsdom` (instalado como devDependency); a convenção é declarar o ambiente no próprio arquivo de teste, pois não há override global. |
 | Globals | desligados (sem `globals: true`) | `describe`, `it`, `expect`, `vi` precisam ser importados de `vitest`. |
 | Alias `@/*` | resolvido nativamente pelo Vite (`resolve.tsconfigPaths: true`) | Lê os `paths` do `tsconfig.json`; substitui o plugin `vite-tsconfig-paths`, removido do projeto. |
-| Arquivos de teste | `src/**/*.test.{ts,tsx}` | Testes fora de `src/` não são descobertos. |
+| Arquivos de teste | `src/**/*.test.{ts,tsx}`, exceto `*.int.test.*` | Testes fora de `src/` não são descobertos; os de integração têm config própria. |
 | Setup | `vitest.setup.ts` importa `@testing-library/jest-dom/vitest` | Matchers como `toBeInTheDocument` ficam disponíveis. |
-| Sem testes | `passWithNoTests: true` | Evita falhar `npm test`/`npm run check` até existir a primeira feature. Remover quando houver testes, para que uma suíte vazia por engano volte a falhar. |
 
 Os testes rodam em Node/jsdom, **não em workerd**: não substituem a validação
 no `preview` para bindings, R2, auth e IA.
@@ -207,7 +222,7 @@ aprovados, por versão exata:
 
 | Entrada | Por que precisa de script |
 |---|---|
-| `esbuild@0.28.1` e `esbuild@0.25.4` | Valida/instala o binário nativo do esbuild (a 0.25.4 é a cópia aninhada em `@opennextjs/aws`, dependência do OpenNext). |
+| `esbuild@0.28.1`, `esbuild@0.25.4` e `esbuild@0.25.12` | Valida/instala o binário nativo do esbuild (a 0.25.4 é a cópia aninhada em `@opennextjs/aws`; a 0.25.12 vem do override abaixo, usada pelo `drizzle-kit`). |
 | `workerd@1.20261001.1` | Binário do runtime da Cloudflare usado no `preview`. A aprovação é por versão exata e o `workerd` muda a cada atualização do `wrangler`: todo bump do wrangler exige reaprovar com `npm approve-scripts workerd`. |
 | `unrs-resolver@1.12.2` | Resolver nativo, dependência transitiva de `eslint-config-next` (via `eslint-import-resolver-typescript`). |
 
@@ -217,6 +232,30 @@ a versão, um bump de versão desses pacotes também exige atualizar a entrada.
 A coluna "por que" acima é inferência pela função de cada pacote; o motivo
 da aprovação não está descrito em nenhum arquivo do repositório além do
 commit `ccb808b` (que apenas diz "approved explicitly").
+
+### Override `@esbuild-kit/core-utils` -> `esbuild` 0.25.12
+
+`package.json` tem `overrides` forçando `@esbuild-kit/core-utils` (loader do
+`drizzle-kit`) a usar `esbuild` 0.25.12 em vez do 0.18.20 que ele traria
+(GHSA-67mh-4wv8-2f99, afeta só o dev server do esbuild, sem exposição no uso
+do `drizzle-kit`). Verificado no commit `6ed2cfc`: o `drizzle-kit` carrega
+`drizzle.config.ts` pelo loader com override. **Não remova** o override sem
+reavaliar a vulnerabilidade; a entrada `esbuild@0.25.12` em `allowScripts`
+depende dele.
+
+## Auditoria de dependências
+
+Política (decisão do mantenedor; **ainda não aplicada por CI**, que é a
+Fase 0.6):
+
+- **Runtime** (`npm audit --omit=dev`): vulnerabilidade `high`/`critical`
+  bloqueia o PR no CI. Estado em `6ed2cfc`: 0 vulnerabilidades de runtime.
+- **Dev**: vulnerabilidade aceita fica documentada com justificativa e data de
+  revisão.
+
+| Advisory | Pacote/caminho | Justificativa | Aceita em | Revisar em |
+|---|---|---|---|---|
+| GHSA-vfj7-8cjw-p6xm | `braces`, via `eslint-config-next` | Sem versão corrigida; os padrões glob vêm só da nossa config. | 2026-10-03 | 2026-11-03 |
 
 ## Bindings
 
@@ -233,8 +272,8 @@ local").
 | Variável | Propósito | Onde é usada | Tipo |
 |---|---|---|---|
 | `NEXTJS_ENV` | Vem do template do OpenNext. O adaptador a lê no `preview` para escolher qual arquivo `.env.*` do Next carregar (exemplo: `development`). | Adaptador OpenNext, no `preview`; **não** é usada pelo código de `src/`. | Var de configuração local (não sensível) |
-| `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | Ainda **sem consumidor** no código (sem driver/Drizzle). | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
-| `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | Ainda sem consumidor. Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
+| `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | `src/lib/db/client.ts` (`createDb`, via `/api/health`), `drizzle.config.ts` e `vitest.int.setup.ts`. | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
+| `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | `src/lib/db/client.ts` (`neonConfig.fetchEndpoint`). Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
 
 Chaves de R2, OpenAI e Auth.js ainda não estão no exemplo (features não
 implementadas).
@@ -278,6 +317,12 @@ local existe (ver "Banco local"), mas ainda não é consumido pelo app.
   WSL (`docker ps`).
 - **Perdi os dados do banco local**: `npm run db:reset` apaga o volume
   `pgdata`. É o comportamento esperado; só afeta o local.
+- **`/api/health` devolve 503 `{db: "error"}`**: banco inacessível ou
+  `DATABASE_URL` errada. O log traz só o tipo do erro (`[health] falha ao
+  consultar o banco (<tipo>)`), de propósito; confira `docker compose ps` e o
+  `.dev.vars`.
+- **`npm run test:int` falha com "DATABASE_URL ausente"**: rode `npm run db:up`
+  e configure o `.dev.vars` a partir do `.dev.vars.example`.
 - **`psql`/migration não conecta**: use `localhost:5440` (não 5432) e confirme
   que o Postgres está saudável (`docker compose ps`).
 - **Commit bloqueado com "gitleaks não encontrado"**: instale conforme a seção

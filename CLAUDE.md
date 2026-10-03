@@ -22,15 +22,17 @@ npm run preview      # build OpenNext + workerd local em http://localhost:8787
 npm run lint         # eslint (flat config nativa do Next 16)
 npm run cf-typegen   # regenera cloudflare-env.d.ts após mudar bindings
 npm run typecheck    # tsc --noEmit
-npm test             # vitest run (passWithNoTests até existir a primeira feature)
+npm test             # vitest run: só unitários (*.test.ts), sem banco
+npm run test:int     # integração (*.int.test.ts); exige db:up; fora do pre-push
 npm run test:watch   # vitest em modo watch
 npm run check        # lint + typecheck + test (gate de "pronto")
 npm run db:up        # sobe Postgres 17 + proxy HTTP do Neon (Docker, portas 5440/4444)
 npm run db:down      # para os containers (preserva dados)
 npm run db:reset     # DESTRUTIVO: apaga os dados do banco local e recria
 npm run db:psql      # shell psql no banco local
+npm run db:generate  # drizzle-kit generate (migration SQL em src/lib/db/migrations)
+npm run db:migrate   # drizzle-kit migrate (TCP direto no DATABASE_URL)
 # hooks (husky) instalados pelo `prepare` no npm install; exigem gitleaks no PATH
-# PENDENTE (Fase 0): migrations Drizzle
 ```
 
 Valide no `preview` tudo que toca runtime (bindings, R2, auth, IA): o `dev`
@@ -47,17 +49,18 @@ docs/                     # onboarding: o que FOI construído (mantido pelo doc-
 .husky/                   # hooks de git: pre-commit (gitleaks + lint-staged), commit-msg (commitlint), pre-push (check)
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
-src/app/                  # rotas (App Router) — hoje só layout.tsx, page.tsx, globals.css (boilerplate)
+src/app/                  # rotas (App Router) — hoje layout.tsx, page.tsx, globals.css (boilerplate) e api/health
   (public)/               # catálogo público + sacola          [planejado]
   painel/                 # área das administradoras           [planejado]
 src/components/ui/        # componentes base — única fonte de primitivos [planejado]
-src/lib/db/               # schema e queries Drizzle            [planejado, protegido]
+src/lib/db/               # Drizzle: client, health, schema (vazio), migrations/ [protegido]
+drizzle.config.ts         # config do drizzle-kit
 src/lib/auth/             # Auth.js + allowlist                 [planejado, protegido]
 src/lib/r2/               # URLs pré-assinadas                  [planejado, protegido]
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`; sem schema/driver ainda); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

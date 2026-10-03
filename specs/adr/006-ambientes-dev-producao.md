@@ -1,7 +1,8 @@
 # ADR-006 — Ambientes: local, dev e produção
 
 **Status:** aceito
-**Data:** 2026-10-02 (revisado em 2026-10-02: camada local em Docker)
+**Data:** 2026-10-02 (revisado em 2026-10-02: camada local em Docker;
+2026-10-03: branch de produção do Neon é `production`)
 
 ## Contexto
 
@@ -16,7 +17,7 @@ Três camadas isoladas:
 | Recurso   | Local                         | Dev online                   | Produção                      |
 |-----------|-------------------------------|------------------------------|-------------------------------|
 | Runtime   | `npm run preview` (workerd)   | Worker `roseshop-dev`        | Worker `roseshop`             |
-| Banco     | Postgres em Docker (ADR-002)  | Neon, branch `dev`           | Neon, branch `main`           |
+| Banco     | Postgres em Docker (ADR-002)  | Neon, branch `dev`           | Neon, branch `production`     |
 | Imagens   | R2 simulado pelo wrangler (`.wrangler/state/`) | R2 `roseshop-dev` | R2 `roseshop-prod`  |
 | OpenAI    | chave dev, limite baixo       | chave dev, limite baixo      | chave prod, limite próprio    |
 | Segredos  | `.dev.vars` (não versionado)  | `wrangler secret --env dev`  | `wrangler secret --env production` |
@@ -39,7 +40,7 @@ Papel de cada camada:
 2. A cada push no PR: lint + typecheck + testes → migration no Neon `dev` →
    deploy em `roseshop-dev`. Validação humana no ambiente dev.
 3. Merge em `main` (somente humano, estratégia rebase): CI → migration no Neon
-   `main` → deploy em `roseshop`.
+   `production` → deploy em `roseshop`.
 
 Segredos de deploy/migration ficam em GitHub Environments (`dev`,
 `production`). Segredos de runtime do app ficam somente na Cloudflare.

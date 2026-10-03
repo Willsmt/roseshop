@@ -137,7 +137,7 @@ Não há binding de banco (Neon/Hyperdrive) nem segredo de IA em `wrangler.jsonc
 (o banco é acessado por `DATABASE_URL`, secret/var, via HTTP); eles entram junto
 com as features que os usam (conforme `specs/`).
 
-### Ambientes decididos nos ADRs 002 e 006 (parcialmente implementados)
+### Ambientes decididos nos ADRs 002 e 006 (implementados, exceto o worker de produção)
 
 A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
 isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
@@ -166,7 +166,8 @@ Pontos-chave:
 - **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes) → migration no Neon
   `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
   Neon `production` → deploy em `roseshop`. Segredos de deploy em GitHub
-  Environments; segredos de runtime só na Cloudflare.
+  Environments; segredos de runtime só na Cloudflare. Implementado em
+  `.github/workflows/` (ver [operacao.md, "CI"](./operacao.md#ci)).
 - **Regras**: a máquina local nunca acessa dev online nem produção; bindings
   do wrangler são declarados por environment (não herdados) e
   `WORKER_SELF_REFERENCE` aponta para o worker do próprio ambiente; mudança
@@ -175,13 +176,15 @@ Pontos-chave:
   então dev e produção disputam a mesma cota; teste de carga roda só na stack
   Docker local.
 
-### Divergência com ADR-006 (alerta ao tech-lead)
+### Alinhamento com ADR-006
 
-Os blocos `env` do `wrangler.jsonc` (`dev` e `production`) **já existem**
-(commit `fffa3fe`) e o `docker-compose.yml` é consistente com o ADR-002. O que
-falta é o **workflow de CI** (GitHub Actions); o worker `roseshop` (produção)
-só será criado por ele. Nota: `scripts/require-ci.mjs` já bloqueia o deploy
-manual de produção. Fica registrado até o CI existir.
+Os blocos `env` do `wrangler.jsonc` (`dev` e `production`) existem (commit
+`fffa3fe`), o `docker-compose.yml` é consistente com o ADR-002 e o CI
+(`.github/workflows/`) implementa o fluxo do ADR-006 neste branch
+(`chore/ci`). O que resta: o worker `roseshop` (produção) só passa a existir no
+primeiro deploy do CI, após o merge. `scripts/require-ci.mjs` bloqueia o deploy
+manual de produção. Detalhes em
+[operacao.md, "CI"](./operacao.md#ci).
 
 **Risco resolvido**: a flag `global_fetch_strictly_public` em
 `wrangler.jsonc` **não** bloqueia o `fetch` do worker ao proxy local

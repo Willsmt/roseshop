@@ -1,6 +1,6 @@
 ---
 name: known-divergences
-description: Divergências código x spec; ADR-006 env resolvido, falta só o CI; branch Neon resolvida (production)
+description: Divergências código x spec; ADR-006 totalmente resolvido (CI no branch chore/ci; produção após merge); dívida ativa NEON_FETCH_ENDPOINT
 metadata:
   type: project
 ---
@@ -12,9 +12,10 @@ resolvidas, remova a nota dos docs (e desta memória).
 
 1. **ADR-006 (ambientes) vs repositório**: `env` no `wrangler.jsonc`
    **RESOLVIDO** (sync de 2026-10-03, branch `chore/wrangler-envs`, commit
-   `fffa3fe`; `docker-compose.yml` também existe). **Ainda aberta: falta o CI**
-   (GitHub Actions); a produção só nasce por ele (Fase 0.6). Documentada em
-   `docs/architecture.md`. (Branch Neon `main` x `production`: RESOLVIDA em
+   `fffa3fe`; `docker-compose.yml` também existe). **CI RESOLVIDO neste branch** (sync de 2026-10-03, `chore/ci`:
+   `.github/workflows/`); a produção só passa a existir após o merge (primeiro
+   deploy; smoke dá 503 até cadastrar secrets de runtime). Doc em
+   `docs/operacao.md` ("CI") e `docs/architecture.md`; não reabrir. (Branch Neon `main` x `production`: RESOLVIDA em
    2026-10-03, ADRs corrigidos para `production`; não reabrir.)
 
 2. ~~`.dev.vars.example` ausente~~ **RESOLVIDA** (sync de 2026-10-03,
@@ -23,7 +24,7 @@ resolvidas, remova a nota dos docs (e desta memória).
    Ao ganhar R2/OpenAI/Auth.js, só estender a tabela.
 
 3. **Parcial no item 1**: o `docker-compose.yml` (ADR-002) existe e é
-   consistente com o ADR. Continuam faltando `env` no `wrangler.jsonc` e CI.
+   consistente com o ADR. `env` e CI já resolvidos (ver item 1).
 
 4. ~~Risco `global_fetch_strictly_public` x proxy local~~ **RESOLVIDO**
    (sync de 2026-10-03, branch `chore/drizzle-setup`): validado no `preview`,

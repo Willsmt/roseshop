@@ -1,6 +1,6 @@
 ---
 name: known-divergences
-description: Divergências código x spec já registradas no bootstrap (2026-10-02) — não reportar de novo como "nova" até o código mudar
+description: Divergências código x spec registradas; item .dev.vars.example resolvido em 2026-10-03, ADR-006 sem env/CI segue aberta
 metadata:
   type: project
 ---
@@ -20,14 +20,15 @@ resolvidas, remova a nota dos docs (e desta memória).
    Conferir de novo quando `wrangler.jsonc` ganhar `env`, ou quando surgir
    compose/CI.
 
-2. **`.dev.vars.example` ausente**: `.specify/memory/constitution.md` (princípio III.1; antes seção 4.1 de
-   `specs/00-constitution.md`, que foi removido)
-   diz que `.dev.vars.example` lista as chaves esperadas sem valor. O arquivo
-   não existe no repo ainda (só `.dev.vars`, local e ignorado pelo git). Sem
-   variável alguma exigida pelo app ainda, isso não bloqueia nada — mas na
-   primeira feature que exigir segredo (banco, R2, IA, Auth.js), o repo
-   precisa ganhar esse arquivo e `docs/operacao.md` precisa ganhar a tabela
-   de variáveis.
+2. ~~`.dev.vars.example` ausente~~ **RESOLVIDA** (sync de 2026-10-03,
+   branch `chore/local-db`): o arquivo existe (`NEXTJS_ENV`, `DATABASE_URL`,
+   `NEON_FETCH_ENDPOINT`) e `docs/operacao.md` tem a tabela de variáveis.
+   Ao ganhar R2/OpenAI/Auth.js, só estender a tabela.
+
+3. **Parcial no item 1**: o `docker-compose.yml` (ADR-002) agora existe e é
+   consistente com o ADR. Continuam faltando `env` no `wrangler.jsonc` e CI.
+   Risco aberto registrado (não confirmado): `global_fetch_strictly_public` x
+   `fetch` para `localhost:4444` no `preview` (Fase 0.4).
 
 **Como aplicar**: ao fazer a próxima sync incremental, leia estas duas notas
 antes de escrever o resumo final — se o código já resolveu alguma, remova a

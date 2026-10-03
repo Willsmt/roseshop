@@ -1,8 +1,9 @@
 # Operação
 
 > Estado: **Fase 0 — scaffold**. Comandos e bindings abaixo refletem o que
-> existe hoje em `package.json` e `wrangler.jsonc`. Nada de banco, R2, auth ou
-> IA está configurado ainda.
+> existe hoje em `package.json` e `wrangler.jsonc`. Já existe a stack local de
+> banco (Docker, ver "Banco local"), mas o app ainda não a consome: não há
+> driver, schema nem migrations. R2, auth e IA não estão configurados.
 
 ## Visão leiga
 
@@ -27,11 +28,69 @@ da Cloudflare e, futuramente, publicar.
 | `npm test` | `vitest run` — roda a suíte uma vez (modo CI). Com zero testes, termina com sucesso (`passWithNoTests`). |
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
-
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
+| `npm run db:up` | `docker compose up -d --wait` — sobe Postgres + proxy Neon e espera o healthcheck do Postgres. |
+| `npm run db:down` | `docker compose down` — para os containers; **preserva** os dados (volume `pgdata`). |
+| `npm run db:reset` | `docker compose down -v && docker compose up -d --wait` — **DESTRUTIVO: apaga o volume `pgdata` e todos os dados do banco local**, e sobe um banco vazio. Só afeta o local. |
+| `npm run db:psql` | `docker compose exec postgres psql -U roseshop -d roseshop` — shell SQL no container (requer `db:up` antes). |
 
 Scripts ainda **não existem** (pendentes de Fase 0, ver CLAUDE.md): qualquer
 comando de migration Drizzle.
+
+## Banco local (Docker)
+
+### Visão leiga
+
+Para desenvolver sem tocar no banco real, o projeto traz um banco de dados de
+mentirinha que roda no seu computador, dentro do Docker. Um comando
+(`npm run db:up`) liga, outro (`npm run db:down`) desliga. Um segundo
+container faz o "tradutor" para o driver HTTP do Neon, o mesmo usado em
+produção (ADR-002). Hoje o app ainda não usa esse banco: só a infra existe.
+
+### Aprofundamento técnico
+
+Definido em `docker-compose.yml` (projeto `roseshop`):
+
+| Serviço | Imagem | Porta no host | Observações |
+|---|---|---|---|
+| `postgres` | `postgres:17-alpine` | `127.0.0.1:5440` -> 5432 | Volume nomeado `pgdata`; healthcheck `pg_isready` (3s, até 20 tentativas). |
+| `neon-proxy` | `ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14e...` | `127.0.0.1:4444` -> 4444 | Proxy HTTP compatível com `@neondatabase/serverless`. Só sobe depois de o Postgres ficar saudável (`depends_on: service_healthy`). Alcança o Postgres pela rede interna (`postgres:5432`). |
+
+```mermaid
+graph LR
+  App["app (driver @neondatabase/serverless)"] -->|"HTTP http://localhost:4444/sql"| P["neon-proxy :4444"]
+  P -->|"TCP postgres:5432 (rede do compose)"| DB["postgres:17-alpine"]
+  M["migrations / db:psql"] -->|"TCP localhost:5440"| DB
+```
+
+Decisões e pegadinhas:
+
+- **Porta 5440 de propósito**: 5432, 5433 e 5434 estão ocupadas por outros
+  projetos e por um Postgres do sistema na máquina do mantenedor. Se a sua
+  também tiver conflito, o `db:up` falha ao publicar a porta (a porta é fixa
+  no compose; não há variável para trocá-la).
+- **Portas presas em `127.0.0.1`**: nada é exposto à rede local.
+- **Imagem do proxy fixada por digest**: a tag `:main` é mutável, então o
+  digest garante a mesma imagem para todos. É uma imagem comunitária, não
+  oficial do Neon. Atualizar o digest é decisão consciente.
+- **Credenciais não são segredos**: usuário/senha/banco no compose e no
+  `.dev.vars.example` são de um banco local, só em loopback, só com dados de
+  seed. Por isso podem ser commitados. **Nunca** reutilize essas credenciais
+  em dev online ou produção.
+- **Versão do Postgres**: a major local (17) acompanha a do Neon (ADR-002).
+  **Requisito para a Fase 0.5**: criar o projeto no Neon em **Postgres 17**.
+- **`localhost` na connection string** (verificado manualmente pelo
+  mantenedor): um `POST` em `http://localhost:4444/sql` com o header
+  `Neon-Connection-String` apontando para `localhost:5440` retornou
+  `{"ok":1}`. Ou seja, o protocolo HTTP do Neon responde via proxy usando
+  `localhost`, funcionando offline, sem depender do DNS do `localtest.me`.
+  A verificação foi manual; não há teste automatizado no repositório.
+- **Risco aberto (Fase 0.4)**: `wrangler.jsonc` tem a flag
+  `global_fetch_strictly_public`, que pode impedir o worker de fazer `fetch`
+  para `localhost:4444` no `npm run preview`. **Não confirmado** — validar
+  quando o driver for integrado; pode exigir ajuste na config (zona protegida,
+  decisão do tech-lead).
+- Primeira subida baixa as imagens; `db:up` precisa de Docker disponível no WSL.
 
 ## Hooks de git (husky)
 
@@ -166,13 +225,19 @@ Para regenerar os tipos após mudar bindings, use `npm run cf-typegen`.
 
 ## Variáveis de ambiente
 
-**Não há `.dev.vars.example` no repositório ainda** — só existe um `.dev.vars`
-local (ignorado pelo git via `.gitignore`, nunca lido ou citado por este
-documento). Como não há chave alguma declarada publicamente, não há tabela de
-variáveis para listar nesta sync. Quando a primeira feature que precisa de
-segredo (banco, R2, IA, Auth.js) for implementada, este documento deve ganhar
-uma tabela nome → propósito → onde é usada → secret ou var pública, e o
-repositório deve ganhar um `.dev.vars.example` committado.
+`.dev.vars.example` (commitado; exceção no `.gitignore`) lista as chaves
+esperadas. Copie para `.dev.vars` (ignorado pelo git; este documento nunca o
+lê). Os valores do exemplo são da stack local e não são segredos (ver "Banco
+local").
+
+| Variável | Propósito | Onde é usada | Tipo |
+|---|---|---|---|
+| `NEXTJS_ENV` | Vem do template do OpenNext. O adaptador a lê no `preview` para escolher qual arquivo `.env.*` do Next carregar (exemplo: `development`). | Adaptador OpenNext, no `preview`; **não** é usada pelo código de `src/`. | Var de configuração local (não sensível) |
+| `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | Ainda **sem consumidor** no código (sem driver/Drizzle). | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
+| `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | Ainda sem consumidor. Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
+
+Chaves de R2, OpenAI e Auth.js ainda não estão no exemplo (features não
+implementadas).
 
 ## Deploy
 
@@ -186,8 +251,9 @@ também não tem blocos `env` separando dev/produção (ver alerta em
 Resumo das três camadas decididas no ADR-006 (detalhes em
 [architecture.md, "Ambientes"](./architecture.md#ambientes-decididos-nos-adrs-002-e-006-ainda-não-implementados)):
 local (Docker + `npm run preview`), dev online (`roseshop-dev`) e produção
-(`roseshop`). Hoje só existe, de fato, o `npm run preview` local; não há
-`docker-compose`, Neon, R2 nem workers de dev/produção configurados.
+(`roseshop`). Hoje existem, de fato, o `npm run preview` e a stack Docker de banco; não há
+Neon, R2 nem workers de dev/produção configurados. O `docker-compose.yml`
+local existe (ver "Banco local"), mas ainda não é consumido pelo app.
 
 ## Troubleshooting
 
@@ -203,9 +269,17 @@ local (Docker + `npm run preview`), dev online (`roseshop-dev`) e produção
   `preview`. Valide sempre no `preview` antes de considerar algo pronto.
 - **Bindings não aparecem nos tipos (`cloudflare-env.d.ts`)**: rodar
   `npm run cf-typegen` depois de qualquer mudança em `wrangler.jsonc`.
-- **`.dev.vars` ausente ou incompleto**: não há `.dev.vars.example` ainda
-  para comparar (ver seção acima) — como ainda não há segredo nenhum exigido
-  pelo app, isso não bloqueia nada em Fase 0.
+- **`.dev.vars` ausente ou incompleto**: compare as chaves com
+  `.dev.vars.example` (tabela em "Variáveis de ambiente"). Hoje o app ainda não
+  lê `DATABASE_URL` nem `NEON_FETCH_ENDPOINT`, então a falta delas não quebra nada.
+- **`npm run db:up` falha com "port is already allocated"**: algo no host usa
+  5440 ou 4444. Libere a porta; o compose não a parametriza.
+- **`db:up` falha por Docker indisponível**: confirme que o Docker responde no
+  WSL (`docker ps`).
+- **Perdi os dados do banco local**: `npm run db:reset` apaga o volume
+  `pgdata`. É o comportamento esperado; só afeta o local.
+- **`psql`/migration não conecta**: use `localhost:5440` (não 5432) e confirme
+  que o Postgres está saudável (`docker compose ps`).
 - **Commit bloqueado com "gitleaks não encontrado"**: instale conforme a seção
   "Instalar o gitleaks no WSL" e confirme que `~/.local/bin` está no `PATH`.
 - **Commit bloqueado por possível segredo**: o gitleaks imprime o achado com

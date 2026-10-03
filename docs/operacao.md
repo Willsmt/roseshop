@@ -2,7 +2,7 @@
 
 > Estado: **Fase 0 — scaffold**. Comandos e bindings abaixo refletem o que
 > existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados;
-> só o dev foi publicado, a produção nasce pelo CI na Fase 0.6). Já existem a stack local de
+> só o dev foi publicado; a produção nasce pelo CI no merge do PR `chore/ci`). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
 > exercitada só pela rota `/api/health`. O schema está vazio de propósito e
 > ainda não há migrations. R2, auth e IA não estão configurados.
@@ -144,8 +144,9 @@ Detalhes que costumam surpreender:
 
 Qualquer hook pode ser pulado com `--no-verify` (`git commit --no-verify`,
 `git push --no-verify`), e quem não rodou `npm install` não os tem ativos. O
-gate definitivo será o **CI** (Fase 0.6), ainda **não implementado** (ver
-seção "Deploy"). Até lá, os hooks são só a primeira linha de defesa.
+gate definitivo é o **CI** (GitHub Actions, ver seção "CI"), que repete
+`npm run check`, os testes de integração e a varredura do gitleaks. Os hooks
+são só a primeira linha de defesa.
 
 ### Instalar o gitleaks no WSL
 
@@ -249,13 +250,16 @@ depende dele.
 
 ## Auditoria de dependências
 
-Política (decisão do mantenedor; **ainda não aplicada por CI**, que é a
-Fase 0.6):
+Política formalizada no [ADR-007](../specs/adr/007-auditoria-de-dependencias.md)
+e aplicada pelo job `security` do CI (ver "CI"). Resumo:
 
 - **Runtime** (`npm audit --omit=dev`): vulnerabilidade `high`/`critical`
   bloqueia o PR no CI. Estado em `6ed2cfc`: 0 vulnerabilidades de runtime.
-- **Dev**: vulnerabilidade aceita fica documentada com justificativa e data de
-  revisão.
+- **Dev**: não bloqueia o CI; vulnerabilidade aceita fica documentada
+  abaixo com justificativa e data de revisão.
+- Antes de aceitar: atualizar a dependência; depois `overrides` validado por
+  teste; só então aceitar. `npm audit fix --force` não é usado. Script de
+  instalação de pacote novo exige aprovação explícita (`allowScripts`).
 
 | Advisory | Pacote/caminho | Justificativa | Aceita em | Revisar em |
 |---|---|---|---|---|
@@ -350,7 +354,7 @@ corpos de commit.
 | R2 `roseshop-dev` e `roseshop-prod` | Criados, localização **ENAM**. O R2 não tem região na América do Sul. (Os nomes dos buckets conferem com `wrangler.jsonc`.) |
 | Neon | Projeto `roseshop`, Postgres 18, região São Paulo; branches `production` (padrão) e `dev` (sem expiração). |
 | Subdomínio `workers.dev` da conta | `willsmt`, **compartilhado por todos os workers da conta**: trocá-lo quebra todas as URLs. Dev em `https://roseshop-dev.willsmt.workers.dev`. |
-| Worker `roseshop` (produção) | **Ainda não existe**: nasce pelo CI na Fase 0.6; o secret de produção é cadastrado logo após o primeiro deploy. |
+| Worker `roseshop` (produção) | **Ainda não existe**: nasce no primeiro deploy do CI, no merge do PR `chore/ci`. Veja "Primeiro deploy de produção" em "CI". |
 | Custos | Budget alert de US$ 1 na conta Cloudflare (informativo, não pausa o uso). A conta também hospeda o bucket `comunidade-belleetbelle`: a cota gratuita do R2 é **compartilhada**. |
 
 ### Cadastrar um secret
@@ -385,9 +389,10 @@ grep '^AUTH_GOOGLE_ID=' .dev.vars | cut -d= -f2- | tr -d '\n' \
 Exceção: `AUTH_SECRET` **não** se copia do `.dev.vars`; gere um novo por
 ambiente (`openssl rand -base64 32`). Não use `echo` com o valor.
 
-**Pendência (Fase 0.6)**: após o primeiro deploy de produção pelo CI, criar a
-chave OpenAI de produção e cadastrar os secrets de produção pelo mesmo
-procedimento (validar + pipe).
+**Pendência**: após o primeiro deploy de produção pelo CI, criar a chave
+OpenAI de produção e cadastrar os secrets de runtime de produção pelo mesmo
+procedimento (validar + pipe). Não confundir com os secrets do GitHub (seção
+"CI"), que servem só ao deploy.
 
 **Regra operacional**: ao rodar wrangler, responda **no** a qualquer oferta de
 alterar o `wrangler.jsonc` ("add it on your behalf"); o arquivo é de
@@ -395,14 +400,115 @@ autoria do tech-lead.
 
 ### CI
 
-Não existe pipeline de CI (GitHub Actions) neste repositório. O fluxo do
-ADR-006 (lint/typecheck/teste → migration → deploy dev por PR; merge em `main`
-→ migration → deploy produção) segue sem implementação; só a trava
-`scripts/require-ci.mjs` já o antecipa. Ver alerta em
-[architecture.md](./architecture.md#divergência-com-adr-006-alerta-ao-tech-lead).
+> Estado: workflows presentes no branch `chore/ci` (`.github/workflows/`).
+> Ainda não rodaram em `main`; a produção nasce no merge.
+
+#### Visão leiga
+
+Toda vez que se abre um PR, o GitHub roda sozinho uma bateria de verificações
+(código, testes com banco de verdade e caça a senhas vazadas). Se passar, o PR
+é publicado automaticamente no ambiente **dev** para teste. Quando um humano
+faz merge em `main`, as mesmas verificações rodam de novo e o app vai para a
+**produção**. Depois de cada deploy, um teste de fumaça confere se o sistema
+responde.
+
+#### Aprofundamento técnico
+
+```mermaid
+graph LR
+  PR[PR para main] --> C1[checks.yml]
+  C1 --> D[deploy-dev: migration, deploy roseshop-dev, smoke]
+  M[push em main] --> C2[checks.yml]
+  C2 --> P[deploy-production: migration, deploy roseshop, smoke]
+```
+
+| Workflow | Gatilho | O que faz |
+|---|---|---|
+| `checks.yml` | `workflow_call` (reutilizável) | Jobs `quality`, `integration` e `security` (abaixo). |
+| `pull-request.yml` | `pull_request` para `main` | `checks` + `deploy-dev` (environment `dev`), **só se** o PR for do próprio repositório (`head.repo.full_name == github.repository`); PR de fork nunca recebe secrets nem faz deploy. |
+| `main.yml` | `push` em `main` | `checks` + `deploy-production` (environment `production`). |
+
+Jobs de `checks.yml`:
+
+| Job | Conteúdo |
+|---|---|
+| `quality` | `npm ci` + `npm run check` (lint, typecheck e testes unitários). |
+| `integration` | Postgres `postgres:18-alpine` (porta 5440) e proxy Neon (porta 4444) como `services`; espera o proxy responder e roda `npm run test:int`. A imagem do proxy usa o **mesmo digest** do `docker-compose.yml`. `DATABASE_URL` e `NEON_FETCH_ENDPOINT` do job apontam para o banco descartável do próprio job (não são segredos). |
+| `security` | Checkout com histórico completo; instala o gitleaks **8.30.1** verificando o checksum (`sha256sum --check`); `gitleaks git --redact` varre o histórico inteiro; `npm audit --omit=dev --audit-level=high` (ADR-007). |
+
+Passos dos jobs de deploy (`deploy-dev` e `deploy-production`): `npm ci` →
+migrations (`npm run db:migrate` só se existir
+`src/lib/db/migrations/meta/_journal.json`; hoje não existe, então o passo
+imprime "Nenhuma migration ainda.") → `npm run deploy:dev` ou
+`npm run deploy:production` → `scripts/smoke-health.sh <url>/api/health`.
+A trava `scripts/require-ci.mjs` passa porque o Actions define `CI=true`.
+
+`scripts/smoke-health.sh` tenta `GET` no `/api/health` até 10 vezes, com 6 s de
+intervalo (~60 s), e exige HTTP 200; senão o job falha.
+O `.nvmrc` fixa o **Node 24**, lido por `actions/setup-node` (`node-version-file`).
+
+**Endurecimento dos workflows** (confirmado nos arquivos):
+
+- Actions fixadas por SHA de commit, com a versão em comentário:
+  `actions/checkout` v7.0.1 e `actions/setup-node` v7.0.0.
+- `permissions: contents: read` em todos os workflows; `persist-credentials: false`
+  em todo checkout; `HUSKY: 0` no CI.
+- Secrets só no passo que os usa (`DATABASE_URL` na migration;
+  `CLOUDFLARE_API_TOKEN` no deploy); `CLOUDFLARE_ACCOUNT_ID` vem de `vars`.
+- Concorrência: `pr-<número>` com cancelamento por PR; `deploy-dev` e
+  `deploy-production` serializados (`cancel-in-progress: false`).
+
+#### GitHub Environments (informação do mantenedor)
+
+Não verificável nos arquivos do repositório.
+
+| Environment | Restrição | Secrets | Variável |
+|---|---|---|---|
+| `dev` | nenhuma informada | `CLOUDFLARE_API_TOKEN`, `DATABASE_URL` (string direta do branch Neon `dev`) | `CLOUDFLARE_ACCOUNT_ID` |
+| `production` | aceita deploy somente do branch `main` | `CLOUDFLARE_API_TOKEN`, `DATABASE_URL` (string direta do branch Neon `production`) | `CLOUDFLARE_ACCOUNT_ID` |
+
+O token da Cloudflare tem escopo mínimo (Workers Scripts: Edit + leituras de
+conta/usuário), restrito à conta, e **expira em 2027-10-03**: renovar antes
+disso, senão o deploy passa a falhar.
+
+#### Gravar um secret no GitHub (informação do mantenedor)
+
+Nunca cole o valor junto com outros comandos nem o imprima.
+
+1. Execute o `read` **isolado** (sem outros comandos na mesma colagem), para
+   a variável do shell, sem eco: `read -rs VALOR`.
+2. Valide:
+   - Token Cloudflare: `GET /user/tokens/verify` deve retornar `active`.
+   - `DATABASE_URL` do Neon: esquema `postgres`, host `neon.tech`, **sem
+     pooler**, `sslmode=require`, sem espaços, e o endpoint `ep-...` conferido
+     com o console do Neon e **diferente** entre dev e production.
+3. Grave por pipe, no environment correto:
+
+```bash
+printf %s "$VALOR" | gh secret set DATABASE_URL --env dev
+unset VALOR
+```
+
+#### Primeiro deploy de produção
+
+Acontece no merge do PR `chore/ci`. O smoke test **vai falhar com 503**
+(`/api/health` sem `DATABASE_URL` de runtime) até os secrets de runtime de
+produção serem cadastrados na Cloudflare, pelo mesmo procedimento do dev
+(ver "Cadastrar um secret"). Depois, reexecute o job `deploy-production`.
+
+#### Melhoria futura
+
+Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
 
 ## Troubleshooting
 
+- **Smoke test do CI falha com 503**: o worker foi publicado, mas faltam os
+  secrets de runtime no ambiente (Cloudflare, não GitHub). Cadastre-os (ver
+  "Cadastrar um secret") e reexecute o job.
+- **PR de fork sem deploy no dev**: esperado; o job `deploy-dev` só roda para
+  PR do próprio repositório.
+- **Deploy do CI falha com erro de autenticação Cloudflare**: verifique se o
+  token expirou (validade até 2027-10-03) ou perdeu escopo.
 - **Qual porta/runtime estou validando?** `npm run dev` sobe em
   `http://localhost:3000` (porta padrão do Next, sem override no repo) e roda em
   **Node**. `npm run preview` sobe em `http://localhost:8787` e roda em

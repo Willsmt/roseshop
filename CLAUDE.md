@@ -52,6 +52,9 @@ docs/                     # onboarding: o que FOI construído (mantido pelo doc-
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
 scripts/require-ci.mjs    # trava: deploy:production só com CI definido
+.github/workflows/       # CI: checks.yml (reutilizável), pull-request.yml (deploy dev), main.yml (deploy produção)
+scripts/smoke-health.sh   # smoke pós-deploy: exige /api/health 200 em ~60s
+.nvmrc                    # Node 24 (local e CI)
 wrangler.jsonc            # 3 ambientes: local (topo), env.dev, env.production [protegido]
 src/app/                  # rotas (App Router) — hoje layout.tsx, page.tsx, globals.css (boilerplate) e api/health
   (public)/               # catálogo público + sacola          [planejado]
@@ -64,7 +67,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production (dev publicado; produção nasce pelo CI, ainda inexistente); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production (dev publicado) + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; ADR-007 de auditoria; produção nasce no merge do PR `chore/ci`); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

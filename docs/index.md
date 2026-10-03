@@ -22,7 +22,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 3. **[operacao.md](./operacao.md)** — comandos do dia a dia (`dev`, `preview`,
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
-   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências, dependências com ressalvas (`esbuild`,
+   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`,
    `allowScripts`), bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
 
 ## O que ainda não existe aqui

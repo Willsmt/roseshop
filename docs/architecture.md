@@ -29,7 +29,7 @@ em Next.js, vira um Worker rodando na Cloudflare.
 | Lint | ESLint `^9`, flat config (`eslint-config-next`) |
 | Testes | Vitest `^5.0.3` + Testing Library + jsdom (ver [operacao.md, "Testes"](./operacao.md#testes-vitest)) |
 
-Não há ainda: Drizzle/banco, Auth.js, SDK da OpenAI, nem nenhuma lib de upload
+Não há ainda no `package.json`: Drizzle/driver de banco (só a infra Docker local existe), Auth.js, SDK da OpenAI, nem nenhuma lib de upload
 para R2 — essas entram nas dependências quando as features correspondentes
 (ver `specs/`) forem implementadas.
 
@@ -79,10 +79,13 @@ Nenhum binding de banco (Neon/Hyperdrive), R2 (storage) ou segredo de IA existe
 ainda em `wrangler.jsonc` — eles entram junto com as features que os usam
 (F0x de catálogo/imagens/IA, conforme `specs/`).
 
-### Ambientes decididos nos ADRs 002 e 006 (ainda não implementados)
+### Ambientes decididos nos ADRs 002 e 006 (parcialmente implementados)
 
 A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
-isoladas**. Nada abaixo, exceto o `preview`, existe no repositório hoje.
+isoladas**. Hoje existem no repositório só o `preview` e a stack Docker local
+de banco (`docker-compose.yml`, detalhada em
+[operacao.md, "Banco local"](./operacao.md#banco-local-docker)); o app ainda
+não se conecta a ela.
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|
@@ -98,8 +101,9 @@ Pontos-chave:
 - **Banco (ADR-002)**: Postgres em todas as camadas, com um único driver,
   `@neondatabase/serverless` (HTTP). No local, o Postgres do Docker é exposto
   por um proxy HTTP compatível com o protocolo do Neon no mesmo
-  `docker-compose`; o endpoint vem de variável de ambiente, sem ramificação no
-  código. Migrations (Drizzle + `drizzle-kit`) são SQL versionado, aplicado
+  `docker-compose` (implementado: Postgres 17 + proxy em `127.0.0.1:4444`); o
+  endpoint vem de variável de ambiente (`NEON_FETCH_ENDPOINT`, só no local),
+  sem ramificação no código. Migrations (Drizzle + `drizzle-kit`) são SQL versionado, aplicado
   local → dev → produção, usando conexão direta (não o proxy).
 - **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes) → migration no Neon
   `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
@@ -117,10 +121,15 @@ Pontos-chave:
 
 O `wrangler.jsonc` atual **não tem blocos `env` nenhum** — só a configuração
 top-level de um worker `roseshop` (o que corresponderia à produção). Não há
-`env.dev`, worker `roseshop-dev`, `docker-compose` nem workflow de CI. A
-revisão do ADR-006 (camada local em Docker) **não resolve** a divergência:
-ela amplia o que falta implementar. É esperado em Fase 0; fica registrado até
-a ADR ser implementada.
+`env.dev`, worker `roseshop-dev` nem workflow de CI. O `docker-compose.yml`
+(camada local) já foi implementado e é consistente com o ADR-002; o que
+falta é a parte de `env` e CI. É esperado em Fase 0; fica registrado até a ADR
+ser implementada.
+
+**Risco aberto (Fase 0.4)**: a flag `global_fetch_strictly_public` em
+`wrangler.jsonc` pode bloquear o worker de fazer `fetch` para
+`localhost:4444` (proxy Neon) no `npm run preview`. Não confirmado; ver
+[operacao.md, "Banco local"](./operacao.md#banco-local-docker).
 
 ### Processo de especificação (Spec Kit)
 

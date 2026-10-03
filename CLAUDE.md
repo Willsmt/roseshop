@@ -25,6 +25,10 @@ npm run typecheck    # tsc --noEmit
 npm test             # vitest run (passWithNoTests até existir a primeira feature)
 npm run test:watch   # vitest em modo watch
 npm run check        # lint + typecheck + test (gate de "pronto")
+npm run db:up        # sobe Postgres 17 + proxy HTTP do Neon (Docker, portas 5440/4444)
+npm run db:down      # para os containers (preserva dados)
+npm run db:reset     # DESTRUTIVO: apaga os dados do banco local e recria
+npm run db:psql      # shell psql no banco local
 # hooks (husky) instalados pelo `prepare` no npm install; exigem gitleaks no PATH
 # PENDENTE (Fase 0): migrations Drizzle
 ```
@@ -37,6 +41,8 @@ roda em Node e pode mascarar incompatibilidades do workerd.
 ```
 specs/                    # fonte de verdade: specs de feature (NNN-nome/) e ADRs (adr/)
 .specify/                 # Spec Kit: constitution (memory/), templates e scripts
+docker-compose.yml        # stack local de banco (Postgres 17 + proxy Neon)
+.dev.vars.example         # chaves esperadas do .dev.vars (valores locais, não secretos)
 docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
 .husky/                   # hooks de git: pre-commit (gitleaks + lint-staged), commit-msg (commitlint), pre-push (check)
 .claude/agents/           # definições de agentes
@@ -51,7 +57,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda) + hooks de git (husky, gitleaks, commitlint); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`; sem schema/driver ainda); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

@@ -18,7 +18,7 @@ jobs:
   deploy-production:
     name: deploy em produção
     needs: checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: production
       url: https://roseshop.willsmt.workers.dev

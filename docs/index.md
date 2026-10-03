@@ -21,7 +21,9 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    de pastas, pipeline de build/deploy, bindings já configurados.
 3. **[operacao.md](./operacao.md)** — comandos do dia a dia (`dev`, `preview`,
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
-   (Vitest), dependências com ressalvas (`esbuild`, `allowScripts`), bindings, variáveis de ambiente e troubleshooting.
+   (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
+   instalação do gitleaks no WSL, dependências com ressalvas (`esbuild`,
+   `allowScripts`), bindings, variáveis de ambiente e troubleshooting.
 
 ## O que ainda não existe aqui
 

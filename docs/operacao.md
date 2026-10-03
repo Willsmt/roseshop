@@ -28,8 +28,83 @@ da Cloudflare e, futuramente, publicar.
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 
+| `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
+
 Scripts ainda **não existem** (pendentes de Fase 0, ver CLAUDE.md): qualquer
 comando de migration Drizzle.
+
+## Hooks de git (husky)
+
+### Visão leiga
+
+Antes de um commit ou push sair da sua máquina, três "porteiros" automáticos
+conferem o trabalho: um procura segredos esquecidos no código, outro barra
+mensagens de commit fora do padrão, e o último roda toda a verificação de
+qualidade antes de enviar. Eles são instalados sozinhos ao rodar `npm install`
+(script `prepare`). Os scripts ficam em `.husky/`.
+
+### Hooks
+
+| Hook | Arquivo | O que faz | Falha quando |
+|---|---|---|---|
+| `pre-commit` | `.husky/pre-commit` | 1) Exige `gitleaks` no `PATH`; 2) `gitleaks git --pre-commit --staged --redact --no-banner --verbose` nos arquivos em stage; 3) `npx --no -- lint-staged`. | `gitleaks` ausente; gitleaks acha possível segredo; ESLint falha nos arquivos em stage. |
+| `commit-msg` | `.husky/commit-msg` | 1) Rejeita mensagem com linha `Co-Authored-By:` ou `Claude-Session:` (início de linha, sem diferenciar maiúsculas) ou texto "generated with ... claude"; 2) `npx --no -- commitlint --edit "$1"`. | Trailer proibido (constitution, princípio VI) ou mensagem fora do Conventional Commits. |
+| `pre-push` | `.husky/pre-push` | `npm run check` (lint + typecheck + testes). | Qualquer etapa do `check` falha. |
+
+Configs relacionadas:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `.lintstagedrc.json` | Para `*.{ts,tsx,js,jsx,mjs,mts,cjs}` roda `eslint --max-warnings=0 --no-warn-ignored` (só nos arquivos em stage; zero warnings tolerados). |
+| `commitlint.config.mjs` | Estende `@commitlint/config-conventional`, sem regras customizadas. |
+
+Detalhes que costumam surpreender:
+
+- `gitleaks` é resolvido por `command -v` no `PATH`, **não** por caminho fixo.
+  Se `~/.local/bin` não estiver no `PATH` do shell que roda o git, o hook
+  falha com "gitleaks não encontrado" mesmo com o binário instalado.
+- Não há `.gitleaks.toml`: valem as regras padrão do gitleaks.
+- `npx --no` impede baixar pacotes na hora: `lint-staged` e `commitlint`
+  precisam estar instalados (`npm install`).
+- O `pre-push` roda a suíte inteira e pode demorar; é o mesmo gate de "pronto"
+  do `CLAUDE.md`.
+
+### Hooks locais não são o gate definitivo
+
+Qualquer hook pode ser pulado com `--no-verify` (`git commit --no-verify`,
+`git push --no-verify`), e quem não rodou `npm install` não os tem ativos. O
+gate definitivo será o **CI** (Fase 0.6), ainda **não implementado** (ver
+seção "Deploy"). Até lá, os hooks são só a primeira linha de defesa.
+
+### Instalar o gitleaks no WSL
+
+O `pre-commit` exige o binário. Versão usada: **8.30.1**. Instalação com
+verificação de checksum (rodar no terminal do WSL):
+
+```bash
+VERSION=8.30.1
+cd "$(mktemp -d)"
+gh release download "v${VERSION}" --repo gitleaks/gitleaks \
+  --pattern "gitleaks_${VERSION}_linux_x64.tar.gz" \
+  --pattern "gitleaks_${VERSION}_checksums.txt"
+sha256sum --check --ignore-missing "gitleaks_${VERSION}_checksums.txt"
+tar -xzf "gitleaks_${VERSION}_linux_x64.tar.gz" gitleaks
+mkdir -p ~/.local/bin
+install -m 755 gitleaks ~/.local/bin/gitleaks
+gitleaks version   # deve imprimir 8.30.1
+```
+
+Só instale depois de o `sha256sum --check` reportar `OK`. Os nomes dos
+assets (`linux_x64` e `checksums.txt`) seguem o padrão de releases do
+gitleaks; o bloco acima é uma receita reconstruída, não um script do
+repositório — se o `gh release download` não achar o asset, liste com
+`gh release view v8.30.1 --repo gitleaks/gitleaks`.
+
+### Auditoria inicial do histórico
+
+Ao adotar os hooks, rodou-se `gitleaks git` sobre o histórico existente:
+**nenhum vazamento em 21 commits**. (Informação do mantenedor; não há
+relatório versionado no repositório.)
 
 ## Testes (Vitest)
 
@@ -131,6 +206,16 @@ local (Docker + `npm run preview`), dev online (`roseshop-dev`) e produção
 - **`.dev.vars` ausente ou incompleto**: não há `.dev.vars.example` ainda
   para comparar (ver seção acima) — como ainda não há segredo nenhum exigido
   pelo app, isso não bloqueia nada em Fase 0.
+- **Commit bloqueado com "gitleaks não encontrado"**: instale conforme a seção
+  "Instalar o gitleaks no WSL" e confirme que `~/.local/bin` está no `PATH`.
+- **Commit bloqueado por possível segredo**: o gitleaks imprime o achado com
+  o valor ocultado (`--redact`). Remova o segredo do stage; se já foi
+  commitado antes, trate como incidente e avise o tech-lead. Não use
+  `--no-verify` para contornar.
+- **Commit rejeitado pelo `commit-msg`**: remova trailers `Co-Authored-By` /
+  `Claude-Session` e use Conventional Commits (`tipo(escopo): resumo`).
+- **Push demorado ou bloqueado**: o `pre-push` roda `npm run check`; rode-o
+  antes e corrija o que falhar.
 - **Desenvolvimento somente no WSL**: o OpenNext não é suportado oficialmente
   em Windows nativo (`.specify/memory/constitution.md`, princípio VII; `CLAUDE.md`, seção
   "Ambiente"). Rode `dev`, `preview`, `build` e `deploy` sempre no terminal do

@@ -7,8 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
     "typecheck": "tsc --noEmit",
@@ -22,7 +20,9 @@
     "db:psql": "docker compose exec postgres psql -U roseshop -d roseshop",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "test:int": "vitest run --config vitest.int.config.mts"
+    "test:int": "vitest run --config vitest.int.config.mts",
+    "deploy:dev": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env dev",
+    "deploy:production": "node scripts/require-ci.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

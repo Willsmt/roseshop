@@ -1,56 +1,45 @@
 /**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
+ * Ambientes (ADR-006):
+ *   nível de cima  → LOCAL (npm run preview). Nome inofensivo: um deploy sem
+ *                    --env nunca atinge dev nem produção.
+ *   env.dev        → worker roseshop-dev  (deploy manual permitido)
+ *   env.production → worker roseshop      (deploy SOMENTE pelo CI)
+ *
+ * Bindings NÃO são herdados entre ambientes: cada env redeclara os seus.
+ * O nome do binding é o mesmo em todos os ambientes; só o recurso muda.
+ * Nunca use "remote": true no nível de cima (o local não acessa recursos online).
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "roseshop",
+	"name": "roseshop-local",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-10-01",
-	"compatibility_flags": [
-		"global_fetch_strictly_public"
-	],
+	"compatibility_flags": ["global_fetch_strictly_public"],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
 	},
-	"images": {
-		// Enable image optimization
-		// see https://opennext.js.org/cloudflare/howtos/image
-		"binding": "IMAGES"
-	},
-	"services": [
-		{
-			// Self-reference service binding, the service name must match the worker name
-			// see https://opennext.js.org/cloudflare/caching
-			"binding": "WORKER_SELF_REFERENCE",
-			"service": "roseshop"
-		}
-	],
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
-	/**
-	 * Smart Placement
-	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-	 */
-	// "placement": {  "mode": "smart" }
-	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
+	"upload_source_maps": true,
+
+	"images": { "binding": "IMAGES" },
+	"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop-local" }],
+	"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-local" }],
+
+	"env": {
+		"dev": {
+			"name": "roseshop-dev",
+			"images": { "binding": "IMAGES" },
+			"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop-dev" }],
+			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-dev" }]
+		},
+		"production": {
+			"name": "roseshop",
+			"images": { "binding": "IMAGES" },
+			"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop" }],
+			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-prod" }]
+		}
+	}
 }

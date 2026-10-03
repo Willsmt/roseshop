@@ -25,6 +25,7 @@ npm run typecheck    # tsc --noEmit
 npm test             # vitest run (passWithNoTests até existir a primeira feature)
 npm run test:watch   # vitest em modo watch
 npm run check        # lint + typecheck + test (gate de "pronto")
+# hooks (husky) instalados pelo `prepare` no npm install; exigem gitleaks no PATH
 # PENDENTE (Fase 0): migrations Drizzle
 ```
 
@@ -37,6 +38,7 @@ roda em Node e pode mascarar incompatibilidades do workerd.
 specs/                    # fonte de verdade: specs de feature (NNN-nome/) e ADRs (adr/)
 .specify/                 # Spec Kit: constitution (memory/), templates e scripts
 docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
+.husky/                   # hooks de git: pre-commit (gitleaks + lint-staged), commit-msg (commitlint), pre-push (check)
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
 src/app/                  # rotas (App Router) — hoje só layout.tsx, page.tsx, globals.css (boilerplate)
@@ -49,7 +51,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda) + hooks de git (husky, gitleaks, commitlint); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

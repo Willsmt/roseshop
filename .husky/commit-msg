@@ -1,0 +1,5 @@
+if grep -qiE '^(co-authored-by|claude-session):|generated with .*claude' "$1"; then
+  echo "Commit rejeitado: trailers de co-autoria ou de sessão de agente são proibidos (constitution, princípio VI)." >&2
+  exit 1
+fi
+npx --no -- commitlint --edit "$1"

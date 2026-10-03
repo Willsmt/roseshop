@@ -18,7 +18,7 @@ serviços online.
   |------------|-------------------------------|
   | Local      | Postgres em Docker            |
   | Dev online | Neon, branch `dev`            |
-  | Produção   | Neon, branch `main`           |
+  | Produção   | Neon, branch `production`     |
 
 - **Driver único** em todos os ambientes: `@neondatabase/serverless` (HTTP),
   compatível com o runtime Workers sem TCP nem Hyperdrive.

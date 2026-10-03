@@ -1,0 +1,13 @@
+# Copie para .dev.vars (nunca commite o .dev.vars).
+# Os valores abaixo são da stack LOCAL (docker-compose.yml) e não são segredos:
+# banco local, preso em 127.0.0.1, só com dados de seed.
+
+NEXTJS_ENV=development
+
+# Banco local (Postgres 17 em Docker, porta 5440 no host).
+# A mesma string serve ao driver (via proxy) e às migrations (conexão direta).
+DATABASE_URL=postgres://roseshop:roseshop_local@localhost:5440/roseshop
+
+# Proxy HTTP local do Neon. Defina SOMENTE no ambiente local;
+# em dev online e produção, deixe ausente.
+NEON_FETCH_ENDPOINT=http://localhost:4444/sql

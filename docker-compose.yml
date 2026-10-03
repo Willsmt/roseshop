@@ -1,0 +1,35 @@
+# Stack LOCAL de desenvolvimento (ADR-002 / ADR-006).
+# Credenciais abaixo NÃO são segredos: banco local, preso em 127.0.0.1, só seed.
+name: roseshop
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: roseshop
+      POSTGRES_PASSWORD: roseshop_local
+      POSTGRES_DB: roseshop
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roseshop -d roseshop"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Proxy HTTP compatível com o driver @neondatabase/serverless.
+  # Imagem comunitária fixada por digest (tag :main é mutável).
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14edf2feafbc3330492de5c80506f77274c3bd013154cdef697bdeb768a
+    environment:
+      PG_CONNECTION_STRING: postgres://roseshop:roseshop_local@postgres:5432/roseshop
+    ports:
+      - "127.0.0.1:4444:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

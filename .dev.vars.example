@@ -4,7 +4,7 @@
 
 NEXTJS_ENV=development
 
-# Banco local (Postgres 17 em Docker, porta 5440 no host).
+# Banco local (Postgres 18 em Docker, porta 5440 no host).
 # A mesma string serve ao driver (via proxy) e às migrations (conexão direta).
 DATABASE_URL=postgres://roseshop:roseshop_local@localhost:5440/roseshop
 

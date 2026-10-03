@@ -142,8 +142,12 @@ com as features que os usam (conforme `specs/`).
 A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
 isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
 `wrangler.jsonc` (workers dev e produção publicados) e a stack Docker local de banco (`docker-compose.yml`, detalhada em
-[operacao.md, "Banco local"](./operacao.md#banco-local-docker)); o app ainda
-não se conecta a ela.
+[operacao.md, "Banco local"](./operacao.md#banco-local-docker)). A stack
+(Postgres 18 + proxy HTTP do Neon, scripts `npm run db:*`) já é consumida pelo app:
+o Drizzle está configurado (`src/lib/db/`, `drizzle.config.ts`) e a conexão é
+validada por `/api/health` (`src/app/api/health/route.ts`) e pelo teste de
+integração `src/lib/db/client.int.test.ts` (`npm run test:int`, exige `db:up`).
+O schema segue vazio, sem migrations.
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|

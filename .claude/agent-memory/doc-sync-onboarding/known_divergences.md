@@ -1,6 +1,6 @@
 ---
 name: known-divergences
-description: Divergências código x spec; ADR-006 totalmente resolvido (CI no branch chore/ci; produção após merge); dívida ativa NEON_FETCH_ENDPOINT
+description: Divergências código x spec; ADR-006 totalmente resolvido (CI em main; produção no ar); dívida ativa NEON_FETCH_ENDPOINT
 metadata:
   type: project
 ---
@@ -12,9 +12,9 @@ resolvidas, remova a nota dos docs (e desta memória).
 
 1. **ADR-006 (ambientes) vs repositório**: `env` no `wrangler.jsonc`
    **RESOLVIDO** (sync de 2026-10-03, branch `chore/wrangler-envs`, commit
-   `fffa3fe`; `docker-compose.yml` também existe). **CI RESOLVIDO neste branch** (sync de 2026-10-03, `chore/ci`:
-   `.github/workflows/`); a produção só passa a existir após o merge (primeiro
-   deploy; smoke dá 503 até cadastrar secrets de runtime). Doc em
+   `fffa3fe`; `docker-compose.yml` também existe). **CI RESOLVIDO** (workflows em `main`); **produção no ar** (primeiro deploy no
+   merge do PR #9; secrets de runtime cadastrados; `/api/health` 200; sync de
+   2026-10-03, fechamento da Fase 0). ADR-006 x CI totalmente resolvido. Doc em
    `docs/operacao.md` ("CI") e `docs/architecture.md`; não reabrir. (Branch Neon `main` x `production`: RESOLVIDA em
    2026-10-03, ADRs corrigidos para `production`; não reabrir.)
 

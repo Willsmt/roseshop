@@ -5,11 +5,12 @@ que o sistema **deve** fazer (produto, regras, decisões de arquitetura), a
 fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 `.specify/memory/constitution.md` — comece sempre por ela.
 
-> Estado atual do projeto: **Fase 0 — scaffold**. Só existe o esqueleto gerado
-> pelo template do OpenNext para Cloudflare; nenhuma feature de produto
-> (catálogo, sacola, login, painel, upload de imagem, IA) foi implementada.
-> Por isso este índice é deliberadamente curto: só existem documentos para o
-> que já tem código real por trás.
+> Estado atual do projeto: **Fase 0 concluída** (fundação de infraestrutura:
+> scaffold OpenNext, banco local, testes, hooks, CI, ambientes dev e produção no
+> ar, branch `main` protegido). Nenhuma feature de produto (catálogo, sacola,
+> login, painel, upload de imagem, IA) foi implementada; o próximo passo são as
+> features, via Spec Kit. Por isso este índice é deliberadamente curto: só
+> existem documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
 

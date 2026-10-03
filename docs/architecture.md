@@ -137,11 +137,11 @@ Não há binding de banco (Neon/Hyperdrive) nem segredo de IA em `wrangler.jsonc
 (o banco é acessado por `DATABASE_URL`, secret/var, via HTTP); eles entram junto
 com as features que os usam (conforme `specs/`).
 
-### Ambientes decididos nos ADRs 002 e 006 (implementados, exceto o worker de produção)
+### Ambientes decididos nos ADRs 002 e 006 (implementados)
 
 A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
 isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
-`wrangler.jsonc` (worker dev publicado) e a stack Docker local de banco (`docker-compose.yml`, detalhada em
+`wrangler.jsonc` (workers dev e produção publicados) e a stack Docker local de banco (`docker-compose.yml`, detalhada em
 [operacao.md, "Banco local"](./operacao.md#banco-local-docker)); o app ainda
 não se conecta a ela.
 
@@ -180,10 +180,11 @@ Pontos-chave:
 
 Os blocos `env` do `wrangler.jsonc` (`dev` e `production`) existem (commit
 `fffa3fe`), o `docker-compose.yml` é consistente com o ADR-002 e o CI
-(`.github/workflows/`) implementa o fluxo do ADR-006 neste branch
-(`chore/ci`). O que resta: o worker `roseshop` (produção) só passa a existir no
-primeiro deploy do CI, após o merge. `scripts/require-ci.mjs` bloqueia o deploy
-manual de produção. Detalhes em
+(`.github/workflows/`) implementa o fluxo do ADR-006 em `main`. O worker
+`roseshop` (produção) está no ar desde o primeiro deploy pelo CI (merge do PR
+#9, relato do mantenedor; `/api/health` = 200). O branch `main` é protegido
+(informação do mantenedor, ver [operacao.md](./operacao.md#ci)).
+`scripts/require-ci.mjs` bloqueia o deploy manual de produção. Detalhes em
 [operacao.md, "CI"](./operacao.md#ci).
 
 **Risco resolvido**: a flag `global_fetch_strictly_public` em

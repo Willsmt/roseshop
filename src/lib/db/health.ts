@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 
-import type { Db } from "./client";
+import { createDb, type Db, type DbEnv } from "./client";
 
 export async function checkDb(db: Pick<Db, "execute">): Promise<boolean> {
   try {
@@ -12,4 +12,15 @@ export async function checkDb(db: Pick<Db, "execute">): Promise<boolean> {
     console.error(`[health] falha ao consultar o banco (${kind})`);
     return false;
   }
+}
+
+export async function checkDbFromEnv(env: DbEnv): Promise<boolean> {
+  let db: Db;
+  try {
+    db = createDb(env);
+  } catch {
+    console.error("[health] configuração do banco ausente ou inválida");
+    return false;
+  }
+  return checkDb(db);
 }

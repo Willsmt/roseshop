@@ -26,10 +26,12 @@ npm test             # vitest run: só unitários (*.test.ts), sem banco
 npm run test:int     # integração (*.int.test.ts); exige db:up; fora do pre-push
 npm run test:watch   # vitest em modo watch
 npm run check        # lint + typecheck + test (gate de "pronto")
-npm run db:up        # sobe Postgres 17 + proxy HTTP do Neon (Docker, portas 5440/4444)
+npm run db:up        # sobe Postgres 18 + proxy HTTP do Neon (Docker, portas 5440/4444)
 npm run db:down      # para os containers (preserva dados)
 npm run db:reset     # DESTRUTIVO: apaga os dados do banco local e recria
 npm run db:psql      # shell psql no banco local
+npm run deploy:dev   # build OpenNext + deploy do worker roseshop-dev (manual)
+npm run deploy:production  # só roda no CI (scripts/require-ci.mjs); publica roseshop
 npm run db:generate  # drizzle-kit generate (migration SQL em src/lib/db/migrations)
 npm run db:migrate   # drizzle-kit migrate (TCP direto no DATABASE_URL)
 # hooks (husky) instalados pelo `prepare` no npm install; exigem gitleaks no PATH
@@ -43,12 +45,14 @@ roda em Node e pode mascarar incompatibilidades do workerd.
 ```
 specs/                    # fonte de verdade: specs de feature (NNN-nome/) e ADRs (adr/)
 .specify/                 # Spec Kit: constitution (memory/), templates e scripts
-docker-compose.yml        # stack local de banco (Postgres 17 + proxy Neon)
+docker-compose.yml        # stack local de banco (Postgres 18 + proxy Neon)
 .dev.vars.example         # chaves esperadas do .dev.vars (valores locais, não secretos)
 docs/                     # onboarding: o que FOI construído (mantido pelo doc-sync)
 .husky/                   # hooks de git: pre-commit (gitleaks + lint-staged), commit-msg (commitlint), pre-push (check)
 .claude/agents/           # definições de agentes
 .claude/agent-memory/     # memória dos agentes (versionada)
+scripts/require-ci.mjs    # trava: deploy:production só com CI definido
+wrangler.jsonc            # 3 ambientes: local (topo), env.dev, env.production [protegido]
 src/app/                  # rotas (App Router) — hoje layout.tsx, page.tsx, globals.css (boilerplate) e api/health
   (public)/               # catálogo público + sacola          [planejado]
   painel/                 # área das administradoras           [planejado]
@@ -60,7 +64,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production (dev publicado; produção nasce pelo CI, ainda inexistente); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

@@ -23,7 +23,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
    instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências, dependências com ressalvas (`esbuild`,
-   `allowScripts`), bindings, variáveis de ambiente e troubleshooting.
+   `allowScripts`), bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
 
 ## O que ainda não existe aqui
 

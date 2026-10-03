@@ -1,3 +1,3 @@
-- [Divergências conhecidas](known_divergences.md) — ADR-006 vs wrangler.jsonc sem `env`/CI (compose já existe); `.dev.vars.example` resolvida em 2026-10-03.
+- [Divergências conhecidas](known_divergences.md) — ADR-006 sem env/CI (aberta); resolvidas: .dev.vars.example, fetch x proxy, passWithNoTests; dívida: tipo NEON_FETCH_ENDPOINT.
 - [Convenções de formatação dos docs](doc_conventions.md) — ordem de seções, tabelas, quando usar mermaid, onde registrar divergências.
 - [Feedback do humano sobre docs](feedback_docs_style.md) — priorizar troubleshooting operacional; não duplicar conteúdo entre docs.

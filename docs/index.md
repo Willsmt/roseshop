@@ -22,12 +22,12 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 3. **[operacao.md](./operacao.md)** — comandos do dia a dia (`dev`, `preview`,
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
-   instalação do gitleaks no WSL, banco local em Docker (`db:*`), dependências com ressalvas (`esbuild`,
+   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências, dependências com ressalvas (`esbuild`,
    `allowScripts`), bindings, variáveis de ambiente e troubleshooting.
 
 ## O que ainda não existe aqui
 
-Não há `docs/database.md` (sem schema Drizzle ainda) nem `docs/features/`
+Não há `docs/database.md` (Drizzle configurado, mas o schema está vazio: sem tabelas para documentar) nem `docs/features/`
 (nenhuma feature implementada; as specs agora vivem em `specs/NNN-nome/`,
 ainda sem nenhuma criada). Esses documentos
 devem ser criados pelo `doc-sync-onboarding` na primeira sync que tocar

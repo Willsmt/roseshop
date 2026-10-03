@@ -29,7 +29,8 @@ em Next.js, vira um Worker rodando na Cloudflare.
 | Lint | ESLint `^9`, flat config (`eslint-config-next`) |
 | Testes | Vitest `^5.0.3` + Testing Library + jsdom (ver [operacao.md, "Testes"](./operacao.md#testes-vitest)) |
 
-Não há ainda no `package.json`: Drizzle/driver de banco (só a infra Docker local existe), Auth.js, SDK da OpenAI, nem nenhuma lib de upload
+Banco: `drizzle-orm` `^0.45.3` e `@neondatabase/serverless` `^1.2.0` (runtime);
+`drizzle-kit` `^0.31.11` e `pg` `^8.23.1` (dev, só migrations). Não há ainda no `package.json`: Auth.js, SDK da OpenAI, nem nenhuma lib de upload
 para R2 — essas entram nas dependências quando as features correspondentes
 (ver `specs/`) forem implementadas.
 
@@ -40,9 +41,58 @@ src/app/
   layout.tsx    # layout raiz (fonts Geist via next/font/google, <html lang="en">)
   page.tsx      # página inicial — ainda é o boilerplate do create-next-app
   globals.css   # estilos globais (Tailwind)
+  api/health/route.ts   # GET /api/health (ver "Camada de banco")
+src/lib/db/
+  client.ts     # createDb: Drizzle + driver HTTP do Neon
+  health.ts     # checkDb: select 1
+  schema.ts     # schema Drizzle — vazio de propósito (Fase 0.4)
+  *.test.ts / *.int.test.ts   # testes unitário e de integração
+drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations)
 ```
 
-Nenhuma rota além da raiz, nenhum middleware, nenhum diretório `src/lib/`.
+Nenhuma rota além da raiz e de `/api/health`, nenhum middleware.
+
+### Camada de banco e health check
+
+**Visão leiga**: o app já sabe "conversar" com o banco, mas ainda não guarda
+nada. A única prova disso é o endereço `/api/health`, que responde se o banco
+está de pé (útil para monitoramento e para checar o ambiente).
+
+**Aprofundamento técnico** (zona protegida: `src/lib/db/`):
+
+| Rota / função | Arquivo | O que faz |
+|---|---|---|
+| `GET /api/health` | `src/app/api/health/route.ts` | Lê `env` via `getCloudflareContext({ async: true })`, cria o cliente e chama `checkDb`. Responde `{db: "ok"}` com 200 ou `{db: "error"}` com 503, sempre com `Cache-Control: no-store`; `dynamic = "force-dynamic"`. |
+| `createDb(env)` | `src/lib/db/client.ts` | Exige `DATABASE_URL` (lança erro se vazia). Se `NEON_FETCH_ENDPOINT` existir, seta `neonConfig.fetchEndpoint` (proxy local); senão usa o endpoint padrão do Neon. Retorna `drizzle({ client: neon(url), schema })` (`drizzle-orm/neon-http`). |
+| `checkDb(db)` | `src/lib/db/health.ts` | Executa `select 1`; em falha registra só o `error.name` (a mensagem do driver pode conter host/usuário) e devolve `false`. |
+
+```mermaid
+sequenceDiagram
+  participant C as Cliente
+  participant R as /api/health
+  participant D as createDb + checkDb
+  participant N as Neon (ou proxy local :4444)
+  C->>R: GET
+  R->>D: env.DATABASE_URL, env.NEON_FETCH_ENDPOINT
+  D->>N: select 1 (HTTP)
+  N-->>D: resultado ou erro
+  D-->>R: true / false
+  R-->>C: 200 {db: ok} / 503 {db: error}
+```
+
+Migrations: `drizzle-kit` (`drizzle.config.ts`) usa o driver `pg` por **TCP
+direto** (não o proxy HTTP), conforme ADR-002, e escreve em
+`src/lib/db/migrations/` (ainda não existe: schema vazio, nada gerado).
+Validado no workerd: `npm run preview` -> `/api/health` 200 `{db: ok}`.
+
+Pegadinhas e dívidas:
+
+- `cloudflare-env.d.ts` (gerado pelo `cf-typegen` a partir do `.dev.vars`
+  local) tipa `NEON_FETCH_ENDPOINT` como `string` obrigatória, mas ela não
+  existe em dev online e produção; `DbEnv` a trata como opcional. Cuidado ao
+  confiar no tipo gerado.
+- `createDb` muda `neonConfig` global (estado de módulo) a cada chamada
+  quando `NEON_FETCH_ENDPOINT` está definida.
 
 ### Build e deploy (OpenNext + Wrangler)
 
@@ -126,10 +176,10 @@ top-level de um worker `roseshop` (o que corresponderia à produção). Não há
 falta é a parte de `env` e CI. É esperado em Fase 0; fica registrado até a ADR
 ser implementada.
 
-**Risco aberto (Fase 0.4)**: a flag `global_fetch_strictly_public` em
-`wrangler.jsonc` pode bloquear o worker de fazer `fetch` para
-`localhost:4444` (proxy Neon) no `npm run preview`. Não confirmado; ver
-[operacao.md, "Banco local"](./operacao.md#banco-local-docker).
+**Risco resolvido**: a flag `global_fetch_strictly_public` em
+`wrangler.jsonc` **não** bloqueia o `fetch` do worker ao proxy local
+(`localhost:4444`), validado no `preview` (ver
+[operacao.md, "Banco local"](./operacao.md#banco-local-docker)).
 
 ### Processo de especificação (Spec Kit)
 

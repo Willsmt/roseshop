@@ -25,10 +25,18 @@ resolvidas, remova a nota dos docs (e desta memória).
    `NEON_FETCH_ENDPOINT`) e `docs/operacao.md` tem a tabela de variáveis.
    Ao ganhar R2/OpenAI/Auth.js, só estender a tabela.
 
-3. **Parcial no item 1**: o `docker-compose.yml` (ADR-002) agora existe e é
+3. **Parcial no item 1**: o `docker-compose.yml` (ADR-002) existe e é
    consistente com o ADR. Continuam faltando `env` no `wrangler.jsonc` e CI.
-   Risco aberto registrado (não confirmado): `global_fetch_strictly_public` x
-   `fetch` para `localhost:4444` no `preview` (Fase 0.4).
+
+4. ~~Risco `global_fetch_strictly_public` x proxy local~~ **RESOLVIDO**
+   (sync de 2026-10-03, branch `chore/drizzle-setup`): validado no `preview`,
+   `/api/health` 200. Não reabrir.
+
+5. ~~`passWithNoTests`~~ **RESOLVIDO**: removido em `vitest.config.mts`.
+
+6. **Dívida ativa**: `cloudflare-env.d.ts` tipa `NEON_FETCH_ENDPOINT` como
+   obrigatória (gerada do `.dev.vars` local); `DbEnv` a trata como opcional.
+   Documentada em `docs/architecture.md`.
 
 **Como aplicar**: ao fazer a próxima sync incremental, leia estas duas notas
 antes de escrever o resumo final — se o código já resolveu alguma, remova a

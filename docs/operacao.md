@@ -279,8 +279,31 @@ local").
 | `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | `src/lib/db/client.ts` (`createDb`, via `/api/health`), `drizzle.config.ts` e `vitest.int.setup.ts`. | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
 | `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | `src/lib/db/client.ts` (`neonConfig.fetchEndpoint`). Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
 
-Chaves de R2, OpenAI e Auth.js ainda não estão no exemplo (features não
-implementadas).
+| `AUTH_SECRET` | Segredo de assinatura das sessões do Auth.js. **Gerado** (`openssl rand -base64 32`); não vem do Google. **Diferente em cada ambiente** (local, dev, produção). | Nenhum consumidor no código ainda (feature 001, Auth.js). | Secret em dev online e produção |
+| `AUTH_GOOGLE_ID` | Client ID do OAuth do Google (termina em `.apps.googleusercontent.com`). | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção |
+| `AUTH_GOOGLE_SECRET` | Client Secret do OAuth do Google (começa com `GOCSPX-`). | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção |
+| `ADMIN_EMAILS` | Allowlist de e-mails das administradoras, separados por vírgula, sem espaço. | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção (contém e-mails pessoais) |
+| `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | Nenhum consumidor ainda (feature 005, IA). | Secret em dev online e produção |
+
+As cinco últimas estão declaradas em `.dev.vars.example` e tipadas em
+`cloudflare-env.d.ts` (confirmado), mas **nenhum arquivo de `src/` as
+referencia ainda** (confirmado por grep). Chaves de R2 não são variáveis: R2
+é binding (ver "Bindings").
+
+### Google OAuth (informação do mantenedor)
+
+Não verificável nos arquivos do repositório. Projeto `roseshop` no Google
+Cloud, app em modo **Testing** com as administradoras como test users, e um
+**único client Web** com 4 redirect URIs (sempre `/api/auth/callback/google`):
+`localhost:3000`, `localhost:8787`, `roseshop-dev` e `roseshop`.
+
+### OpenAI (informação do mantenedor)
+
+Não verificável nos arquivos. Projetos `roseshop-dev` e `roseshop-prod`;
+créditos pré-pagos com **auto-recharge desligado** (o saldo é o teto rígido) e
+limite de uso configurado nos projetos. Há uma lista curta de modelos baratos
+com entrada de imagem, a reduzir para um na feature 005. A chave de produção
+**ainda não foi criada**.
 
 ## Deploy
 
@@ -336,10 +359,35 @@ corpos de commit.
 npx wrangler secret put DATABASE_URL --env dev        # ou --env production
 ```
 
-Cole o valor **somente no prompt** interativo (nunca em argumento, arquivo ou
-histórico do shell). `DATABASE_URL` do dev já está cadastrado (connection
-string direta, sem pooling). Em produção, cadastre logo após o primeiro deploy;
-até lá `/api/health` responde 503.
+Para `DATABASE_URL`, cole o valor **somente no prompt** interativo (nunca em
+argumento, arquivo ou histórico do shell). Para os demais secrets, prefira o
+procedimento por pipe abaixo. Dev online tem 6 secrets cadastrados
+(informação do mantenedor): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`,
+`AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`. Em produção, cadastre
+logo após o primeiro deploy; até lá `/api/health` responde 503.
+
+#### Procedimento por pipe (validar e enviar)
+
+Verificado na prática (informação do mantenedor). Colar no prompt causou
+valores trocados entre secrets e um espaço inicial no Client ID. Então:
+
+1. Valide o valor **no `.dev.vars` local pelo formato**, sem imprimi-lo:
+   Client ID termina em `.apps.googleusercontent.com`; Client Secret começa
+   com `GOCSPX-`; chave da OpenAI começa com `sk-`; nenhum valor com espaço
+   no início.
+2. Envie ao ambiente por pipe, extraindo a chave exata do arquivo:
+
+```bash
+grep '^AUTH_GOOGLE_ID=' .dev.vars | cut -d= -f2- | tr -d '\n' \
+  | npx wrangler secret put AUTH_GOOGLE_ID --env dev
+```
+
+Exceção: `AUTH_SECRET` **não** se copia do `.dev.vars`; gere um novo por
+ambiente (`openssl rand -base64 32`). Não use `echo` com o valor.
+
+**Pendência (Fase 0.6)**: após o primeiro deploy de produção pelo CI, criar a
+chave OpenAI de produção e cadastrar os secrets de produção pelo mesmo
+procedimento (validar + pipe).
 
 **Regra operacional**: ao rodar wrangler, responda **no** a qualquer oferta de
 alterar o `wrangler.jsonc` ("add it on your behalf"); o arquivo é de
@@ -367,6 +415,11 @@ ADR-006 (lint/typecheck/teste → migration → deploy dev por PR; merge em `mai
   `preview`. Valide sempre no `preview` antes de considerar algo pronto.
 - **Bindings não aparecem nos tipos (`cloudflare-env.d.ts`)**: rodar
   `npm run cf-typegen` depois de qualquer mudança em `wrangler.jsonc`.
+- **Secret com valor trocado ou com espaço inicial** (login Google falha,
+  `invalid_client`, 401 da OpenAI): causado por colagem manual no prompt do
+  `wrangler secret put`. Revalide o formato no `.dev.vars` e reenvie por pipe
+  (ver "Cadastrar um secret"). `wrangler secret list` mostra só nomes, não
+  confere valores.
 - **`.dev.vars` ausente ou incompleto**: compare as chaves com
   `.dev.vars.example` (tabela em "Variáveis de ambiente"). O `/api/health` é o
   único consumidor: sem `DATABASE_URL` ele responde 503 `{db: "error"}` (não lança).

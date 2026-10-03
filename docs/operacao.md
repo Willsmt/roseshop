@@ -1,7 +1,8 @@
 # Operação
 
 > Estado: **Fase 0 — scaffold**. Comandos e bindings abaixo refletem o que
-> existe hoje em `package.json` e `wrangler.jsonc`. Já existem a stack local de
+> existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados;
+> só o dev foi publicado, a produção nasce pelo CI na Fase 0.6). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
 > exercitada só pela rota `/api/health`. O schema está vazio de propósito e
 > ainda não há migrations. R2, auth e IA não estão configurados.
@@ -21,8 +22,8 @@ da Cloudflare e, futuramente, publicar.
 | `npm run build` | `next build` puro (build Next.js, sem empacotar para Cloudflare). |
 | `npm run start` | `next start` — serve o build Next.js padrão (Node), não o worker. |
 | `npm run preview` | `opennextjs-cloudflare build && opennextjs-cloudflare preview` — builda e sobe o worker localmente via workerd (`http://localhost:8787` por padrão). É o runtime mais próximo de produção disponível localmente. |
-| `npm run deploy` | `opennextjs-cloudflare build && opennextjs-cloudflare deploy` — builda e publica na Cloudflare. **Hoje não há pipeline de CI**; rodar isso manualmente iria contra a regra da constitution (`.specify/memory/constitution.md`, princípio VIII: deploy de produção só via merge em `main` pelo CI). |
-| `npm run upload` | `opennextjs-cloudflare build && opennextjs-cloudflare upload` — builda e envia a versão ao Cloudflare sem promovê-la a deploy ativo. |
+| `npm run deploy:dev` | `opennextjs-cloudflare build && opennextjs-cloudflare deploy --env dev` — builda e publica o worker `roseshop-dev`. Deploy manual permitido (ADR-006). |
+| `npm run deploy:production` | `node scripts/require-ci.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production` — publica o worker `roseshop`. A trava `scripts/require-ci.mjs` só deixa passar se a variável `CI` estiver definida (o GitHub Actions a define); fora do CI imprime erro e sai com código 1 (constitution, princípio VIII). |
 | `npm run lint` | `eslint .` — flat config nativa do Next 16 (`eslint.config.mjs`), com `eslint-config-next` para core-web-vitals e TypeScript. |
 | `npm run cf-typegen` | `wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts` — regenera os tipos TypeScript dos bindings declarados em `wrangler.jsonc`. Rodar sempre após alterar bindings. |
 | `npm run typecheck` | `tsc --noEmit` — checagem de tipos de todo o projeto (`tsconfig.json`, modo `strict`). |
@@ -31,7 +32,7 @@ da Cloudflare e, futuramente, publicar.
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
-| `npm run db:up` | `docker compose up -d --wait` — sobe Postgres + proxy Neon e espera o healthcheck do Postgres. |
+| `npm run db:up` | `docker compose up -d --wait` — sobe Postgres 18 + proxy Neon e espera o healthcheck do Postgres. |
 | `npm run db:down` | `docker compose down` — para os containers; **preserva** os dados (volume `pgdata`). |
 | `npm run db:reset` | `docker compose down -v && docker compose up -d --wait` — **DESTRUTIVO: apaga o volume `pgdata` e todos os dados do banco local**, e sobe um banco vazio. Só afeta o local. |
 | `npm run db:psql` | `docker compose exec postgres psql -U roseshop -d roseshop` — shell SQL no container (requer `db:up` antes). |
@@ -62,13 +63,13 @@ Definido em `docker-compose.yml` (projeto `roseshop`):
 
 | Serviço | Imagem | Porta no host | Observações |
 |---|---|---|---|
-| `postgres` | `postgres:17-alpine` | `127.0.0.1:5440` -> 5432 | Volume nomeado `pgdata`; healthcheck `pg_isready` (3s, até 20 tentativas). |
+| `postgres` | `postgres:18-alpine` | `127.0.0.1:5440` -> 5432 | Volume nomeado `pgdata` montado em `/var/lib/postgresql` (layout do Postgres 18; não em `/var/lib/postgresql/data`); healthcheck `pg_isready` (3s, até 20 tentativas). |
 | `neon-proxy` | `ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14e...` | `127.0.0.1:4444` -> 4444 | Proxy HTTP compatível com `@neondatabase/serverless`. Só sobe depois de o Postgres ficar saudável (`depends_on: service_healthy`). Alcança o Postgres pela rede interna (`postgres:5432`). |
 
 ```mermaid
 graph LR
   App["app (driver @neondatabase/serverless)"] -->|"HTTP http://localhost:4444/sql"| P["neon-proxy :4444"]
-  P -->|"TCP postgres:5432 (rede do compose)"| DB["postgres:17-alpine"]
+  P -->|"TCP postgres:5432 (rede do compose)"| DB["postgres:18-alpine"]
   M["migrations / db:psql"] -->|"TCP localhost:5440"| DB
 ```
 
@@ -86,8 +87,11 @@ Decisões e pegadinhas:
   `.dev.vars.example` são de um banco local, só em loopback, só com dados de
   seed. Por isso podem ser commitados. **Nunca** reutilize essas credenciais
   em dev online ou produção.
-- **Versão do Postgres**: a major local (17) acompanha a do Neon (ADR-002).
-  **Requisito para a Fase 0.5**: criar o projeto no Neon em **Postgres 17**.
+- **Versão do Postgres**: a major local (18) acompanha a do projeto Neon
+  (commit `a8ae651`; o Neon em si é informação do mantenedor, ver "Recursos
+  online"). **Volume antigo**: quem tinha o volume `pgdata` do Postgres 17 deve
+  rodar `npm run db:reset` (destrutivo, só local); o 18 não sobe sobre dados da
+  17 nem com o ponto de montagem antigo.
 - **`localhost` na connection string** (verificado manualmente pelo
   mantenedor): um `POST` em `http://localhost:4444/sql` com o header
   `Neon-Connection-String` apontando para `localhost:5440` retornou
@@ -280,19 +284,74 @@ implementadas).
 
 ## Deploy
 
-Hoje não existe pipeline de CI (GitHub Actions) neste repositório — o fluxo
-descrito em `specs/adr/006-ambientes-dev-producao.md` (lint/typecheck/teste →
-migration → deploy em `roseshop-dev` por PR; merge em `main` → deploy em
-`roseshop`) ainda não tem implementação correspondente. `wrangler.jsonc`
-também não tem blocos `env` separando dev/produção (ver alerta em
-`docs/architecture.md`).
+### Visão leiga
 
-Resumo das três camadas decididas no ADR-006 (detalhes em
-[architecture.md, "Ambientes"](./architecture.md#ambientes-decididos-nos-adrs-002-e-006-ainda-não-implementados)):
-local (Docker + `npm run preview`), dev online (`roseshop-dev`) e produção
-(`roseshop`). Hoje existem, de fato, o `npm run preview` e a stack Docker de banco; não há
-Neon, R2 nem workers de dev/produção configurados. O `docker-compose.yml`
-local existe (ver "Banco local"), mas ainda não é consumido pelo app.
+O projeto tem três "cópias": a **local** (no seu computador), a **dev**
+(publicada na internet para testar) e a **produção** (a loja de verdade). Cada
+uma tem seu próprio nome de worker e seu próprio bucket de imagens, de modo que
+mexer em uma não afeta as outras. Dev pode ser publicado à mão; produção só
+pelo CI.
+
+### Aprofundamento técnico
+
+`wrangler.jsonc` (ver [architecture.md, "Build e deploy"](./architecture.md#build-e-deploy-opennext--wrangler)
+para os bindings):
+
+| Ambiente | Como selecionar | Worker | R2 (`PRODUCT_IMAGES`) | Deploy |
+|---|---|---|---|---|
+| Local | nível de cima (sem `--env`); `npm run preview` | `roseshop-local` | `roseshop-local` (simulado em `.wrangler/state/`) | não há |
+| Dev | `--env dev` | `roseshop-dev` | `roseshop-dev` | `npm run deploy:dev` (manual) |
+| Produção | `--env production` | `roseshop` | `roseshop-prod` | `npm run deploy:production` (só CI) |
+
+Regras:
+
+- O nível de cima tem nome inofensivo (`roseshop-local`): um `wrangler deploy`
+  sem `--env` nunca atinge dev nem produção. **Nunca** use `"remote": true`
+  no nível de cima.
+- O nome do binding é o mesmo nos três (`PRODUCT_IMAGES`, `IMAGES`,
+  `WORKER_SELF_REFERENCE`); só o recurso muda. `r2_buckets`, `images` e
+  `services` são **redeclarados por env** (não herdados); `ASSETS` (`assets`) é
+  herdado.
+- Os scripts `deploy` e `upload` antigos foram removidos (commit `fffa3fe`).
+- Validado no commit `fffa3fe`: dry-run dos bindings por ambiente e
+  `/api/health` 200 no preview local. O mantenedor também validou no dev
+  publicado: `/api/health` 503 sem o secret e 200 com ele.
+
+### Recursos online (informação do mantenedor)
+
+Não verificável nos arquivos do repositório; vem do relato do mantenedor e dos
+corpos de commit.
+
+| Recurso | Estado |
+|---|---|
+| R2 `roseshop-dev` e `roseshop-prod` | Criados, localização **ENAM**. O R2 não tem região na América do Sul. (Os nomes dos buckets conferem com `wrangler.jsonc`.) |
+| Neon | Projeto `roseshop`, Postgres 18, região São Paulo; branches `production` (padrão) e `dev` (sem expiração). |
+| Subdomínio `workers.dev` da conta | `willsmt`, **compartilhado por todos os workers da conta**: trocá-lo quebra todas as URLs. Dev em `https://roseshop-dev.willsmt.workers.dev`. |
+| Worker `roseshop` (produção) | **Ainda não existe**: nasce pelo CI na Fase 0.6; o secret de produção é cadastrado logo após o primeiro deploy. |
+| Custos | Budget alert de US$ 1 na conta Cloudflare (informativo, não pausa o uso). A conta também hospeda o bucket `comunidade-belleetbelle`: a cota gratuita do R2 é **compartilhada**. |
+
+### Cadastrar um secret
+
+```bash
+npx wrangler secret put DATABASE_URL --env dev        # ou --env production
+```
+
+Cole o valor **somente no prompt** interativo (nunca em argumento, arquivo ou
+histórico do shell). `DATABASE_URL` do dev já está cadastrado (connection
+string direta, sem pooling). Em produção, cadastre logo após o primeiro deploy;
+até lá `/api/health` responde 503.
+
+**Regra operacional**: ao rodar wrangler, responda **no** a qualquer oferta de
+alterar o `wrangler.jsonc` ("add it on your behalf"); o arquivo é de
+autoria do tech-lead.
+
+### CI
+
+Não existe pipeline de CI (GitHub Actions) neste repositório. O fluxo do
+ADR-006 (lint/typecheck/teste → migration → deploy dev por PR; merge em `main`
+→ migration → deploy produção) segue sem implementação; só a trava
+`scripts/require-ci.mjs` já o antecipa. Ver alerta em
+[architecture.md](./architecture.md#divergência-com-adr-006-alerta-ao-tech-lead).
 
 ## Troubleshooting
 
@@ -309,16 +368,17 @@ local existe (ver "Banco local"), mas ainda não é consumido pelo app.
 - **Bindings não aparecem nos tipos (`cloudflare-env.d.ts`)**: rodar
   `npm run cf-typegen` depois de qualquer mudança em `wrangler.jsonc`.
 - **`.dev.vars` ausente ou incompleto**: compare as chaves com
-  `.dev.vars.example` (tabela em "Variáveis de ambiente"). Hoje o app ainda não
-  lê `DATABASE_URL` nem `NEON_FETCH_ENDPOINT`, então a falta delas não quebra nada.
+  `.dev.vars.example` (tabela em "Variáveis de ambiente"). O `/api/health` é o
+  único consumidor: sem `DATABASE_URL` ele responde 503 `{db: "error"}` (não lança).
 - **`npm run db:up` falha com "port is already allocated"**: algo no host usa
   5440 ou 4444. Libere a porta; o compose não a parametriza.
 - **`db:up` falha por Docker indisponível**: confirme que o Docker responde no
   WSL (`docker ps`).
 - **Perdi os dados do banco local**: `npm run db:reset` apaga o volume
   `pgdata`. É o comportamento esperado; só afeta o local.
-- **`/api/health` devolve 503 `{db: "error"}`**: banco inacessível ou
-  `DATABASE_URL` errada. O log traz só o tipo do erro (`[health] falha ao
+- **`/api/health` devolve 503 `{db: "error"}`**: banco inacessível, `DATABASE_URL`
+  errada **ou ausente** (secret não cadastrado no ambiente; o log diz
+  `[health] configuração do banco ausente ou inválida`). O log traz só o tipo do erro (`[health] falha ao
   consultar o banco (<tipo>)`), de propósito; confira `docker compose ps` e o
   `.dev.vars`.
 - **`npm run test:int` falha com "DATABASE_URL ausente"**: rode `npm run db:up`
@@ -337,7 +397,7 @@ local existe (ver "Banco local"), mas ainda não é consumido pelo app.
   antes e corrija o que falhar.
 - **Desenvolvimento somente no WSL**: o OpenNext não é suportado oficialmente
   em Windows nativo (`.specify/memory/constitution.md`, princípio VII; `CLAUDE.md`, seção
-  "Ambiente"). Rode `dev`, `preview`, `build` e `deploy` sempre no terminal do
+  "Ambiente"). Rode `dev`, `preview`, `build` e `deploy:*` sempre no terminal do
   WSL, nunca no PowerShell/CMD.
 - **Erro "dubious ownership" ao rodar `git` pelo PowerShell via
   `\\wsl.localhost\...`**: o repositório pertence ao usuário do WSL e o Git do

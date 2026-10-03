@@ -1,6 +1,6 @@
 ---
 name: known-divergences
-description: Divergências código x spec registradas; item .dev.vars.example resolvido em 2026-10-03, ADR-006 sem env/CI segue aberta
+description: Divergências código x spec; ADR-006 env resolvido em 2026-10-03, falta só o CI; branch Neon main x production a alinhar
 metadata:
   type: project
 ---
@@ -10,15 +10,12 @@ documentadas em `docs/architecture.md` e `docs/operacao.md`. Não as reporte
 como achado novo em syncs futuras — só verifique se ainda existem e, se
 resolvidas, remova a nota dos docs (e desta memória).
 
-1. **ADR-006 (ambientes, revisado em 2026-10-02 para três camadas) vs
-   `wrangler.jsonc`**: a ADR decide local (Docker) + dev online
-   (`roseshop-dev`) + produção (`roseshop`), com bindings por `env`. O
-   `wrangler.jsonc` atual não tem bloco `env` nenhum, e também não há
-   `docker-compose` (ADR-002) nem CI. Reavaliado na sync de 2026-10-02: a
-   revisão NÃO resolveu a divergência, só ampliou o que falta. Já documentada
-   em `docs/architecture.md` ("Ambientes decididos nos ADRs 002 e 006").
-   Conferir de novo quando `wrangler.jsonc` ganhar `env`, ou quando surgir
-   compose/CI.
+1. **ADR-006 (ambientes) vs repositório**: `env` no `wrangler.jsonc`
+   **RESOLVIDO** (sync de 2026-10-03, branch `chore/wrangler-envs`, commit
+   `fffa3fe`; `docker-compose.yml` também existe). **Ainda aberta: falta o CI**
+   (GitHub Actions); a produção só nasce por ele (Fase 0.6). Nota nova: ADR diz
+   Neon branch `main`, mantenedor relata `production` (não verificável em
+   arquivo). Documentada em `docs/architecture.md`.
 
 2. ~~`.dev.vars.example` ausente~~ **RESOLVIDA** (sync de 2026-10-03,
    branch `chore/local-db`): o arquivo existe (`NEXTJS_ENV`, `DATABASE_URL`,

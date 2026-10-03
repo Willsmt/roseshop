@@ -62,15 +62,16 @@ está de pé (útil para monitoramento e para checar o ambiente).
 
 | Rota / função | Arquivo | O que faz |
 |---|---|---|
-| `GET /api/health` | `src/app/api/health/route.ts` | Lê `env` via `getCloudflareContext({ async: true })`, cria o cliente e chama `checkDb`. Responde `{db: "ok"}` com 200 ou `{db: "error"}` com 503, sempre com `Cache-Control: no-store`; `dynamic = "force-dynamic"`. |
+| `GET /api/health` | `src/app/api/health/route.ts` | Lê `env` via `getCloudflareContext({ async: true })` e chama `checkDbFromEnv`. Responde `{db: "ok"}` com 200 ou `{db: "error"}` com 503, sempre com `Cache-Control: no-store`; `dynamic = "force-dynamic"`. |
 | `createDb(env)` | `src/lib/db/client.ts` | Exige `DATABASE_URL` (lança erro se vazia). Se `NEON_FETCH_ENDPOINT` existir, seta `neonConfig.fetchEndpoint` (proxy local); senão usa o endpoint padrão do Neon. Retorna `drizzle({ client: neon(url), schema })` (`drizzle-orm/neon-http`). |
+| `checkDbFromEnv(env)` | `src/lib/db/health.ts` | Chama `createDb` dentro de try/catch: configuração ausente ou inválida registra `[health] configuração do banco ausente ou inválida` e devolve `false` (503), **sem lançar**. Senão delega a `checkDb`. |
 | `checkDb(db)` | `src/lib/db/health.ts` | Executa `select 1`; em falha registra só o `error.name` (a mensagem do driver pode conter host/usuário) e devolve `false`. |
 
 ```mermaid
 sequenceDiagram
   participant C as Cliente
   participant R as /api/health
-  participant D as createDb + checkDb
+  participant D as checkDbFromEnv
   participant N as Neon (ou proxy local :4444)
   C->>R: GET
   R->>D: env.DATABASE_URL, env.NEON_FETCH_ENDPOINT
@@ -113,34 +114,41 @@ graph LR
   comentário indicando que o cache incremental via R2
   (`r2-incremental-cache`) está disponível mas **desativado** — ninguém
   habilitou ainda.
-- `wrangler.jsonc` define o worker `roseshop`, com:
+- `wrangler.jsonc` tem **três ambientes** (detalhes e comandos em
+  [operacao.md, "Deploy"](./operacao.md#deploy)): o nível de cima é o **local**
+  (worker `roseshop-local`), `env.dev` é `roseshop-dev` e `env.production` é
+  `roseshop`. Bindings são redeclarados por env, com o mesmo nome; `ASSETS` é
+  herdado. O nível de cima declara:
   - `assets` — binding `ASSETS`, servindo `.open-next/assets` (estáticos).
   - `images` — binding `IMAGES`, para otimização de imagem do Next via Cloudflare
     Images (habilitado, mas nada no app ainda usa `next/image` além do boilerplate).
   - `services` — binding `WORKER_SELF_REFERENCE`, auto-referência do worker a
-    si mesmo (`roseshop`), usada pelo OpenNext para caching (ver
+    si mesmo (`roseshop-local` no nível de cima; cada env aponta para o seu), usada pelo OpenNext para caching (ver
     [docs do OpenNext](https://opennext.js.org/cloudflare/caching)).
   - `observability.enabled: true` e `upload_source_maps: true`.
+  - `r2_buckets` — binding `PRODUCT_IMAGES` (local `roseshop-local`, simulado;
+    dev `roseshop-dev`; produção `roseshop-prod`). Declarado, mas **nenhum
+    código o usa ainda**.
   - `compatibility_date: "2026-10-01"` e flag `global_fetch_strictly_public`.
 - `public/_headers` aplica cache imutável de 1 ano para `/_next/static/*`
   (arquivo lido pelo asset handler do Workers, não pelo Next).
 
-Nenhum binding de banco (Neon/Hyperdrive), R2 (storage) ou segredo de IA existe
-ainda em `wrangler.jsonc` — eles entram junto com as features que os usam
-(F0x de catálogo/imagens/IA, conforme `specs/`).
+Não há binding de banco (Neon/Hyperdrive) nem segredo de IA em `wrangler.jsonc`
+(o banco é acessado por `DATABASE_URL`, secret/var, via HTTP); eles entram junto
+com as features que os usam (conforme `specs/`).
 
 ### Ambientes decididos nos ADRs 002 e 006 (parcialmente implementados)
 
 A constitution (princípio VIII) e o ADR-006 (revisado) definem **três camadas
-isoladas**. Hoje existem no repositório só o `preview` e a stack Docker local
-de banco (`docker-compose.yml`, detalhada em
+isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
+`wrangler.jsonc` (worker dev publicado) e a stack Docker local de banco (`docker-compose.yml`, detalhada em
 [operacao.md, "Banco local"](./operacao.md#banco-local-docker)); o app ainda
 não se conecta a ela.
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|
 | Runtime | `npm run preview` (workerd) | Worker `roseshop-dev` | Worker `roseshop` |
-| Banco | Postgres em Docker (ADR-002) | Neon, branch `dev` | Neon, branch `main` |
+| Banco | Postgres em Docker (ADR-002) | Neon, branch `dev` | Neon, branch `main` (ADR; o mantenedor relata que a branch criada se chama `production`) |
 | Imagens | R2 simulado pelo wrangler (`.wrangler/state/`) | R2 `roseshop-dev` | R2 `roseshop-prod` |
 | OpenAI | chave dev, limite baixo | chave dev, limite baixo | chave prod |
 | Segredos | `.dev.vars` | `wrangler secret --env dev` | `wrangler secret --env production` |
@@ -151,7 +159,7 @@ Pontos-chave:
 - **Banco (ADR-002)**: Postgres em todas as camadas, com um único driver,
   `@neondatabase/serverless` (HTTP). No local, o Postgres do Docker é exposto
   por um proxy HTTP compatível com o protocolo do Neon no mesmo
-  `docker-compose` (implementado: Postgres 17 + proxy em `127.0.0.1:4444`); o
+  `docker-compose` (implementado: Postgres 18 + proxy em `127.0.0.1:4444`); o
   endpoint vem de variável de ambiente (`NEON_FETCH_ENDPOINT`, só no local),
   sem ramificação no código. Migrations (Drizzle + `drizzle-kit`) são SQL versionado, aplicado
   local → dev → produção, usando conexão direta (não o proxy).
@@ -169,12 +177,13 @@ Pontos-chave:
 
 ### Divergência com ADR-006 (alerta ao tech-lead)
 
-O `wrangler.jsonc` atual **não tem blocos `env` nenhum** — só a configuração
-top-level de um worker `roseshop` (o que corresponderia à produção). Não há
-`env.dev`, worker `roseshop-dev` nem workflow de CI. O `docker-compose.yml`
-(camada local) já foi implementado e é consistente com o ADR-002; o que
-falta é a parte de `env` e CI. É esperado em Fase 0; fica registrado até a ADR
-ser implementada.
+Os blocos `env` do `wrangler.jsonc` (`dev` e `production`) **já existem**
+(commit `fffa3fe`) e o `docker-compose.yml` é consistente com o ADR-002. O que
+falta é o **workflow de CI** (GitHub Actions); o worker `roseshop` (produção)
+só será criado por ele. Duas notas: o ADR-006 chama a branch de produção do
+Neon de `main`, enquanto o mantenedor relata `production` (verificar e alinhar
+ADR ou branch); e `scripts/require-ci.mjs` já bloqueia o deploy manual de
+produção. Fica registrado até o CI existir.
 
 **Risco resolvido**: a flag `global_fetch_strictly_public` em
 `wrangler.jsonc` **não** bloqueia o `fetch` do worker ao proxy local

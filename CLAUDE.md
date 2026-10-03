@@ -21,7 +21,11 @@ npm run dev          # next dev (rápido, runtime Node — não é o runtime de 
 npm run preview      # build OpenNext + workerd local em http://localhost:8787
 npm run lint         # eslint (flat config nativa do Next 16)
 npm run cf-typegen   # regenera cloudflare-env.d.ts após mudar bindings
-# PENDENTE (Fase 0): npm run typecheck, npm test, npm run check, migrations Drizzle
+npm run typecheck    # tsc --noEmit
+npm test             # vitest run (passWithNoTests até existir a primeira feature)
+npm run test:watch   # vitest em modo watch
+npm run check        # lint + typecheck + test (gate de "pronto")
+# PENDENTE (Fase 0): migrations Drizzle
 ```
 
 Valide no `preview` tudo que toca runtime (bindings, R2, auth, IA): o `dev`
@@ -45,7 +49,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + infra de testes Vitest (sem testes ainda); nenhuma feature em `specs/NNN-nome/` ainda.
 
 ## Fluxo de feature (obrigatório)
 

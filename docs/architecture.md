@@ -27,6 +27,7 @@ em Next.js, vira um Worker rodando na Cloudflare.
 | Wrangler (CLI Cloudflare) | `^4.147.0` |
 | Tailwind CSS | `^4` (via `@tailwindcss/postcss`) |
 | Lint | ESLint `^9`, flat config (`eslint-config-next`) |
+| Testes | Vitest `^5.0.3` + Testing Library + jsdom (ver [operacao.md, "Testes"](./operacao.md#testes-vitest)) |
 
 Não há ainda: Drizzle/banco, Auth.js, SDK da OpenAI, nem nenhuma lib de upload
 para R2 — essas entram nas dependências quando as features correspondentes

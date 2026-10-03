@@ -11,3 +11,15 @@ DATABASE_URL=postgres://roseshop:roseshop_local@localhost:5440/roseshop
 # Proxy HTTP local do Neon. Defina SOMENTE no ambiente local;
 # em dev online e produção, deixe ausente.
 NEON_FETCH_ENDPOINT=http://localhost:4444/sql
+
+# Auth.js com Google. Gere o AUTH_SECRET com: openssl rand -base64 32
+# Cada ambiente (local, dev, produção) tem o SEU AUTH_SECRET.
+AUTH_SECRET=
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
+
+# E-mails autorizados no painel, separados por vírgula, sem espaço (allowlist).
+ADMIN_EMAILS=
+
+# OpenAI: chave do projeto roseshop-dev, com teto de gasto.
+OPENAI_API_KEY=

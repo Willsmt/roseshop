@@ -4,7 +4,7 @@ name: roseshop
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: roseshop
       POSTGRES_PASSWORD: roseshop_local
@@ -12,7 +12,7 @@ services:
     ports:
       - "127.0.0.1:5440:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U roseshop -d roseshop"]
       interval: 3s

@@ -1,8 +1,8 @@
 # Operação
 
-> Estado: **Fase 0 — scaffold**. Comandos e bindings abaixo refletem o que
-> existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados;
-> só o dev foi publicado; a produção nasce pelo CI no merge do PR `chore/ci`). Já existem a stack local de
+> Estado: **Fase 0 concluída**. Comandos e bindings abaixo refletem o que
+> existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados e
+> publicados; a produção está no ar desde o primeiro deploy pelo CI). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
 > exercitada só pela rota `/api/health`. O schema está vazio de propósito e
 > ainda não há migrations. R2, auth e IA não estão configurados.
@@ -307,7 +307,8 @@ Não verificável nos arquivos. Projetos `roseshop-dev` e `roseshop-prod`;
 créditos pré-pagos com **auto-recharge desligado** (o saldo é o teto rígido) e
 limite de uso configurado nos projetos. Há uma lista curta de modelos baratos
 com entrada de imagem, a reduzir para um na feature 005. A chave de produção
-**ainda não foi criada**.
+foi criada e cadastrada como secret de runtime de produção (relato do
+mantenedor, 2026-10-03).
 
 ## Deploy
 
@@ -354,7 +355,7 @@ corpos de commit.
 | R2 `roseshop-dev` e `roseshop-prod` | Criados, localização **ENAM**. O R2 não tem região na América do Sul. (Os nomes dos buckets conferem com `wrangler.jsonc`.) |
 | Neon | Projeto `roseshop`, Postgres 18, região São Paulo; branches `production` (padrão) e `dev` (sem expiração). |
 | Subdomínio `workers.dev` da conta | `willsmt`, **compartilhado por todos os workers da conta**: trocá-lo quebra todas as URLs. Dev em `https://roseshop-dev.willsmt.workers.dev`. |
-| Worker `roseshop` (produção) | **Ainda não existe**: nasce no primeiro deploy do CI, no merge do PR `chore/ci`. Veja "Primeiro deploy de produção" em "CI". |
+| Worker `roseshop` (produção) | **No ar** desde o primeiro deploy pelo CI (merge do PR #9, relato do mantenedor). `https://roseshop.willsmt.workers.dev/api/health` responde 200. Veja "Primeiro deploy de produção" em "CI". |
 | Custos | Budget alert de US$ 1 na conta Cloudflare (informativo, não pausa o uso). A conta também hospeda o bucket `comunidade-belleetbelle`: a cota gratuita do R2 é **compartilhada**. |
 
 ### Cadastrar um secret
@@ -389,10 +390,11 @@ grep '^AUTH_GOOGLE_ID=' .dev.vars | cut -d= -f2- | tr -d '\n' \
 Exceção: `AUTH_SECRET` **não** se copia do `.dev.vars`; gere um novo por
 ambiente (`openssl rand -base64 32`). Não use `echo` com o valor.
 
-**Pendência**: após o primeiro deploy de produção pelo CI, criar a chave
-OpenAI de produção e cadastrar os secrets de runtime de produção pelo mesmo
-procedimento (validar + pipe). Não confundir com os secrets do GitHub (seção
-"CI"), que servem só ao deploy.
+Os 6 secrets de runtime de produção (`DATABASE_URL`, `AUTH_SECRET`,
+`AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`) já
+foram cadastrados pelo mesmo procedimento (validar + pipe), conforme relato do
+mantenedor. Não confundir com os secrets do GitHub (seção "CI"), que servem só
+ao deploy.
 
 **Regra operacional**: ao rodar wrangler, responda **no** a qualquer oferta de
 alterar o `wrangler.jsonc` ("add it on your behalf"); o arquivo é de
@@ -400,8 +402,8 @@ autoria do tech-lead.
 
 ### CI
 
-> Estado: workflows presentes no branch `chore/ci` (`.github/workflows/`).
-> Ainda não rodaram em `main`; a produção nasce no merge.
+> Estado: workflows em `main` (`.github/workflows/`) e em uso. O primeiro
+> deploy de produção pelo CI ocorreu no merge do PR #9 (relato do mantenedor).
 
 #### Visão leiga
 
@@ -491,10 +493,45 @@ unset VALOR
 
 #### Primeiro deploy de produção
 
-Acontece no merge do PR `chore/ci`. O smoke test **vai falhar com 503**
-(`/api/health` sem `DATABASE_URL` de runtime) até os secrets de runtime de
-produção serem cadastrados na Cloudflare, pelo mesmo procedimento do dev
-(ver "Cadastrar um secret"). Depois, reexecute o job `deploy-production`.
+Ocorreu no merge do PR #9 (relato do mantenedor). Como esperado, o smoke test
+falhou com 503 (`/api/health` sem `DATABASE_URL` de runtime) até os 6 secrets
+de runtime de produção serem cadastrados na Cloudflare (ver "Cadastrar um
+secret"); depois de cadastrá-los o smoke test ficou verde e
+`https://roseshop.willsmt.workers.dev/api/health` responde 200. O smoke de
+`main.yml` aponta para essa URL (confirmado no arquivo).
+
+Se um novo ambiente precisar nascer, o roteiro é o mesmo: o primeiro deploy
+falha no smoke com 503 até os secrets de runtime existirem; cadastre-os e
+reexecute o job.
+
+#### Proteção do branch `main` (informação do mantenedor)
+
+Não verificável nos arquivos do repositório: foi configurada via API do GitHub
+e vem do relato do mantenedor. Validação relatada: o merge do PR #10 foi
+recusado até os checks passarem.
+
+| Regra | Valor |
+|---|---|
+| Pull request | obrigatório (sem push direto em `main`) |
+| Checks obrigatórios | os 3 jobs de `checks.yml` (`checks / ...`: `quality`, `integration`, `security`) e `deploy no dev` |
+| Atualização | o branch precisa estar atualizado com `main` antes do merge |
+| Histórico | linear |
+| Force push e remoção do branch | bloqueados |
+| Administradores | a regra vale também para eles |
+| Aprovações exigidas | 0 (projeto solo) |
+
+Consequência prática: todo PR precisa do deploy no dev verde, e o merge só vem
+depois, por humano. O nome exato de cada check no GitHub segue o `name:` do job
+em `checks.yml` (confirmado nos arquivos); a lista cadastrada na proteção não é
+verificável daqui.
+
+#### Runner fixado e pendência de migração
+
+Os 3 workflows (`checks.yml`, `pull-request.yml`, `main.yml`) usam
+`runs-on: ubuntu-24.04` (confirmado nos arquivos; commit `1568b3a`). O motivo é
+que `ubuntu-latest` migra para o Ubuntu 26 em 2026-10-19 (informação do
+mantenedor). **Pendência**: migrar o runner para o Ubuntu 26 em um PR próprio,
+validando os checks e o deploy no dev.
 
 #### Melhoria futura
 

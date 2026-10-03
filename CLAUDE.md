@@ -67,7 +67,7 @@ src/lib/r2/               # URLs pré-assinadas                  [planejado, pro
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002 e 006) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production (dev publicado) + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; ADR-007 de auditoria; produção nasce no merge do PR `chore/ci`); nenhuma feature em `specs/NNN-nome/` ainda.
+Estado atual: **Fase 0 concluída** — scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002, 006 e 007) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; runners fixados em `ubuntu-24.04`, migração para o Ubuntu 26 pendente em PR próprio) + produção no ar (`/api/health` = 200) + branch `main` protegido (relato do mantenedor); nenhuma feature em `specs/NNN-nome/` ainda. Próximo passo: features via Spec Kit.
 
 ## Fluxo de feature (obrigatório)
 

@@ -1,0 +1,97 @@
+name: checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: 0
+
+jobs:
+  quality:
+    name: lint, typecheck e testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  integration:
+    name: testes de integração (Postgres 18 + proxy Neon)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: roseshop
+          POSTGRES_PASSWORD: roseshop_local
+          POSTGRES_DB: roseshop
+        ports:
+          - 5440:5432
+        options: >-
+          --health-cmd "pg_isready -U roseshop -d roseshop"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+      neon-proxy:
+        image: ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14edf2feafbc3330492de5c80506f77274c3bd013154cdef697bdeb768a
+        env:
+          PG_CONNECTION_STRING: postgres://roseshop:roseshop_local@postgres:5432/roseshop
+        ports:
+          - 4444:4444
+    env:
+      # Banco descartável do próprio job: não são segredos.
+      DATABASE_URL: postgres://roseshop:roseshop_local@localhost:5440/roseshop
+      NEON_FETCH_ENDPOINT: http://localhost:4444/sql
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Aguarda o proxy responder
+        run: |
+          for _ in $(seq 1 20); do
+            curl -sf -X POST http://localhost:4444/sql \
+              -H "Content-Type: application/json" \
+              -H "Neon-Connection-String: $DATABASE_URL" \
+              -d '{"query":"select 1","params":[]}' > /dev/null && exit 0
+            sleep 3
+          done
+          echo "proxy não respondeu"; exit 1
+      - run: npm run test:int
+
+  security:
+    name: segredos (gitleaks) e auditoria do runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Instala gitleaks 8.30.1 (checksum verificado)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          cd "$RUNNER_TEMP"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSLO "$base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSLO "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Varre o histórico inteiro
+        run: gitleaks git --redact --no-banner -v
+      - name: Auditoria do runtime (high/critical bloqueia — ADR-007)
+        run: npm audit --omit=dev --audit-level=high

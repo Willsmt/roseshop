@@ -148,7 +148,7 @@ não se conecta a ela.
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|
 | Runtime | `npm run preview` (workerd) | Worker `roseshop-dev` | Worker `roseshop` |
-| Banco | Postgres em Docker (ADR-002) | Neon, branch `dev` | Neon, branch `main` (ADR; o mantenedor relata que a branch criada se chama `production`) |
+| Banco | Postgres em Docker (ADR-002) | Neon, branch `dev` | Neon, branch `production` |
 | Imagens | R2 simulado pelo wrangler (`.wrangler/state/`) | R2 `roseshop-dev` | R2 `roseshop-prod` |
 | OpenAI | chave dev, limite baixo | chave dev, limite baixo | chave prod |
 | Segredos | `.dev.vars` | `wrangler secret --env dev` | `wrangler secret --env production` |
@@ -165,7 +165,7 @@ Pontos-chave:
   local → dev → produção, usando conexão direta (não o proxy).
 - **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes) → migration no Neon
   `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
-  Neon `main` → deploy em `roseshop`. Segredos de deploy em GitHub
+  Neon `production` → deploy em `roseshop`. Segredos de deploy em GitHub
   Environments; segredos de runtime só na Cloudflare.
 - **Regras**: a máquina local nunca acessa dev online nem produção; bindings
   do wrangler são declarados por environment (não herdados) e
@@ -180,10 +180,8 @@ Pontos-chave:
 Os blocos `env` do `wrangler.jsonc` (`dev` e `production`) **já existem**
 (commit `fffa3fe`) e o `docker-compose.yml` é consistente com o ADR-002. O que
 falta é o **workflow de CI** (GitHub Actions); o worker `roseshop` (produção)
-só será criado por ele. Duas notas: o ADR-006 chama a branch de produção do
-Neon de `main`, enquanto o mantenedor relata `production` (verificar e alinhar
-ADR ou branch); e `scripts/require-ci.mjs` já bloqueia o deploy manual de
-produção. Fica registrado até o CI existir.
+só será criado por ele. Nota: `scripts/require-ci.mjs` já bloqueia o deploy
+manual de produção. Fica registrado até o CI existir.
 
 **Risco resolvido**: a flag `global_fetch_strictly_public` em
 `wrangler.jsonc` **não** bloqueia o `fetch` do worker ao proxy local

@@ -1,6 +1,6 @@
 ---
 name: known-divergences
-description: Divergências código x spec; ADR-006 env resolvido em 2026-10-03, falta só o CI; branch Neon main x production a alinhar
+description: Divergências código x spec; ADR-006 env resolvido, falta só o CI; branch Neon resolvida (production)
 metadata:
   type: project
 ---
@@ -13,9 +13,9 @@ resolvidas, remova a nota dos docs (e desta memória).
 1. **ADR-006 (ambientes) vs repositório**: `env` no `wrangler.jsonc`
    **RESOLVIDO** (sync de 2026-10-03, branch `chore/wrangler-envs`, commit
    `fffa3fe`; `docker-compose.yml` também existe). **Ainda aberta: falta o CI**
-   (GitHub Actions); a produção só nasce por ele (Fase 0.6). Nota nova: ADR diz
-   Neon branch `main`, mantenedor relata `production` (não verificável em
-   arquivo). Documentada em `docs/architecture.md`.
+   (GitHub Actions); a produção só nasce por ele (Fase 0.6). Documentada em
+   `docs/architecture.md`. (Branch Neon `main` x `production`: RESOLVIDA em
+   2026-10-03, ADRs corrigidos para `production`; não reabrir.)
 
 2. ~~`.dev.vars.example` ausente~~ **RESOLVIDA** (sync de 2026-10-03,
    branch `chore/local-db`): o arquivo existe (`NEXTJS_ENV`, `DATABASE_URL`,

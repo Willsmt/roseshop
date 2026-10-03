@@ -20,7 +20,7 @@ jobs:
     needs: checks
     # PR de fork nunca recebe secrets nem faz deploy.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: dev
       url: https://roseshop-dev.willsmt.workers.dev

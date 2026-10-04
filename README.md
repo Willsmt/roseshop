@@ -1,47 +1,92 @@
-# OpenNext Starter
+# Roseshop
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Catálogo online de produtos de revenda. As clientes navegam, montam uma sacola e enviam o pedido pelo WhatsApp.
 
-## Getting Started
+## Para a loja
 
-Read the documentation at https://opennext.js.org/cloudflare.
+### Como entrar no painel
 
-## Develop
+1. Abra https://roseshop.willsmt.workers.dev/painel no celular.
+2. Toque em "Entrar com Google".
+3. Escolha a conta Google autorizada.
 
-Run the Next.js development server:
+Não há senha nova — é só pelo Google.
+
+### Salvar o painel na tela inicial do celular
+
+Depois de entrar:
+
+- **No Android**: abra o menu do navegador (os três pontinhos) e escolha "Adicionar à tela inicial".
+- **No iPhone**: toque no botão de compartilhar (seta para fora de um retângulo) e escolha "Adicionar à tela inicial".
+
+Assim não precisa digitar o endereço toda vez.
+
+### Se aparecer "Esta conta Google não tem acesso ao painel"
+
+1. Toque em "Entrar com outra conta".
+2. Escolha a conta correta.
+3. Se continuar não funcionando, avise o Willians.
+
+### Se aparecer "Não foi possível entrar agora"
+
+1. Espere alguns segundos.
+2. Tente entrar de novo.
+3. Se o problema continuar, avise o Willians.
+
+### Sair
+
+O botão "Sair" fica no topo de todas as páginas do painel. Sair no celular não desconecta o computador, e vice-versa.
+
+### Quanto tempo dura a sessão
+
+Se você usa o painel pelo menos uma vez a cada 29 dias, continua conectada. Se passar 30 dias sem usar, é preciso entrar de novo.
+
+### Para dar ou tirar o acesso de alguém
+
+Avise o Willians. As administradoras têm todas o mesmo poder.
+
+## Para quem mantém o sistema
+
+### Dependências novas da feature 001
+
+- `next-auth@5.0.0-beta.32` (versão exata): Auth.js v5 com estratégia JWT; não usar `^` nem `~`; atualizar só em PR próprio, depois de ler o changelog e rodar `npm audit --omit=dev` (ADR-003 e ADR-007)
+- `server-only@0.0.1` (versão exata): impede que código de autenticação vaze para o navegador
+- `zod` (versão `^4.6.5` ou superior): validação em toda entrada externa
+
+### Incluir ou remover uma administradora
+
+**Dois passos — os dois são obrigatórios para incluir:**
+
+**Passo 1:** Adicione o e-mail como *test user* no OAuth client do Google Cloud. O app está em modo Testing (ADR-003).
+
+**Passo 2:** Atualize a lista de e-mails no secret `ADMIN_EMAILS` de cada ambiente:
 
 ```bash
-npm run dev
-# or similar package manager command
+npx wrangler secret put ADMIN_EMAILS --env production
+npx wrangler secret put ADMIN_EMAILS --env dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Digite os e-mails separados por vírgula, sem espaço. Exemplo: `pessoa1@example.com,pessoa2@example.com`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Vale no próximo acesso, sem deploy de código.
 
-## Preview
+**Para remover:** faça só o Passo 2. A pessoa perde o acesso no próximo acesso, mesmo que a sessão já esteja aberta.
 
-Preview the application locally on the Cloudflare runtime:
+**No ambiente local:** a lista fica no `.dev.vars`. Depois de mudar, reinicie o `npm run preview` para que o `wrangler` leia o arquivo novo.
+
+### Emergência: celular perdido ou conta comprometida
+
+Troque o segredo de sessão do ambiente:
 
 ```bash
-npm run preview
-# or similar package manager command
+openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET --env production
 ```
 
-## Deploy
+(Repita para `--env dev` se precisar.)
 
-Deploy the application to Cloudflare:
+Todas as sessões daquele ambiente caem no próximo acesso. Todos precisam entrar de novo. Em seguida, revise o `ADMIN_EMAILS`.
 
-```bash
-npm run deploy
-# or similar package manager command
-```
+### Mais informações
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Operação e procedimentos**: veja `docs/operacao.md`
+- **Comandos de desenvolvimento**: veja a seção "Comandos" em `CLAUDE.md`

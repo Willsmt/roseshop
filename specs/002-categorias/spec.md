@@ -26,6 +26,10 @@
 - Q: Como a área de categorias cumpre "uma tarefa por tela" (constitution V)? → A: Telas separadas: a lista; criar; renomear; e a confirmação de remoção, cada uma em sua tela.
 - Q: A mensagem de bloqueio por produtos mostra a quantidade real já na 002? → A: Sim. A contagem lê os produtos ligados no momento da tentativa; na 002, sem cadastro de produtos, isso é verificado com uma tabela de produtos de teste.
 
+### Session 2026-10-04 (implementação da SF3)
+
+- Q: Um nome feito só de hífens e espaços (ex.: "--", "- -") é aceito? → A: Não. Após normalizar, o nome precisa conter pelo menos uma letra (`\p{L}`) ou um número (`\p{N}`); sem isso a chave de comparação fica vazia e esses nomes colidiriam entre si. Mensagem: "O nome precisa ter pelo menos uma letra ou número." ("A-" continua aceito.)
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ver a lista de categorias (Priority: P1)
@@ -188,7 +192,7 @@ para criar categoria fora da ação das administradoras no painel.
 - **FR-005**: O sistema MUST recusar um nome de categoria equivalente a outro já existente, na criação e na renomeação. Dois nomes são equivalentes quando diferem apenas em maiúsculas/minúsculas, acentos, espaços extras (nas pontas ou repetidos no meio) ou hífen versus espaço (por exemplo, "Guarda-chuvas" e "Guarda chuvas").
 - **FR-006**: Na renomeação, o nome equivalente à própria categoria MUST ser aceito (permite corrigir maiúsculas, acentos e espaços).
 - **FR-007**: O sistema MUST recusar nome vazio ou composto só por espaços, na criação e na renomeação, com mensagem pedindo que a administradora escreva um nome.
-- **FR-008**: O nome da categoria MUST ser normalizado antes de validar e guardar: forma Unicode NFC, sem espaços nas pontas e com espaços repetidos no meio reduzidos a um. Depois disso, o nome MUST ter de 2 a 40 caracteres e conter apenas letras (Unicode `\p{L}`, de qualquer alfabeto, incluindo acentuadas), números (Unicode `\p{N}`), espaço e hífen; qualquer outro caractere (pontuação, símbolos, emojis) é recusado, com mensagem que diz o que é aceito. O nome MUST ser guardado e exibido exatamente como digitado após essa normalização, preservando maiúsculas e acentos.
+- **FR-008**: O nome da categoria MUST ser normalizado antes de validar e guardar: forma Unicode NFC, sem espaços nas pontas e com espaços repetidos no meio reduzidos a um. Depois disso, o nome MUST ter de 2 a 40 caracteres e conter apenas letras (Unicode `\p{L}`, de qualquer alfabeto, incluindo acentuadas), números (Unicode `\p{N}`), espaço e hífen; qualquer outro caractere (pontuação, símbolos, emojis) é recusado, com mensagem que diz o que é aceito. O nome normalizado MUST conter pelo menos uma letra ou um número (nomes só com hífens e espaços, como "--" ou "- -", são recusados com a mensagem "O nome precisa ter pelo menos uma letra ou número."). O nome MUST ser guardado e exibido exatamente como digitado após essa normalização, preservando maiúsculas e acentos.
 - **FR-009**: Renomear uma categoria MUST manter sua identidade: tudo que estiver ligado a ela continua ligado, e qualquer referência guardada por outra parte do sistema permanece válida.
 - **FR-010**: Remover uma categoria MUST exigir confirmação explícita, com texto claro do que vai acontecer, antes de qualquer efeito (constitution V).
 - **FR-011**: A remoção de uma categoria com produtos ligados MUST ser bloqueada, sem alterar nada. A mensagem MUST informar quantos produtos estão na categoria e orientar a administradora a movê-los para outra categoria antes de tentar de novo. A verificação MUST ocorrer no sistema (não só na interface) e valer no momento da remoção.

@@ -18,6 +18,14 @@ criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade veri
 `@/lib/db/categorias` (funções de escrita da camada db) só é importado em
 `src/lib/categorias/` e `src/lib/db/`; `@/lib/categorias/actions` só em `src/app/painel/**`
 (proibido em `src/lib/ai/`, no barrel e no resto de `src/`).
+Import relativo `../actions` vindo de subpasta de `src/lib/categorias/` não é alcançado pelo
+ESLint; essa brecha é coberta pelo teste de conformidade (`categorias-acesso.test.ts`), que
+resolve o caminho; a exceção por arquivo vale só para `actions.test.ts` e `actions.remocao.test.ts`.
+
+O id de categoria é validado por um único schema em `src/lib/categorias/nome.ts`
+(`idCategoria`), usado pelo barrel e por `obterCategoriaDoPainel`: aceita inteiro positivo até
+2147483647 (teto do `integer` do Postgres) ou a string decimal canônica desse inteiro (`"3"`);
+recusa `" 3"`, `"1e2"`, `"03"`, `"99999999999"`, `0`, negativo e não numérico.
 
 ## 2. Leitura do painel — `@/lib/categorias/painel` (H4-A)
 
@@ -26,9 +34,10 @@ criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade veri
 | `listarCategoriasDoPainel()` | `{ id: number; nome: string; versao: number }[]` | Mesma ordem de `listarCategorias()` |
 | `obterCategoriaDoPainel(id: string)` | `{ id; nome; versao } \| null` | `null` se não existe ou se o id é inválido (Zod) |
 
-O `[id]` chega da URL como **string**; o schema o coage para inteiro positivo
-(`z.coerce.number().int().positive()`): `"3"` ⇒ `3`; `"0"`, negativo e não numérico
-(`"abc"`) ⇒ `null`.
+O `[id]` chega da URL como **string** e passa pelo schema rígido `idCategoria` de
+`src/lib/categorias/nome.ts` (não mais `z.coerce` puro, que aceitaria `" 3"`, `"1e2"` e
+`"03"`): só decimal sem formatação, positivo, até 2147483647. `"3"` ⇒ `3`; `" 3"`, `"1e2"`,
+`"03"`, `"99999999999"`, `"0"`, negativo e não numérico (`"abc"`) ⇒ `null`.
 
 Regras: `versao` é detalhe de concorrência (FR-019) e só serve aos formulários do painel.
 Importável apenas por `src/app/painel/**` e `src/lib/categorias/**` (conformidade + ESLint).
@@ -64,10 +73,11 @@ Páginas (H7-A, uma tarefa por tela), cada uma com `requireAdminPage(<rota>)` (`
 | `nome_vazio` | "Escreva um nome para a categoria." |
 | `nome_tamanho` | "O nome precisa ter de 2 a 40 letras." |
 | `nome_caracteres` | "Use só letras, números, espaço e hífen." |
+| `nome_sem_letra` | "O nome precisa ter pelo menos uma letra ou número." |
 | `nome_repetido` | "Já existe uma categoria chamada {nome existente}." |
 | `nao_existe` | "Esta categoria não existe mais. Atualize a lista." |
 | `alterada` | "Esta categoria foi alterada por outra pessoa. Atualize a lista e tente de novo." |
-| `tem_produtos` | "Esta categoria tem {N} produtos. Mova esses produtos para outra categoria e tente remover de novo." (singular com N = 1) |
+| `tem_produtos` | "Esta categoria tem {N} produtos. Mova esses produtos para outra categoria e tente remover de novo." (N = 1: "Esta categoria tem 1 produto. Mova esse produto para outra categoria e tente remover de novo.") |
 | `ultima` | "A loja precisa ter pelo menos uma categoria. Crie outra antes de remover esta." |
 | `falha_geral` | "Não foi possível salvar agora. Tente de novo em instantes." |
 
@@ -87,8 +97,9 @@ O texto do banco nunca chega ao usuário.
 | `renomear(db, sessao, id, versao, nome)` | `{ tipo: "ok" }` · `{ tipo: "nome_repetido", nomeExistente }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` |
 | `remover(db, sessao, id, versao)` | `{ tipo: "removido" }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` · `{ tipo: "ultima" }` · `{ tipo: "tem_produtos", quantidade }` |
 
-  O SQLSTATE do driver (`23505`, `23503`) é lido em `src/lib/db/erros-pg.ts`
-  (`error.code` ou `error.cause.code`) e não sai de `src/lib/db/`. `23505` ⇒ lookup
+  O SQLSTATE do driver (`23505`, `23503`) é lido em `src/lib/db/erros-pg.ts` e não sai de
+  `src/lib/db/`. Ele chega **somente** em `error.cause.code` (`DrizzleQueryError` embrulha o
+  `NeonDbError`; observado em T002), nunca em `error.code`; `codigoSqlstate` lê só `cause.code`. `23505` ⇒ lookup
   `WHERE chave = categoria_chave($1)` para `nomeExistente`; `23503` ⇒
   `contarProdutosDaCategoria`; 0 linhas no `UPDATE`/`DELETE … RETURNING` ⇒ leitura por id
   para distinguir `ausente` / `versao_diferente` / `ultima`. Outros erros propagam.

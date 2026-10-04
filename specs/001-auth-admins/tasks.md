@@ -185,7 +185,7 @@ da allowlist e recarregar (quickstart passos 2 e 9).
 
 ### Testes para US3 (escrever primeiro)
 
-- [ ] T034 [P] [US3] Teste de conformidade **que nega por padrão** em `src/test/conformance/painel-guard.test.ts` (test-writer). Usa leitura de arquivos com `node:fs`, sem dependência nova, e percorre **todo `src/`**. Mantém no topo do arquivo uma constante `EXCECOES_PUBLICAS` **por função exportada, no formato `arquivo#export`, nunca por arquivo**, com o motivo de cada item em comentário:
+- [x] T034 [P] [US3] Teste de conformidade **que nega por padrão** em `src/test/conformance/painel-guard.test.ts` (test-writer). Usa leitura de arquivos com `node:fs`, sem dependência nova, e percorre **todo `src/`**. Mantém no topo do arquivo uma constante `EXCECOES_PUBLICAS` **por função exportada, no formato `arquivo#export`, nunca por arquivo**, com o motivo de cada item em comentário:
   - `src/app/api/auth/[...nextauth]/route.ts#GET` e `#POST`: handlers do Auth.js;
   - `src/app/api/health/route.ts#GET`: verificação de saúde;
   - `src/lib/auth/actions.ts#entrarComGoogle`: entrar não pode exigir sessão;
@@ -197,7 +197,7 @@ da allowlist e recarregar (quickstart passos 2 e 9).
 
   Falha se:
   - alguma função exportada de arquivo com `"use server"` (no topo ou inline em função) não chamar `requireAdminAction` e não estiver nas exceções, **função por função**;
-  - algum handler exportado de `route.ts` (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) não chamar `requireAdminAction` e não estiver nas exceções;
+  - algum handler exportado de `route.ts` (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, e também `HEAD` e `OPTIONS`, ampliação aprovada pelo humano em 2026-10-04 por "nega por padrão") não chamar `requireAdminAction` e não estiver nas exceções;
   - algum `page.tsx` em `src/app/painel/(protegido)/` não chamar `requireAdminPage(`;
   - algum `layout.tsx` em `src/app/painel/(protegido)/` não chamar `getAdminSession(` ou `requireAdminPage(`;
   - existir `page.tsx` em `src/app/painel/` fora de `(protegido)/` além de `entrar/page.tsx`;
@@ -205,14 +205,14 @@ da allowlist e recarregar (quickstart passos 2 e 9).
   - um item da lista de exceções (`arquivo#export`) não existir mais, para a lista não ficar desatualizada.
 
   Cobre US3-1, US3-2, FR-005, FR-007 e SC-003.
-- [ ] T035 [P] [US3] Teste dos headers em `src/next-config.test.ts` (test-writer). Importa `next.config.ts` com `@opennextjs/cloudflare` mockado e verifica que `headers()` devolve `Cache-Control: private, no-store` para `/painel/:path*` e nada para `/` (US4-3, R8).
-- [ ] T036 [P] [US3] Teste do recarregador em `src/app/painel/(protegido)/bfcache-reload.test.tsx` (test-writer). Disparar `pageshow` com `persisted: true` → `location.reload` chamado uma vez. Com `persisted: false` → não chamado. Desmontar → o listener é removido (US4-3, R8, C2).
+- [x] T035 [P] [US3] Teste dos headers em `src/next-config.test.ts` (test-writer). Importa `next.config.ts` com `@opennextjs/cloudflare` mockado e verifica que `headers()` devolve `Cache-Control: private, no-store` para `/painel/:path*` e nada para `/` (US4-3, R8).
+- [x] T036 [P] [US3] Teste do recarregador em `src/app/painel/(protegido)/bfcache-reload.test.tsx` (test-writer). Disparar `pageshow` com `persisted: true` → `location.reload` chamado uma vez. Com `persisted: false` → não chamado. Desmontar → o listener é removido (US4-3, R8, C2).
 
 ### Implementação para US3
 
-- [ ] T037 [US3] Adicionar `headers()` em `next.config.ts` com `Cache-Control: private, no-store` para `/painel/:path*` (tech-lead)
-- [ ] T038 [US3] Criar `src/app/painel/(protegido)/bfcache-reload.tsx` (`"use client"`, recarrega no `pageshow` com `persisted`) e incluí-lo em `(protegido)/layout.tsx` (ui-dev)
-- [ ] T039 [US3] Executar os passos 2 e 9 do quickstart no `preview` (remover o e-mail do `.dev.vars` é tarefa **do humano**; agentes não editam `.dev.vars`) (tech-lead + humano)
+- [x] T037 [US3] Adicionar `headers()` em `next.config.ts` com `Cache-Control: private, no-store` para `/painel/:path*` (tech-lead)
+- [x] T038 [US3] Criar `src/app/painel/(protegido)/bfcache-reload.tsx` (`"use client"`, recarrega no `pageshow` com `persisted`) e incluí-lo em `(protegido)/layout.tsx` (ui-dev)
+- [x] T039 [US3] Executar os passos 2 e 9 do quickstart no `preview` (remover o e-mail do `.dev.vars` é tarefa **do humano**; agentes não editam `.dev.vars`) (tech-lead + humano)
 
 **Checkpoint**: US1, US2 e US3 funcionando.
 
@@ -258,7 +258,7 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 
 - [x] T046 [US4] Implementar a Server Action `sair` em `src/lib/auth/actions.ts`, reexportada por `@/lib/auth` (tech-lead)
 - [x] T047 [US4] Adicionar o botão "Sair" (`variant="secondary"`) na moldura de `src/app/painel/(protegido)/layout.tsx` (ui-dev)
-- [ ] T048 [US4] Executar o passo 5 do quickstart no `preview` e, como validação complementar ao T006, verificar US4-4 (sair no celular não derruba o computador) com dois navegadores (tech-lead + humano)
+- [x] T048 [US4] Executar o passo 5 do quickstart no `preview` e, como validação complementar ao T006, verificar US4-4 (sair no celular não derruba o computador) com dois navegadores (tech-lead + humano)
 
 **Checkpoint**: todas as stories prontas.
 
@@ -293,6 +293,11 @@ aparelho, sem confirmação, e volta para a tela de entrada.
   - nenhum agente executa comando fora do briefing (o junior rodou `npm run db:up` na
     Phase 3);
   - verificações do junior nunca são finais: o tech-lead reexecuta antes de reportar ao humano.
+
+- **Reiniciar o preview após mudar o `.dev.vars`** (decisão do humano, 2026-10-04, observado
+  na T039): o `wrangler dev` lê o `.dev.vars` uma vez, ao subir. Mudar `ADMIN_EMAILS` (ou
+  qualquer chave) sem reiniciar o `npm run preview` não tem efeito. Repassar ao
+  `doc-sync-onboarding` na T056, para entrar em `docs/operacao.md`.
 
 ## Checkpoints com o humano (obrigatórios quando a implementação for liberada)
 

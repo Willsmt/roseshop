@@ -1,7 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-	/* config options here */
+	// O painel nunca vai para cache compartilhado nem do navegador: depois de
+	// "Sair", o "voltar" precisa refazer a verificação de sessão no servidor.
+	async headers() {
+		return [
+			{
+				source: "/painel/:path*",
+				headers: [{ key: "Cache-Control", value: "private, no-store" }],
+			},
+		];
+	},
 };
 
 export default nextConfig;

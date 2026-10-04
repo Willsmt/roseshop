@@ -10,5 +10,7 @@ export default defineConfig({
     include: ["src/**/*.int.test.{ts,tsx}"],
     exclude: configDefaults.exclude,
     testTimeout: 15_000,
+    // Arquivos que fazem TRUNCATE em `categorias` não podem rodar em paralelo (feature 002, T007).
+    fileParallelism: false,
   },
 });

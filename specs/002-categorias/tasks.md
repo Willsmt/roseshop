@@ -106,29 +106,45 @@ FR-014/FR-015 (conformidade e ESLint). Depende de SF1.
 tradução em `erros.ts` e Server Actions `criarCategoria`/`renomearCategoria`
 (FR-005–FR-009, FR-016, FR-017, FR-019). Depende de SF2.
 
+**Decisões do humano (2026-10-04, abertura da SF3)**:
+1. **Nome com letra ou número** (spec, Clarifications "implementação da SF3", e FR-008): após
+   normalizar, o nome precisa ter ao menos um `\p{L}` ou `\p{N}` ("--"/"- -" gerariam chave vazia
+   e colidiriam no `UNIQUE`). Motivo novo `nome_sem_letra`, mensagem "O nome precisa ter pelo
+   menos uma letra ou número." (contrato §3). Afeta T026, T027, T034, T035.
+2. **Id rígido em `nome.ts`**: schema `idCategoria` vive uma só vez em `src/lib/categorias/nome.ts`
+   e é usado pelo barrel e por `obterCategoriaDoPainel` (substitui os schemas locais de
+   `index.ts`/`painel.ts`); aceita só decimal sem formatação, positivo, ≤ 2147483647 (contrato
+   §1/§2, que dizia `z.coerce` puro). Afeta T026, T034.
+3. **SQLSTATE só em `error.cause.code`** (observado em T002): `codigoSqlstate` em
+   `src/lib/db/erros-pg.ts` lê `cause.code`, nunca `error.code`; testes de mapeamento usam essa
+   forma (contrato §4). Afeta T029, T031, T036, T038.
+4. **Conformidade**: a exceção de import de `./actions` para `actions.test.ts` e
+   `actions.remocao.test.ts` já existe (teste e ESLint); `../actions` vindo de subpasta de
+   `src/lib/categorias/` é coberto pelo teste de conformidade, não pelo ESLint (contrato §1).
+
 ### Testes primeiro (Red)
 
-- [ ] T026 [P] [test-writer] Em `src/lib/categorias/nome.test.ts` (unitário, sem banco; US2-4..7, FR-007/FR-008, SC-010): normaliza NFC, trim e colapso de espaços (`"  Bolsas   de   Praia  "` ⇒ `"Bolsas de Praia"`; `"Meias"` em NFD vira NFC); vazio/só espaços ⇒ `nome_vazio`; tamanho **2–40** após normalizar (1 e 41 ⇒ `nome_tamanho`; 2 e 40 aceitos); charset **`\p{L}`, `\p{N}`, espaço, hífen** (aceita letras de qualquer alfabeto, decisão da clarify): `"Bolsas!"` e `"Meias 😀"` ⇒ `nome_caracteres`; `id` e `versao` inteiros positivos.
-- [ ] T027 [P] [test-writer] Em `src/lib/categorias/mensagens.test.ts` (unitário): cada motivo da tabela de `contracts/categorias.md` mapeia para o texto exato, incl. `nome_repetido` com `{nome existente}`, `tem_produtos` com singular para N = 1 ("1 produto") e plural; nenhum texto contém jargão/SQLSTATE.
-- [ ] T028 [P] [test-writer] Em `src/lib/categorias/erros.test.ts` (unitário; contrato §4): traduz cada resultado discriminado da camada db em `{ motivo, mensagem, campo? }`: `nome_repetido` (com `nomeExistente`) ⇒ `nome_repetido` com `campo: "nome"`; `ausente` ⇒ `nao_existe`; `versao_diferente` ⇒ `alterada`; `ultima` ⇒ `ultima`; `tem_produtos` com `quantidade ≥ 1` ⇒ `tem_produtos` com N; `tem_produtos` com `quantidade ≤ 0` (corrida entre a recusa e a contagem) ⇒ `falha_geral`; exceção desconhecida ⇒ `falha_geral` sem expor texto, host ou usuário do banco.
-- [ ] T029 [P] [test-writer] Em `src/lib/db/erros-pg.test.ts` (unitário, erros do driver simulados): `codigoSqlstate(error)` lê o SQLSTATE tanto de `error.code` quanto de `error.cause.code` (ver resultado de T002); devolve `undefined` para erro sem código.
-- [ ] T030 [test-writer] Em `src/lib/categorias/actions.test.ts` (unitário, `requireAdminAction`, `@/lib/db/contexto` e camada db mockados; FR-016, US2-9): sem sessão ⇒ `UnauthorizedError`, sem efeito e sem chamar a camada de dados nem `dbDoContexto`; entradas inválidas rejeitadas pelo Zod antes de qualquer SQL; sucesso ⇒ `{ ok: true }` e `revalidatePath("/painel/categorias")`.
-- [ ] T031 [test-writer] Em `src/lib/db/categorias.escrita.int.test.ts` (reseta via T001): `inserir(db, sessao, "Bolsas de Praia")` ⇒ `{ tipo: "ok", id }` com `versao = 1`; "panos de prato", "GUÁRDA-chuvas", " Meias " ⇒ `{ tipo: "nome_repetido", nomeExistente }` com o nome gravado (lookup `WHERE chave = categoria_chave($1)`; US2-2/8); "Guarda-chuva" aceito (US2-3); `renomear` "bolsas" → "Bolsas" aceito (próprio registro, FR-006); "Meias" → "bolsas" ⇒ `nome_repetido`; rename incrementa `versao` e `atualizado_em`, preserva `id`; versão velha ⇒ `versao_diferente`; id ausente ⇒ `ausente` (FR-019).
-- [ ] T032 [test-writer] Em `src/lib/db/categorias.concorrencia-escrita.int.test.ts` (concorrência real com `Promise.all`; FR-005, FR-019, SC-003): duas criações de nomes equivalentes simultâneas ⇒ 1 `ok`, 1 `nome_repetido`; dois renames da mesma categoria com a mesma `versao` ⇒ 1 `ok`, outro `versao_diferente`.
-- [ ] T033 [test-writer] Confirmar Red de T026–T032 (output real).
+- [x] T026 [P] [test-writer] Em `src/lib/categorias/nome.test.ts` (unitário, sem banco; US2-4..7, FR-007/FR-008, SC-010): normaliza NFC, trim e colapso de espaços (`"  Bolsas   de   Praia  "` ⇒ `"Bolsas de Praia"`; `"Meias"` em NFD vira NFC); vazio/só espaços ⇒ `nome_vazio`; tamanho **2–40** após normalizar (1 e 41 ⇒ `nome_tamanho`; 2 e 40 aceitos); charset **`\p{L}`, `\p{N}`, espaço, hífen** (aceita letras de qualquer alfabeto, decisão da clarify): `"Bolsas!"` e `"Meias 😀"` ⇒ `nome_caracteres`; **(decisão 1)** `"--"`, `"- -"` e `"---"` ⇒ `nome_sem_letra`, `"A-"` aceito; **(decisão 2)** `idCategoria`: `"3"` e `3` aceitos; `" 3"`, `"1e2"`, `"03"`, `"99999999999"`, `0`, negativo e não numérico recusados; `versao` inteiro positivo.
+- [x] T027 [P] [test-writer] Em `src/lib/categorias/mensagens.test.ts` (unitário): cada motivo da tabela de `contracts/categorias.md` mapeia para o texto exato, incl. `nome_repetido` com `{nome existente}`, `tem_produtos` com singular para N = 1 ("1 produto") e plural; nenhum texto contém jargão/SQLSTATE.
+- [x] T028 [P] [test-writer] Em `src/lib/categorias/erros.test.ts` (unitário; contrato §4): traduz cada resultado discriminado da camada db em `{ motivo, mensagem, campo? }`: `nome_repetido` (com `nomeExistente`) ⇒ `nome_repetido` com `campo: "nome"`; `ausente` ⇒ `nao_existe`; `versao_diferente` ⇒ `alterada`; `ultima` ⇒ `ultima`; `tem_produtos` com `quantidade ≥ 1` ⇒ `tem_produtos` com N; `tem_produtos` com `quantidade ≤ 0` (corrida entre a recusa e a contagem) ⇒ `falha_geral`; exceção desconhecida ⇒ `falha_geral` sem expor texto, host ou usuário do banco.
+- [x] T029 [P] [test-writer] Em `src/lib/db/erros-pg.test.ts` (unitário, erros do driver simulados): **(decisão 3)** `codigoSqlstate(error)` lê o SQLSTATE de `error.cause.code` (forma observada em T002: `DrizzleQueryError` → `NeonDbError`); `error.code` sozinho é ignorado; devolve `undefined` para erro sem código, `null`/não objeto.
+- [x] T030 [test-writer] Em `src/lib/categorias/actions.test.ts` (unitário, `requireAdminAction`, `@/lib/db/contexto` e camada db mockados; FR-016, US2-9): sem sessão ⇒ `UnauthorizedError`, sem efeito e sem chamar a camada de dados nem `dbDoContexto`; entradas inválidas rejeitadas pelo Zod antes de qualquer SQL; sucesso ⇒ `{ ok: true }` e `revalidatePath("/painel/categorias")`.
+- [x] T031 [test-writer] Em `src/lib/db/categorias.escrita.int.test.ts` (reseta via T001): `inserir(db, sessao, "Bolsas de Praia")` ⇒ `{ tipo: "ok", id }` com `versao = 1`; "panos de prato", "GUÁRDA-chuvas", " Meias " ⇒ `{ tipo: "nome_repetido", nomeExistente }` com o nome gravado (lookup `WHERE chave = categoria_chave($1)`; US2-2/8); "Guarda-chuva" aceito (US2-3); `renomear` "bolsas" → "Bolsas" aceito (próprio registro, FR-006); "Meias" → "bolsas" ⇒ `nome_repetido`; rename incrementa `versao` e `atualizado_em`, preserva `id`; versão velha ⇒ `versao_diferente`; id ausente ⇒ `ausente` (FR-019).
+- [x] T032 [test-writer] Em `src/lib/db/categorias.concorrencia-escrita.int.test.ts` (concorrência real com `Promise.all`; FR-005, FR-019, SC-003): duas criações de nomes equivalentes simultâneas ⇒ 1 `ok`, 1 `nome_repetido`; dois renames da mesma categoria com a mesma `versao` ⇒ 1 `ok`, outro `versao_diferente`.
+- [x] T033 [test-writer] Confirmar Red de T026–T032 (output real).
 
 ### Implementação
 
-- [ ] T034 [tech-lead] Criar `src/lib/categorias/nome.ts` (Zod): NFC, `trim`, colapso de espaços, **2–40**, charset `^[\p{L}\p{N} -]+$` (flag `u`); schemas de `id`/`versao` (inteiro positivo). A `chave` **não** é calculada em TS (é do banco).
-- [ ] T035 [tech-lead] Criar `src/lib/categorias/mensagens.ts` com os textos pt-BR de `contracts/categorias.md` (FR-017), um por motivo.
-- [ ] T036 [tech-lead] Criar `src/lib/db/erros-pg.ts` com `codigoSqlstate(error)` (lê `error.code` ou `error.cause.code`); o SQLSTATE do driver não sai de `src/lib/db/`.
-- [ ] T037 [tech-lead] **Estender** `src/lib/categorias/erros.ts` (criado em T022): tradução do resultado discriminado da camada db em `{ motivo, mensagem, campo? }` e de exceção desconhecida em `falha_geral` (contrato §4).
-- [ ] T038 [tech-lead] Em `src/lib/db/categorias.ts`: `inserir(db, sessao: AdminSession, nome)` e `renomear(db, sessao, id, versao, nome)` com `UPDATE … SET nome = $3, versao = versao + 1, atualizado_em = now() WHERE id = $1 AND versao = $2 RETURNING …` (`chave` nunca entra no `SET`; é gerada); `23505` (via `codigoSqlstate`) ⇒ `buscarPorChave(db, nome)` via `categoria_chave($1)` e retorno `{ tipo: "nome_repetido", nomeExistente }`; 0 linhas no rename ⇒ leitura por id para devolver `ausente` ou `versao_diferente`; outros erros propagam.
-- [ ] T039 [tech-lead] Criar `src/lib/categorias/actions.ts` (`"use server"`): `criarCategoria({ nome })` e `renomearCategoria({ id, versao, nome })`, cada uma começando por `requireAdminAction()` (`src/lib/auth/guard.ts:36`), depois Zod, `dbDoContexto()`, camada db e tradução por `erros.ts`; retorno `{ ok: true }` ou `{ ok: false, motivo, mensagem, campo? }`; `revalidatePath("/painel/categorias")`.
+- [x] T034 [tech-lead] Criar `src/lib/categorias/nome.ts` (Zod): NFC, `trim`, colapso de espaços, **2–40**, charset `^[\p{L}\p{N} -]+$` (flag `u`); **(decisão 1)** ao menos um `\p{L}`/`\p{N}` ⇒ senão `nome_sem_letra`; **(decisão 2)** `idCategoria` rígido (decimal canônico, positivo, ≤ 2147483647), único para barrel e `painel.ts` (remover os schemas locais deles), e `versao` inteiro positivo. A `chave` **não** é calculada em TS (é do banco).
+- [x] T035 [tech-lead] Criar `src/lib/categorias/mensagens.ts` com os textos pt-BR de `contracts/categorias.md` (FR-017), um por motivo.
+- [x] T036 [tech-lead] Criar `src/lib/db/erros-pg.ts` com `codigoSqlstate(error)` (**decisão 3**: lê só `error.cause.code`); o SQLSTATE do driver não sai de `src/lib/db/`.
+- [x] T037 [tech-lead] **Estender** `src/lib/categorias/erros.ts` (criado em T022): tradução do resultado discriminado da camada db em `{ motivo, mensagem, campo? }` e de exceção desconhecida em `falha_geral` (contrato §4).
+- [x] T038 [tech-lead] Em `src/lib/db/categorias.ts`: `inserir(db, sessao: AdminSession, nome)` e `renomear(db, sessao, id, versao, nome)` com `UPDATE … SET nome = $3, versao = versao + 1, atualizado_em = now() WHERE id = $1 AND versao = $2 RETURNING …` (`chave` nunca entra no `SET`; é gerada); `23505` (via `codigoSqlstate`) ⇒ `buscarPorChave(db, nome)` via `categoria_chave($1)` e retorno `{ tipo: "nome_repetido", nomeExistente }`; 0 linhas no rename ⇒ leitura por id para devolver `ausente` ou `versao_diferente`; outros erros propagam.
+- [x] T039 [tech-lead] Criar `src/lib/categorias/actions.ts` (`"use server"`): `criarCategoria({ nome })` e `renomearCategoria({ id, versao, nome })`, cada uma começando por `requireAdminAction()` (`src/lib/auth/guard.ts:36`), depois Zod, `dbDoContexto()`, camada db e tradução por `erros.ts`; retorno `{ ok: true }` ou `{ ok: false, motivo, mensagem, campo? }`; `revalidatePath("/painel/categorias")`.
 
 ### Fechamento SF3
 
-- [ ] T040 [junior] `npm run check` + `npm run test:int` (output real). Conformidade FR-015 (T018) continua verde: `@/lib/db/categorias` só é importado em `src/lib/categorias/` e `src/lib/db/`.
+- [x] T040 [junior] `npm run check` + `npm run test:int` (output real). Conformidade FR-015 (T018) continua verde: `@/lib/db/categorias` só é importado em `src/lib/categorias/` e `src/lib/db/`.
 
 **Commit sugerido (SF3)**: `feat(categorias): adiciona criar e renomear com validação, mensagens e concorrência otimista`
 

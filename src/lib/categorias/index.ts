@@ -1,21 +1,16 @@
 import "server-only";
 
-import { z } from "zod";
-
 import { listar, obterPorId } from "@/lib/db/categorias";
 import { dbDoContexto } from "@/lib/db/contexto";
 
 import { CategoriaInvalidaError } from "./erros";
+import { idCategoria } from "./nome";
 
 // Barrel SOMENTE LEITURA (contrato §1, FR-014/FR-015). Única porta para a 003, a IA e o
 // catálogo: não expõe `versao`, escrita, schema nem o módulo do painel. A allowlist de
 // exports é verificada em src/test/conformance/categorias-acesso.test.ts.
 
 export type Categoria = { id: number; nome: string };
-
-// Teto do `integer` do Postgres: acima disso a consulta falharia com erro do banco
-// (22003) em vez de simplesmente não achar a categoria.
-const idCategoria = z.number().int().positive().max(2_147_483_647);
 
 export async function listarCategorias(): Promise<Categoria[]> {
   const lista = await listar(await dbDoContexto());

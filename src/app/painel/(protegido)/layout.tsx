@@ -1,4 +1,5 @@
-import { getAdminSession } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { getAdminSession, sair } from "@/lib/auth";
 
 export default async function ProtegidoLayout({
   children,
@@ -13,8 +14,13 @@ export default async function ProtegidoLayout({
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
-      <header className="border-b border-neutral-300 px-4 py-4">
+      <header className="flex flex-col gap-3 border-b border-neutral-300 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-lg font-bold">Painel da loja</p>
+        <form action={sair}>
+          <Button type="submit" variant="secondary">
+            Sair
+          </Button>
+        </form>
       </header>
       <main className="mx-auto w-full max-w-2xl px-4 py-6">{children}</main>
     </div>

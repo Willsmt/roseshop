@@ -26,21 +26,28 @@ export default async function EntrarPage({
   }
 
   const aviso = loginNoticeFromError(sp.error);
+  const recusada = aviso === "recusada";
+  const mensagem =
+    aviso === "recusada"
+      ? "Esta conta Google não tem acesso ao painel. Tente entrar com outra conta."
+      : aviso === "falhou"
+        ? "Não foi possível entrar agora. Tente de novo em instantes."
+        : null;
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
       <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center gap-6 px-4 py-8 text-center">
         <h1 className="text-2xl font-bold">Painel da loja</h1>
-        {/* T031: estado de recusa (por ora igual a "falhou") */}
-        {(aviso === "falhou" || aviso === "recusada") && (
+        {mensagem !== null && (
           <p role="alert" className="text-base font-medium text-red-800">
-            Não foi possível entrar agora. Tente de novo em instantes.
+            {mensagem}
           </p>
         )}
         <form action={entrarComGoogle} className="flex w-full flex-col">
           <input type="hidden" name="callbackUrl" value={destino} />
+          {recusada && <input type="hidden" name="trocarConta" value="1" />}
           <Button type="submit" variant="primary">
-            Entrar com Google
+            {recusada ? "Entrar com outra conta" : "Entrar com Google"}
           </Button>
         </form>
       </main>

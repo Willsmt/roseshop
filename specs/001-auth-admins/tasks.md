@@ -117,11 +117,11 @@ DevTools no modo mobile) no `preview`, tocar no botão e chegar a `/painel` vend
   - `callbackUrl` externo vira `/painel`;
   - valida o `FormData` com Zod.
 - [x] T018 [P] [US1] Testes da tela de entrada em `src/app/painel/entrar/page.test.tsx` (test-writer):
-  - com `auth()` mockado sem sessão: exatamente um botão `variant="primary"` ("Entrar com Google"), nenhum `input[type=password]`, título "Painel da loja" (US1-2);
+  - com `getAdminSession()` mockado devolvendo `null`: exatamente um botão `variant="primary"` ("Entrar com Google"), nenhum `input[type=password]`, título "Painel da loja" (US1-2);
   - nenhum elemento com classe `text-sm` ou `text-xs` (FR-012);
   - campo oculto `callbackUrl` já sanitizado;
   - `error=OAuthCallbackError` → texto "Não foi possível entrar agora. Tente de novo em instantes." (US1-5);
-  - com sessão autorizada → `redirect` para `safeCallbackPath(callbackUrl)` (US1-3).
+  - com sessão autorizada (`getAdminSession()` não nulo) → `redirect` para `safeCallbackPath(callbackUrl)` (US1-3). A tela usa `getAdminSession()`, e não `auth()`, para que uma sessão de e-mail removido da lista não entre em laço entre `/painel/entrar` e `/painel` (aprovado pelo humano em 2026-10-04).
 - [x] T019 [P] [US1] Testes da página inicial do painel em `src/app/painel/(protegido)/page.test.tsx` (test-writer):
   - chama `requireAdminPage("/painel")` antes de renderizar;
   - mostra "Olá, {nome}" ou "Olá, {e-mail}" quando não há nome (US1-1);
@@ -137,7 +137,7 @@ DevTools no modo mobile) no `preview`, tocar no botão e chegar a `/painel` vend
 - [x] T022 [US1] Implementar a Server Action `entrarComGoogle` em `src/lib/auth/actions.ts` (`"use server"` + `import "server-only"`) e reexportar em `src/lib/auth/index.ts` (tech-lead)
 - [x] T023 [US1] Implementar `/painel/entrar` em `src/app/painel/entrar/page.tsx`: Server Component, `<form action={entrarComGoogle}>` com `Button`, textos de contracts/auth.md, mobile-first. Fica fora do grupo `(protegido)` (ui-dev)
 - [x] T024 [US1] Implementar `src/app/painel/(protegido)/layout.tsx` (`getAdminSession()`; moldura só com sessão autorizada; sem redirect) e `src/app/painel/(protegido)/page.tsx` (`requireAdminPage("/painel")` + saudação) (ui-dev)
-- [ ] T025 [US1] Revisar T023 e T024 contra contracts/auth.md e o princípio V. Rodar `npm run check` e `npm run preview` (via junior, output real). Executar os passos 2 a 4 do quickstart com a conta autorizada (tech-lead + humano para o login real)
+- [x] T025 [US1] Revisar T023 e T024 contra contracts/auth.md e o princípio V. Rodar `npm run check` e `npm run preview` (via junior, output real). Executar os passos 2 a 4 do quickstart com a conta autorizada (tech-lead + humano para o login real)
 
 **Checkpoint**: US1 funcional e testada.
 
@@ -154,22 +154,22 @@ de `ADMIN_EMAILS`**. Esperado: a mensagem de recusa e nenhum cookie de sessão
 
 ### Testes para US2 (escrever primeiro)
 
-- [ ] T026 [P] [US2] Ampliar `src/lib/auth/config.test.ts` (test-writer):
+- [x] T026 [P] [US2] Ampliar `src/lib/auth/config.test.ts` (test-writer):
   - na recusa, o callback `signIn` retorna `false` e chama `console.warn("auth.signin.recusado")` **sem** segundo argumento e sem e-mail/nome em nenhum argumento (US2-5, FR-015);
   - com a allowlist vazia, também chama `console.warn("auth.allowlist.vazia")` sem dados.
-- [ ] T027 [P] [US2] Ampliar `src/lib/auth/actions.test.ts`: `trocarConta=1` → `signIn("google", { redirectTo }, { prompt: "select_account" })` (US2-2) (test-writer)
-- [ ] T028 [P] [US2] Ampliar `src/app/painel/entrar/page.test.tsx` (test-writer):
+- [x] T027 [P] [US2] Ampliar `src/lib/auth/actions.test.ts`: `trocarConta=1` → `signIn("google", { redirectTo }, { prompt: "select_account" })` (US2-2) (test-writer)
+- [x] T028 [P] [US2] Ampliar `src/app/painel/entrar/page.test.tsx` (test-writer):
   - `error=AccessDenied` → "Esta conta Google não tem acesso ao painel. Tente entrar com outra conta." e exatamente um botão `variant="primary"` ("Entrar com outra conta", com `trocarConta=1`) (US2-1, US2-2, FR-012);
   - nenhum texto da tela contém "erro", "403", "OAuth", "callback", "allowlist", "AccessDenied" (FR-008);
   - nenhum `text-sm`/`text-xs`.
 
 ### Implementação para US2
 
-- [ ] T029 [US2] Implementar no callback `signIn` (`src/lib/auth/config.ts`) os logs de recusa e de allowlist vazia, sem payload (tech-lead)
-- [ ] T030 [US2] Implementar `trocarConta` → `prompt: "select_account"` em `src/lib/auth/actions.ts` (tech-lead)
-- [ ] T031 [US2] Implementar o estado "recusada" em `src/app/painel/entrar/page.tsx` (mensagem + "Entrar com outra conta") (ui-dev)
-- [ ] T032 [US2] Verificar no `preview` qual código de erro o `@auth/core` gera ao **cancelar** na tela do Google e registrar o resultado em `specs/001-auth-admins/research.md` (R6). Se for o mesmo da recusa (`AccessDenied`), aplicar a decisão do humano: mensagem única "Não foi possível entrar com essa conta. Tente de novo ou use outra conta." + botão "Entrar com outra conta". Nesse caso, ajustar nesta ordem: primeiro os testes T016/T018/T028 (test-writer), depois `error-message.ts` (tech-lead), depois `entrar/page.tsx` (ui-dev) (tech-lead coordena + humano faz o login real)
-- [ ] T033 [US2] Executar os passos 6 a 8 do quickstart no `preview` e conferir no output do `wrangler`/console que o log de recusa não tem e-mail (tech-lead + humano)
+- [x] T029 [US2] Implementar no callback `signIn` (`src/lib/auth/config.ts`) os logs de recusa e de allowlist vazia, sem payload (tech-lead)
+- [x] T030 [US2] Implementar `trocarConta` → `prompt: "select_account"` em `src/lib/auth/actions.ts` (tech-lead)
+- [x] T031 [US2] Implementar o estado "recusada" em `src/app/painel/entrar/page.tsx` (mensagem + "Entrar com outra conta") (ui-dev)
+- [x] T032 [US2] Verificar no `preview` qual código de erro o `@auth/core` gera ao **cancelar** na tela do Google e registrar o resultado em `specs/001-auth-admins/research.md` (R6). Se for o mesmo da recusa (`AccessDenied`), aplicar a decisão do humano: mensagem única "Não foi possível entrar com essa conta. Tente de novo ou use outra conta." + botão "Entrar com outra conta". Nesse caso, ajustar nesta ordem: primeiro os testes T016/T018/T028 (test-writer), depois `error-message.ts` (tech-lead), depois `entrar/page.tsx` (ui-dev) (tech-lead coordena + humano faz o login real)
+- [x] T033 [US2] Executar os passos 6 a 8 do quickstart no `preview` e conferir no output do `wrangler`/console que o log de recusa não tem e-mail (tech-lead + humano)
 
 **Checkpoint**: US1 e US2 funcionando de forma independente.
 
@@ -248,16 +248,16 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 
 ### Testes para US4 (escrever primeiro)
 
-- [ ] T044 [P] [US4] Ampliar `src/lib/auth/actions.test.ts` (test-writer): `sair` chama `signOut({ redirectTo: "/painel/entrar" })` uma vez, sem etapa de confirmação (US4-2, FR-017)
-- [ ] T045 [P] [US4] Ampliar `src/app/painel/(protegido)/layout.test.tsx` (test-writer):
+- [x] T044 [P] [US4] Ampliar `src/lib/auth/actions.test.ts` (test-writer): `sair` chama `signOut({ redirectTo: "/painel/entrar" })` uma vez, sem etapa de confirmação (US4-2, FR-017)
+- [x] T045 [P] [US4] Ampliar `src/app/painel/(protegido)/layout.test.tsx` (test-writer):
   - com sessão autorizada, renderiza um `<form action={sair}>` com `Button` "Sair" visível, sem `details`/`dialog`/menu (US4-1, FR-010);
   - nenhum `text-sm`/`text-xs` (FR-012);
   - "Sair" **não** é o botão `primary` se a página já tiver um (no máximo um `primary` por tela).
 
 ### Implementação para US4
 
-- [ ] T046 [US4] Implementar a Server Action `sair` em `src/lib/auth/actions.ts`, reexportada por `@/lib/auth` (tech-lead)
-- [ ] T047 [US4] Adicionar o botão "Sair" (`variant="secondary"`) na moldura de `src/app/painel/(protegido)/layout.tsx` (ui-dev)
+- [x] T046 [US4] Implementar a Server Action `sair` em `src/lib/auth/actions.ts`, reexportada por `@/lib/auth` (tech-lead)
+- [x] T047 [US4] Adicionar o botão "Sair" (`variant="secondary"`) na moldura de `src/app/painel/(protegido)/layout.tsx` (ui-dev)
 - [ ] T048 [US4] Executar o passo 5 do quickstart no `preview` e, como validação complementar ao T006, verificar US4-4 (sair no celular não derruba o computador) com dois navegadores (tech-lead + humano)
 
 **Checkpoint**: todas as stories prontas.
@@ -285,6 +285,14 @@ aparelho, sem confirmação, e volta para a tela de entrada.
   (`src/lib/`), sem formatador configurado. Adotar um formatador em PR próprio, depois desta
   feature. Repassar ao `doc-sync-onboarding` na T056, para entrar em "Dívidas técnicas" de
   `docs/architecture.md`.
+
+- **Definições dos agentes** (decisão do humano, 2026-10-04, a partir de violações de processo
+  na implementação desta feature). Ajustar `.claude/agents/` depois da feature:
+  - nenhum agente executa pacote via `npx` que não seja dependência do projeto (o ui-dev
+    rodou `npx prettier` na Phase 3);
+  - nenhum agente executa comando fora do briefing (o junior rodou `npm run db:up` na
+    Phase 3);
+  - verificações do junior nunca são finais: o tech-lead reexecuta antes de reportar ao humano.
 
 ## Checkpoints com o humano (obrigatórios quando a implementação for liberada)
 

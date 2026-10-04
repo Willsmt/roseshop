@@ -3,7 +3,7 @@ import "server-only";
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 
-import { decideSignIn } from "./allowlist";
+import { decideSignIn, parseAllowlist } from "./allowlist";
 import { safeCallbackPath } from "./callback-path";
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
@@ -44,11 +44,16 @@ export function createAuthConfig(): NextAuthConfig {
     // O host vem do Worker; não há AUTH_URL fixo por ambiente.
     trustHost: true,
     callbacks: {
+      // Logs só com o código do evento: e-mail e nome nunca vão para o log.
       signIn({ profile }) {
-        return decideSignIn(
+        const raw = process.env.ADMIN_EMAILS;
+        if (parseAllowlist(raw).size === 0) console.warn("auth.allowlist.vazia");
+        const allowed = decideSignIn(
           { email: profile?.email, emailVerified: profile?.email_verified },
-          process.env.ADMIN_EMAILS,
+          raw,
         );
+        if (!allowed) console.warn("auth.signin.recusado");
+        return allowed;
       },
       redirect({ url, baseUrl }) {
         return `${baseUrl}${safeCallbackPath(toPathIfSameOrigin(url, baseUrl))}`;

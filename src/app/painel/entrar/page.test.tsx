@@ -114,3 +114,71 @@ describe("sessão autorizada já ativa (US1-3)", () => {
     expect(redirectMock).toHaveBeenCalledWith("/painel");
   });
 });
+
+describe("recusa: error=AccessDenied sem sessão (US2-1, US2-2, FR-012)", () => {
+  const RECUSA = "Esta conta Google não tem acesso ao painel. Tente entrar com outra conta.";
+
+  it("mostra a recusa e um único primário 'Entrar com outra conta' num form com trocarConta e callbackUrl", async () => {
+    const { container } = await renderPage({
+      error: "AccessDenied",
+      callbackUrl: "/painel/produtos",
+    });
+    expect(screen.getByText(RECUSA)).toBeInTheDocument();
+    const primary = container.querySelectorAll('[data-variant="primary"]');
+    expect(primary).toHaveLength(1);
+    const botao = screen.getByRole("button", { name: "Entrar com outra conta" });
+    expect(botao).toBe(primary[0]);
+    const form = botao.closest("form");
+    expect(form).not.toBeNull();
+    expect(form!.querySelector('input[type=hidden][name=trocarConta][value="1"]')).not.toBeNull();
+    expect(
+      form!.querySelector<HTMLInputElement>("input[type=hidden][name=callbackUrl]")?.value,
+    ).toBe("/painel/produtos");
+  });
+
+  it("callbackUrl externo é sanitizado para /painel", async () => {
+    const { container } = await renderPage({
+      error: "AccessDenied",
+      callbackUrl: "https://evil.com",
+    });
+    expect(
+      container.querySelector<HTMLInputElement>("input[type=hidden][name=callbackUrl]")?.value,
+    ).toBe("/painel");
+  });
+
+  it("não mostra 'Entrar com Google' nem o aviso de falha", async () => {
+    await renderPage({ error: "AccessDenied" });
+    expect(screen.queryByRole("button", { name: "Entrar com Google" })).toBeNull();
+    expect(screen.queryByText(FALHA)).toBeNull();
+  });
+
+  it("não usa text-sm nem text-xs (FR-012)", async () => {
+    const { container } = await renderPage({ error: "AccessDenied" });
+    for (const el of container.querySelectorAll("[class]")) {
+      expect(el.getAttribute("class")).not.toMatch(SMALL);
+    }
+  });
+});
+
+describe("trocarConta só aparece na recusa (US2-2)", () => {
+  it.each([[{}], [{ error: "OAuthCallbackError" }]])(
+    "estado %o não tem input trocarConta",
+    async (sp) => {
+      const { container } = await renderPage(sp);
+      expect(container.querySelector("input[name=trocarConta]")).toBeNull();
+    },
+  );
+});
+
+describe("sem jargão no texto visível (FR-008)", () => {
+  const termos = ["erro", "403", "OAuth", "callback", "allowlist", "AccessDenied"];
+
+  it.each([[{}], [{ error: "OAuthCallbackError" }], [{ error: "AccessDenied" }]])(
+    "estado %o não contém termos técnicos",
+    async (sp) => {
+      const { container } = await renderPage(sp);
+      const texto = (container.textContent ?? "").toLowerCase();
+      for (const t of termos) expect(texto).not.toContain(t.toLowerCase());
+    },
+  );
+});

@@ -87,7 +87,7 @@ pode ser entregue com segurança, porque qualquer conta Google entraria.
 
 - [x] T009 [P] Implementar `parseAllowlist`, `isAllowedEmail` e `decideSignIn` com Zod em `src/lib/auth/allowlist.ts`. São funções puras, **sem** `server-only`, que leem o valor bruto passado como argumento (data-model.md) (tech-lead)
 - [x] T010 [P] Implementar `safeCallbackPath` em `src/lib/auth/callback-path.ts`, pura, sem `server-only` (tech-lead)
-- [x] T011 Implementar a config do Auth.js em `src/lib/auth/config.ts` e a instância em `src/lib/auth/index.ts` (exporta `handlers`, `auth`, `signIn`, `signOut`), ambos começando com `import "server-only"`, conforme T006. Ler `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` de `process.env` em tempo de request (R12). Sem `adapter`. Depende de T009 e T010 (tech-lead)
+- [x] T011 Implementar a config do Auth.js em `src/lib/auth/config.ts` (`createAuthConfig()`, avaliada a cada request), a instância em `src/lib/auth/instance.ts` (exporta `handlers`, `auth`, `signIn`, `signOut`) e o barrel público `src/lib/auth/index.ts`, que reexporta a instância, os guards e as funções puras. Os três começam com `import "server-only"`, conforme T006. A instância fica fora do `index.ts` para que `guard.ts` e `actions.ts` a importem sem ciclo com o barrel (aprovado pelo humano em 2026-10-03). Ler `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` de `process.env` em tempo de request (R12). Sem `adapter`. Depende de T009 e T010 (tech-lead)
 - [x] T012 Criar o route handler `src/app/api/auth/[...nextauth]/route.ts` exportando `GET`/`POST` de `handlers`. Depende de T011 (tech-lead)
 - [x] T013 Implementar `getAdminSession`, `requireAdminPage`, `requireAdminAction` e `UnauthorizedError` em `src/lib/auth/guard.ts`, começando com `import "server-only"`. Todos reverificam a allowlist **atual** a cada chamada. `getAdminSession` nunca redireciona. Depende de T011 (tech-lead)
 - [x] T014 [P] Implementar o `Button` em `src/components/ui/button.tsx` com Tailwind (48px/16px, largura total no celular) (ui-dev)
@@ -108,35 +108,35 @@ DevTools no modo mobile) no `preview`, tocar no botão e chegar a `/painel` vend
 
 ### Testes para US1 (escrever primeiro)
 
-- [ ] T016 [P] [US1] Testes de `loginNoticeFromError` em `src/lib/auth/error-message.test.ts` (test-writer):
+- [x] T016 [P] [US1] Testes de `loginNoticeFromError` em `src/lib/auth/error-message.test.ts` (test-writer):
   - sem código → `null`;
   - `AccessDenied` → `"recusada"`;
   - qualquer outro código ou valor não-string → `"falhou"` (US1-5).
-- [ ] T017 [P] [US1] Testes da action `entrarComGoogle` em `src/lib/auth/actions.test.ts`, com `signIn` mockado (test-writer):
+- [x] T017 [P] [US1] Testes da action `entrarComGoogle` em `src/lib/auth/actions.test.ts`, com `signIn` mockado (test-writer):
   - chama `signIn("google", { redirectTo })` com `redirectTo = safeCallbackPath(callbackUrl)` (US1-4);
   - `callbackUrl` externo vira `/painel`;
   - valida o `FormData` com Zod.
-- [ ] T018 [P] [US1] Testes da tela de entrada em `src/app/painel/entrar/page.test.tsx` (test-writer):
+- [x] T018 [P] [US1] Testes da tela de entrada em `src/app/painel/entrar/page.test.tsx` (test-writer):
   - com `auth()` mockado sem sessão: exatamente um botão `variant="primary"` ("Entrar com Google"), nenhum `input[type=password]`, título "Painel da loja" (US1-2);
   - nenhum elemento com classe `text-sm` ou `text-xs` (FR-012);
   - campo oculto `callbackUrl` já sanitizado;
   - `error=OAuthCallbackError` → texto "Não foi possível entrar agora. Tente de novo em instantes." (US1-5);
   - com sessão autorizada → `redirect` para `safeCallbackPath(callbackUrl)` (US1-3).
-- [ ] T019 [P] [US1] Testes da página inicial do painel em `src/app/painel/(protegido)/page.test.tsx` (test-writer):
+- [x] T019 [P] [US1] Testes da página inicial do painel em `src/app/painel/(protegido)/page.test.tsx` (test-writer):
   - chama `requireAdminPage("/painel")` antes de renderizar;
   - mostra "Olá, {nome}" ou "Olá, {e-mail}" quando não há nome (US1-1);
   - nenhum `text-sm`/`text-xs` (FR-012).
-- [ ] T020 [P] [US1] Testes do layout protegido em `src/app/painel/(protegido)/layout.test.tsx` (test-writer):
+- [x] T020 [P] [US1] Testes do layout protegido em `src/app/painel/(protegido)/layout.test.tsx` (test-writer):
   - chama `getAdminSession()` e **não** chama `redirect`;
   - com sessão autorizada, renderiza a moldura e `children`;
   - com `null`, renderiza só `children`, sem nome, e-mail nem moldura (H1).
 
 ### Implementação para US1
 
-- [ ] T021 [US1] Implementar `loginNoticeFromError` em `src/lib/auth/error-message.ts`, pura, sem `server-only` (tech-lead)
-- [ ] T022 [US1] Implementar a Server Action `entrarComGoogle` em `src/lib/auth/actions.ts` (`"use server"` + `import "server-only"`) e reexportar em `src/lib/auth/index.ts` (tech-lead)
-- [ ] T023 [US1] Implementar `/painel/entrar` em `src/app/painel/entrar/page.tsx`: Server Component, `<form action={entrarComGoogle}>` com `Button`, textos de contracts/auth.md, mobile-first. Fica fora do grupo `(protegido)` (ui-dev)
-- [ ] T024 [US1] Implementar `src/app/painel/(protegido)/layout.tsx` (`getAdminSession()`; moldura só com sessão autorizada; sem redirect) e `src/app/painel/(protegido)/page.tsx` (`requireAdminPage("/painel")` + saudação) (ui-dev)
+- [x] T021 [US1] Implementar `loginNoticeFromError` em `src/lib/auth/error-message.ts`, pura, sem `server-only` (tech-lead)
+- [x] T022 [US1] Implementar a Server Action `entrarComGoogle` em `src/lib/auth/actions.ts` (`"use server"` + `import "server-only"`) e reexportar em `src/lib/auth/index.ts` (tech-lead)
+- [x] T023 [US1] Implementar `/painel/entrar` em `src/app/painel/entrar/page.tsx`: Server Component, `<form action={entrarComGoogle}>` com `Button`, textos de contracts/auth.md, mobile-first. Fica fora do grupo `(protegido)` (ui-dev)
+- [x] T024 [US1] Implementar `src/app/painel/(protegido)/layout.tsx` (`getAdminSession()`; moldura só com sessão autorizada; sem redirect) e `src/app/painel/(protegido)/page.tsx` (`requireAdminPage("/painel")` + saudação) (ui-dev)
 - [ ] T025 [US1] Revisar T023 e T024 contra contracts/auth.md e o princípio V. Rodar `npm run check` e `npm run preview` (via junior, output real). Executar os passos 2 a 4 do quickstart com a conta autorizada (tech-lead + humano para o login real)
 
 **Checkpoint**: US1 funcional e testada.
@@ -277,6 +277,14 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 - [ ] T057 Abrir PR → deploy no dev online pelo CI → executar o quickstart completo no dev com o celular da dona, incluindo o passo 10 e o teste de emergência no dev. Merge só pelo humano (humano)
 
 ---
+
+## Dívidas registradas (fora do escopo da feature)
+
+- **Formatador de código** (decisão do humano, 2026-10-03): o repositório mistura tabs
+  (`src/app/layout.tsx`, `src/app/page.tsx`, `src/components/ui/button.tsx`) e 2 espaços
+  (`src/lib/`), sem formatador configurado. Adotar um formatador em PR próprio, depois desta
+  feature. Repassar ao `doc-sync-onboarding` na T056, para entrar em "Dívidas técnicas" de
+  `docs/architecture.md`.
 
 ## Checkpoints com o humano (obrigatórios quando a implementação for liberada)
 

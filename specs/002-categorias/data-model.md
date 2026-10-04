@@ -37,7 +37,7 @@ que recria coluna e índice.
 ## Relações
 
 - Futuro: `produtos.categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT`
-  (feature 003; FR-011/013). Na 002 não existe tabela de produtos (D4-A): o teste de integração cria uma `produtos` **comum** (não `TEMP`; SQL cru, pelo helper `src/test/db/categorias-fixtures.ts`) com essa FK e a descarta ao fim; `contarProdutosDaCategoria` conta via `to_regclass` + `count(*)` (H3-A). A 1ª task da 003 cria a tabela pelo schema, troca o SQL cru da contagem e remove a fixture.
+  (feature 003; FR-011/013). Na 002 não existe tabela de produtos (D4-A): o teste de integração cria uma `produtos` **comum** (não `TEMP`; SQL cru, pelo helper `src/test/db/categorias-fixtures.ts`) com essa FK e a descarta ao fim; `contarProdutosDaCategoria` conta com um único `SELECT count(*)::int` (H3-A; sem `to_regclass`, pois só roda após `23503`). Fixture sobrada de execução interrompida: `npm run db:reset` + `npm run db:migrate` (local). A 1ª task da 003 cria a tabela pelo schema, troca o SQL cru da contagem e remove a fixture.
 
 ## Regras de validação (Zod, servidor)
 

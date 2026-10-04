@@ -14,14 +14,21 @@ futuro); (2) leitura do painel; (3) Server Actions do painel; (4) camadas intern
 | `CategoriaInvalidaError` | classe (re-export de `erros.ts`) | Para consumidores tratarem a rejeição |
 
 Regras: consumidores guardam **somente `id`**; o barrel não expõe `versao`, não exporta
-criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade verifica (FR-015).
+criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade verifica (FR-015):
+`@/lib/db/categorias` (funções de escrita da camada db) só é importado em
+`src/lib/categorias/` e `src/lib/db/`; `@/lib/categorias/actions` só em `src/app/painel/**`
+(proibido em `src/lib/ai/`, no barrel e no resto de `src/`).
 
 ## 2. Leitura do painel — `@/lib/categorias/painel` (H4-A)
 
 | Função | Retorno | Comportamento |
 |--------|---------|---------------|
 | `listarCategoriasDoPainel()` | `{ id: number; nome: string; versao: number }[]` | Mesma ordem de `listarCategorias()` |
-| `obterCategoriaDoPainel(id)` | `{ id; nome; versao } \| null` | `null` se não existe ou se o id é inválido (Zod) |
+| `obterCategoriaDoPainel(id: string)` | `{ id; nome; versao } \| null` | `null` se não existe ou se o id é inválido (Zod) |
+
+O `[id]` chega da URL como **string**; o schema o coage para inteiro positivo
+(`z.coerce.number().int().positive()`): `"3"` ⇒ `3`; `"0"`, negativo e não numérico
+(`"abc"`) ⇒ `null`.
 
 Regras: `versao` é detalhe de concorrência (FR-019) e só serve aos formulários do painel.
 Importável apenas por `src/app/painel/**` e `src/lib/categorias/**` (conformidade + ESLint).
@@ -96,15 +103,16 @@ O texto do banco nunca chega ao usuário.
 - `produtos.categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT`.
 - Cadastro/edição valida o valor com `exigirCategoriaValida(id)`; IA sugere apenas
   entre `listarCategorias()` e o resultado passa pela mesma validação.
-- `contarProdutosDaCategoria(db, categoriaId)` (H3-A) já conta de verdade na 002:
-  `to_regclass('public.produtos')`; se a tabela existir, `count(*)` em SQL cru por
-  `categoria_id`; senão `0`. Na 002 o mecanismo (FK + contagem + mensagem) é provado por
+- `contarProdutosDaCategoria(db, categoriaId)` (H3-A) já conta de verdade na 002, com um
+  único `SELECT count(*)::int FROM produtos WHERE categoria_id = $1` em SQL cru. Só é
+  chamada após `23503`, que já implica a existência de `produtos`; por isso não verifica a
+  existência da tabela. Contagem ≤ 0 ou erro na contagem ⇒ `falha_geral`. Na 002 o mecanismo (FK + contagem + mensagem) é provado por
   uma tabela `produtos` **comum** criada e descartada pelo próprio teste de integração
   (`criarFixtureProdutos`/`descartarFixtureProdutos` em `src/test/db/categorias-fixtures.ts`).
 - **Checklist da primeira task da 003**:
   1. Criar `produtos` pelo schema Drizzle com a FK acima.
-  2. Trocar o SQL cru de `contarProdutosDaCategoria` pela referência ao schema e remover o
-     `to_regclass`.
+  2. Trocar o SQL cru de `contarProdutosDaCategoria` pela referência ao schema Drizzle de
+     `produtos` (mesmo comportamento: um único `count(*)`).
   3. Remover `criarFixtureProdutos`/`descartarFixtureProdutos` do helper (a criação da
      fixture falharia com a tabela real, de propósito) e passar o teste de bloqueio por
      produtos a usar a tabela real.

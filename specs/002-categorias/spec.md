@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-04
 
-**Status**: Draft (clarify concluído; aguardando plano)
+**Status**: Draft (clarify concluído; plano e tasks gerados e revisados após duas análises; aguardando implementação)
 
 **Input**: User description: "Categorias do catálogo da Roseshop. A Roseshop é um catálogo de revenda que a dona vende pelo WhatsApp. Não há busca: o filtro por categoria é o único meio de navegação do catálogo público, então as categorias organizam os produtos e alimentam esse filtro. A lista de categorias é fixa e controlada pelas administradoras (três pessoas, todas com o mesmo poder, já autenticadas pela feature 001). Pelo painel, elas podem ver a lista, criar, renomear e remover categorias. Lista inicial, que deve existir desde o primeiro deploy: Bolsas, Guarda-chuvas, Tupperware, Panos de prato, Meias. Não pode haver duplicidade: dois nomes são iguais quando diferem só em maiúsculas/minúsculas, acentos ou espaços extras, tanto ao criar quanto ao renomear. Uma feature futura de IA vai sugerir a categoria de um produto a partir das fotos, escolhendo exclusivamente dentro dessa lista e nunca criando categoria; a lista é a fonte única de verdade para isso. O público do painel é de administradoras com pouca familiaridade com tecnologia, usando o celular: mensagens de erro claras, em português, sem jargão. Fora de escopo: cadastro de produtos (feature 003), catálogo público e filtro visível ao visitante, IA de preenchimento e identidade visual (a UI do painel é funcional e simples, já que o ADR-005 está pendente)."
 
@@ -219,7 +219,7 @@ para criar categoria fora da ação das administradoras no painel.
 ### Measurable Outcomes
 
 - **SC-001**: Em 100% dos ambientes novos, a lista contém as cinco categorias iniciais logo após o primeiro deploy, sem ação manual.
-- **SC-002**: A administradora cria, renomeia ou remove uma categoria em no máximo 3 toques depois de abrir a área de categorias (sem contar a digitação do nome nem a confirmação de remoção) e em menos de 30 segundos, com cada ação em tela própria (criar: "Nova categoria" e "Salvar"; renomear: "Renomear" e "Salvar"; remover: "Remover" e a confirmação). Verificado manualmente no celular, com o resultado anotado no PR.
+- **SC-002**: A administradora cria, renomeia ou remove uma categoria em no máximo 3 toques depois de abrir a área de categorias (sem contar a digitação do nome) e em menos de 30 segundos, com cada ação em tela própria. Hoje cada ação leva 2 toques: criar = "Nova categoria" + "Salvar"; renomear = "Renomear" + "Salvar"; remover = "Remover" (na lista) + "Remover" (na tela de confirmação). Verificado manualmente no celular, com o resultado anotado no PR.
 - **SC-003**: 100% das tentativas de criar ou renomear para um nome equivalente a outro existente (maiúsculas, acentos ou espaços extras) são recusadas, com mensagem clara.
 - **SC-004**: 100% das páginas e ações de categorias recusam acesso sem sessão autorizada (verificado por testes automatizados).
 - **SC-005**: 100% das mensagens de erro e confirmação desta feature estão em português e não contêm termos técnicos (verificado por revisão da lista de mensagens).

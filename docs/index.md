@@ -7,10 +7,11 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 
 > Estado atual do projeto: **Fase 0 concluída** (fundação de infraestrutura:
 > scaffold OpenNext, banco local, testes, hooks, CI, ambientes dev e produção no
-> ar, branch `main` protegido). Nenhuma feature de produto (catálogo, sacola,
-> login, painel, upload de imagem, IA) foi implementada; o próximo passo são as
-> features, via Spec Kit. Por isso este índice é deliberadamente curto: só
-> existem documentos para o que já tem código real por trás.
+> ar, branch `main` protegido) e **feature 001 (autenticação das
+> administradoras) implementada**: login com Google, allowlist e painel
+> protegido, sem middleware. Catálogo, sacola, upload de imagem e IA ainda não
+> existem; por isso este índice é deliberadamente curto: só existem documentos
+> para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
 
@@ -24,12 +25,15 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
    instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`,
-   `allowScripts`), bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
+   `allowScripts`), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
+4. **[features/F01-autenticacao.md](./features/F01-autenticacao.md)** — login
+   das administradoras: rotas, como a proteção funciona sem middleware (guards e
+   teste de conformidade), módulos de `src/lib/auth/` e pegadinhas.
 
 ## O que ainda não existe aqui
 
-Não há `docs/database.md` (Drizzle configurado, mas o schema está vazio: sem tabelas para documentar) nem `docs/features/`
-(nenhuma feature implementada; as specs agora vivem em `specs/NNN-nome/`,
-ainda sem nenhuma criada). Esses documentos
-devem ser criados pelo `doc-sync-onboarding` na primeira sync que tocar
-schema de banco ou fechar uma feature, respectivamente — não antes.
+Não há `docs/database.md`: o schema Drizzle continua vazio (a sessão de login é
+JWT, sem tabelas), então não há tabelas para documentar. Esse documento deve ser
+criado pelo `doc-sync-onboarding` na primeira sync que tocar schema de banco.
+Também só existe doc de feature para a F01; as demais serão criadas ao serem
+fechadas.

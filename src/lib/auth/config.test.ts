@@ -134,3 +134,65 @@ describe("callbacks jwt e session expõem só email e name (FR-013)", () => {
     expect(out.user).toEqual({ email: "ana@x.com", name: null });
   });
 });
+
+describe("callback signIn: log de recusa sem dados pessoais (US2-5, FR-015)", () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+  const signIn = (profile: unknown) => call("signIn", { profile });
+  const perfil = (extra: Record<string, unknown> = {}) => ({
+    email: "carla@x.com",
+    email_verified: true,
+    name: "Carla Souza",
+    ...extra,
+  });
+  const allArgs = () => warn.mock.calls.flat().map((a: unknown) => String(a));
+  const expectSemDadosPessoais = () => {
+    for (const c of warn.mock.calls) expect(c).toHaveLength(1);
+    const texto = allArgs().join(" ").toLowerCase();
+    expect(texto).not.toContain("carla@x.com");
+    expect(texto).not.toContain("carla");
+    expect(texto).not.toContain("souza");
+  };
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  it("e-mail fora da lista: false, loga auth.signin.recusado sem dados pessoais", async () => {
+    expect(await signIn(perfil())).toBe(false);
+    expect(warn).toHaveBeenCalledWith("auth.signin.recusado");
+    expectSemDadosPessoais();
+  });
+
+  it("e-mail não verificado: false, loga auth.signin.recusado sem dados pessoais", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "carla@x.com");
+    expect(await signIn(perfil({ email_verified: false }))).toBe(false);
+    expect(warn).toHaveBeenCalledWith("auth.signin.recusado");
+    expectSemDadosPessoais();
+  });
+
+  it("e-mail ausente: false, loga auth.signin.recusado sem dados pessoais", async () => {
+    expect(await signIn(perfil({ email: undefined }))).toBe(false);
+    expect(warn).toHaveBeenCalledWith("auth.signin.recusado");
+    expectSemDadosPessoais();
+  });
+
+  it.each([[""], ["não-é-email, ,"]])(
+    "lista vazia ou só inválida (%j): false, loga auth.allowlist.vazia e auth.signin.recusado (FR-014)",
+    async (raw) => {
+      vi.stubEnv("ADMIN_EMAILS", raw);
+      expect(await signIn(perfil())).toBe(false);
+      expect(warn).toHaveBeenCalledWith("auth.allowlist.vazia");
+      expect(warn).toHaveBeenCalledWith("auth.signin.recusado");
+      expectSemDadosPessoais();
+    },
+  );
+
+  it("aceite não loga nada", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "carla@x.com");
+    expect(await signIn(perfil())).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+  });
+});

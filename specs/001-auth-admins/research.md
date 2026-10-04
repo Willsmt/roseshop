@@ -125,6 +125,24 @@ Opções:
   dois casos: "Não foi possível entrar com essa conta. Tente de novo ou use outra conta.",
   com o botão "Entrar com outra conta". Se os códigos forem diferentes, valem as duas
   mensagens acima. O resultado da verificação fica registrado aqui antes do commit.
+- **Resultado verificado (T032, 2026-10-04, `preview` local, login real pelo humano)**:
+  - Cancelar na tela do Google: o Google volta para `/api/auth/callback/google?error=access_denied`
+    **sem o parâmetro `iss`**. O `oauth4webapi` falha na validação do `iss` antes de
+    reconhecer o erro do provedor, o `@auth/core` registra `CallbackRouteError` (tipo que não
+    é seguro para o cliente) e redireciona para **`/painel/entrar?error=Configuration`**. A
+    previsão pela leitura do código (`OAuthCallbackError`) não se confirmou.
+  - Conta fora da lista: **`/painel/entrar?error=AccessDenied`**.
+  - Os códigos são **diferentes**. Por isso valem as duas mensagens (recusa e falha), e a
+    mensagem única da decisão do humano não se aplica. `loginNoticeFromError` já trata qualquer
+    código diferente de `AccessDenied` como `"falhou"`, então nenhum código, teste ou texto mudou.
+  - Consequência: no log do Worker, um cancelamento aparece como `[auth][error]
+    CallbackRouteError` com a causa `response parameter "iss" (issuer) missing`. É ruído
+    esperado, não falha de configuração. Uma falha real de configuração também chega à tela
+    como `error=Configuration`, com a mesma mensagem genérica.
+- **Log de recusa verificado (T033, mesma sessão)**: o callback `signIn` registrou
+  `["auth.signin.recusado"]` (um argumento só). O `@auth/core` registrou
+  `[auth][error] AccessDenied: AccessDenied`. Nenhum log do dia continha `@`, ou seja, não
+  há e-mail no log, confirmado por consulta SQL na observabilidade local do `wrangler dev`.
 
 ## R7. Garantia de "toda página e ação protegida" (SC-003)
 

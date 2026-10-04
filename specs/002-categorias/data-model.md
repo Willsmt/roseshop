@@ -37,7 +37,7 @@ que recria coluna e índice.
 ## Relações
 
 - Futuro: `produtos.categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT`
-  (feature 003; FR-011/013). Na 002 não existe tabela de produtos (D4-A): o teste de integração cria uma `produtos` **comum** (não `TEMP`; SQL cru, pelo helper `src/test/db/categorias-fixtures.ts`) com essa FK e a descarta ao fim; `contarProdutosDaCategoria` conta com um único `SELECT count(*)::int` (H3-A; sem `to_regclass`, pois só roda após `23503`). Fixture sobrada de execução interrompida: `npm run db:reset` + `npm run db:migrate` (local). A 1ª task da 003 cria a tabela pelo schema, troca o SQL cru da contagem e remove a fixture.
+  (feature 003; FR-011/013). Na 002 não existe tabela de produtos (D4-A): o teste de integração cria uma `produtos` **comum** (não `TEMP`; SQL cru, pelo helper `src/test/db/categorias-fixtures.ts`) com essa FK e a descarta ao fim; `contarProdutosDaCategoria` conta com um único `SELECT count(*)::int` (H3-A; sem `to_regclass`, pois só roda após `23001`). Fixture sobrada de execução interrompida: `npm run db:reset` + `npm run db:migrate` (local). A 1ª task da 003 cria a tabela pelo schema, troca o SQL cru da contagem e remove a fixture.
 
 ## Regras de validação (Zod, servidor)
 
@@ -52,4 +52,4 @@ que recria coluna e índice.
 |----------|--------------------------|--------|---------|
 | Criar | `chave` (gerada) inédita | nova linha, `versao = 1` | `23505` ⇒ "Já existe uma categoria chamada X." |
 | Renomear | linha existe com a `versao` informada; nova `chave` inédita **ou** é a da própria linha | `nome`, `chave` novos, `versao + 1` | duplicado; 0 linhas ⇒ "alterada por outra pessoa" / "não existe mais" |
-| Remover | linha existe com a `versao`; sem produtos (FK); restar ≥ 1 categoria (batch com lock, D3-B) | linha apagada | 0 linhas; `23503` ⇒ "tem N produtos"; última ⇒ "precisa ter pelo menos uma" |
+| Remover | linha existe com a `versao`; sem produtos (FK); restar ≥ 1 categoria (batch com lock, D3-B) | linha apagada | 0 linhas; `23001` ⇒ "tem N produtos"; última ⇒ "precisa ter pelo menos uma" |

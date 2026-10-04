@@ -21,7 +21,7 @@ Fatos verificados em 2026-10-04 contra o ambiente local (Postgres 18.6 musl em D
 | Identidade | `id integer generated always as identity`; referências por id | FR-009, US5-4; renomear não quebra vínculos | uuid: sem ganho aqui; slug: é assunto do catálogo público |
 | Concorrência na mesma categoria | coluna `versao` + `WHERE id AND versao` | FR-019 exige recusar a 2ª alteração; funciona com HTTP stateless; recusa também formulário "velho" | "última gravação vence" (vetado na clarify); comparar por nome (sofre ABA) |
 | Ordenação | `ORDER BY chave COLLATE "C", id` | independe de locale; uma query única | `Intl.Collator` no Worker (precisa de todos consumidores ordenarem); collation ICU (varia por ambiente) |
-| Mapeamento de erro | `23505` ⇒ nome repetido (relê o nome existente p/ a mensagem); `23503` ⇒ bloqueio por produtos; 0 linhas ⇒ "mudou/não existe"; resto ⇒ "não foi possível salvar" | mensagens da spec | expor texto do banco (jargão e vazamento de host/usuário) |
+| Mapeamento de erro | `23505` ⇒ nome repetido (relê o nome existente p/ a mensagem); `23001` ⇒ bloqueio por produtos; 0 linhas ⇒ "mudou/não existe"; resto ⇒ "não foi possível salvar" | mensagens da spec | expor texto do banco (jargão e vazamento de host/usuário) |
 | Acesso único | barrel só leitura + escrita só em actions | FR-014/015; mesmo padrão do barrel de auth | exportar tudo e confiar em convenção |
 | Validação do nome | Zod no servidor: NFC, trim, colapso de espaços, 2–40, `\p{L}`/`\p{N}`/espaço/hífen (letras e números de qualquer alfabeto; clarify pós-análise); `CHECK` no banco para tamanho e espaços (defesa em profundidade) | constitution III.3 | validar só na UI |
 | Erros do driver | verificar em teste de integração se o código SQLSTATE chega em `error.cause` (Drizzle 0.45 pode embrulhar) | evita mapear no escuro | — |
@@ -59,7 +59,7 @@ Efeitos práticos das escolhas, registrados para as tasks:
   app passar a usar a string pooled, o probe é repetido com ela (ADR-008).
 - D4-A: a fixture `produtos` é tabela comum (não `TEMP`). Refinamento da análise (H3-A):
   `contarProdutosDaCategoria` já conta de verdade, com um único `SELECT count(*)::int`
-  (segunda análise, N10: sem `to_regclass`, pois só roda após `23503`). A 1ª task
+  (segunda análise, N10: sem `to_regclass`, pois só roda após `23001`). A 1ª task
   da 003 cria `produtos` pelo schema, troca o SQL cru da contagem e remove a fixture do helper.
 
 ## Opções avaliadas (histórico)
@@ -108,7 +108,7 @@ driver atual.
 
 | Opção | Como | Prós | Contras |
 |-------|------|------|---------|
-| **A. Sem tabela na 002; contrato fixo** | 002 entrega remoção + tradução de `23503` + função de contagem com assinatura fixa (retorna 0 até a 003 implementá-la); teste de integração prova o mecanismo com tabela temporária que referencia `categorias` com `ON DELETE RESTRICT` | Não invade o schema da 003; mecanismo real testado no banco | A mensagem "N produtos" só fica viva de ponta a ponta na 003; a 002 depende de a 003 criar a FK corretamente (item no contrato e no checklist da 003) |
+| **A. Sem tabela na 002; contrato fixo** | 002 entrega remoção + tradução de `23001` + função de contagem com assinatura fixa (retorna 0 até a 003 implementá-la); teste de integração prova o mecanismo com tabela temporária que referencia `categorias` com `ON DELETE RESTRICT` | Não invade o schema da 003; mecanismo real testado no banco | A mensagem "N produtos" só fica viva de ponta a ponta na 003; a 002 depende de a 003 criar a FK corretamente (item no contrato e no checklist da 003) |
 | **B. Tabela mínima `produtos` na 002** (`id`, `categoria_id` FK) | 003 estende | FR-011 completo e testável na 002 | Tabela fantasma que a 003 precisa reconciliar (expand/contract do ADR-006); vaza escopo da 003 |
 | **C. Porta injetável** | `remover(id, { contarProdutos })` | Teste unitário simples | Não prova o banco; um consumidor que esqueça de injetar quebra a regra; troca regra de banco por regra de convenção |
 

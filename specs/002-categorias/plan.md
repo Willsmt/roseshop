@@ -27,7 +27,7 @@ CLAUDE.md, ADR-002 (banco/driver), ADR-003 (auth), ADR-006 (ambientes/entrega),
 | N1 | O probe no Neon dev usa o mesmo `secrets.DATABASE_URL` do environment `dev` que a migration e o app já usam (string **direta**, sem pooler); nenhum secret novo. Se o app passar a usar a string pooled, o probe é repetido (ADR-008) |
 | N2 | "Escrita" na conformidade = funções de `@/lib/db/categorias`; `@/lib/categorias/actions` só em `src/app/painel/**` |
 | N3/N4 | Probe ganha o caso (c) `transaction_isolation = read committed`; polling em `pg_locks` com prazo; A devolve `clock_timestamp()`; `pg_sleep` maior no CI |
-| N10 | `contarProdutosDaCategoria` sem `to_regclass`: um único `SELECT count(*)::int` (só roda após `23503`) |
+| N10 | `contarProdutosDaCategoria` sem `to_regclass`: um único `SELECT count(*)::int` (só roda após `23001`) |
 | N17 | PR em rascunho aberto no início da SF6, com SF1–SF5 fechadas; o 1º run congela a migration `0000` no Neon dev |
 
 ## Summary
@@ -171,7 +171,7 @@ interativo. Nível de isolamento: READ COMMITTED (padrão).
 | FR-005 criar | `INSERT (nome)`; `chave` é gerada pelo banco; violação do `UNIQUE(chave)` (`23505`) vira mensagem de duplicado, com lookup via `categoria_chave`; corrida de dois criadores: um vence, o outro recebe `23505` | **[DETERMINADO]** (D2-B) |
 | FR-005/006 renomear | `UPDATE … SET nome = $3, versao = versao + 1, atualizado_em = now()` — `chave` **não** entra no `SET` (coluna gerada, recalculada pelo banco); o índice único compara com as outras linhas, então trocar só caixa/acento da própria categoria é aceito | **[DETERMINADO]** |
 | FR-019 mesma categoria | Concorrência otimista: coluna `versao`; `UPDATE/DELETE … WHERE id = $1 AND versao = $2 … RETURNING`; 0 linhas ⇒ "alterada por outra pessoa / não existe mais". O formulário carrega a `versao` lida com a lista. Cobre também rename×delete (linha travada, reavaliação do `WHERE`) | **[DETERMINADO]** |
-| FR-011 produtos | FK `produtos.categoria_id → categorias.id ON DELETE RESTRICT` (criada pela 003); o banco recusa o `DELETE` (`23503`), inclusive contra insert concorrente de produto (lock `FOR KEY SHARE`). A contagem da mensagem é lida após a recusa | **[DETERMINADO]** (mecanismo; contrato com a 003 em D4-A) |
+| FR-011 produtos | FK `produtos.categoria_id → categorias.id ON DELETE RESTRICT` (criada pela 003); o banco recusa o `DELETE` (`23001`, restrict_violation; `23503` seria de `NO ACTION`), inclusive contra insert concorrente de produto (lock `FOR KEY SHARE`). A contagem da mensagem é lida após a recusa | **[DETERMINADO]** (mecanismo; contrato com a 003 em D4-A) |
 | FR-020 mínimo 1, inclusive remoções simultâneas | Um `DELETE … WHERE (select count(*)) > 1` isolado **não basta**: dois deletes concorrentes enxergam o mesmo snapshot (2 linhas) e ambos passam. **Decisão D3-B**: `db.batch([ SELECT pg_advisory_xact_lock(k), DELETE … WHERE id = $1 AND versao = $2 AND (SELECT count(*) FROM categorias) > 1 RETURNING id ])`. Batch = uma transação READ COMMITTED; o lock serializa e o 2º statement toma snapshot novo depois do lock. 0 linhas ⇒ leitura posterior só para escolher o resultado (`ausente` / `versao_diferente` / `ultima`). Pré-requisito: probe determinístico provando que o batch roda numa única transação, em READ COMMITTED, com o lock mantido até o fim do batch, no proxy local (`test:int`) e no Neon dev (passo de CI) | **[DETERMINADO]** (D3-B; ADR-008) |
 
 Consequência de D3-B (aceita, registrada no ADR-008): FR-020 vale para quem usar a
@@ -181,11 +181,11 @@ não há trigger. O lock é de transação (`xact`), compatível com o pooler do
 ### 5. Bloqueio "N produtos" sem tabela de produtos (FR-011) — **[DETERMINADO: D4-A]**
 
 A 002 **não** cria `produtos`. A garantia em banco é a FK da 003 (`ON DELETE
-RESTRICT`). A 002 entrega o fluxo de remoção que traduz `23503` em mensagem com
+RESTRICT`). A 002 entrega o fluxo de remoção que traduz `23001` em mensagem com
 contagem, atrás de `contarProdutosDaCategoria(db, categoriaId)`, que **já conta de
 verdade (H3-A)**: um único `SELECT count(*)::int FROM produtos WHERE categoria_id = $1`
-em SQL cru (N10: sem `to_regclass`; só é chamada após `23503`, que já implica a existência
-de `produtos`). Contagem ≤ 0 após `23503` ou erro na contagem ⇒ `falha_geral`. O
+em SQL cru (N10: sem `to_regclass`; só é chamada após `23001`, que já implica a existência
+de `produtos`). Contagem ≤ 0 após `23001` ou erro na contagem ⇒ `falha_geral`. O
 mecanismo é provado por **teste de integração** que cria uma tabela `produtos` **comum**
 (não `TEMP`: o Postgres recusa FK de temp para tabela permanente, e no neon-http cada
 statement é uma sessão nova) com `categoria_id integer NOT NULL REFERENCES categorias(id)
@@ -274,7 +274,7 @@ src/lib/db/
 ├── categorias.ts              # queries/escritas SQL (recebem db; resultado discriminado) [protegido]
 ├── contexto.ts                # dbDoContexto(): getCloudflareContext → createDb
 ├── locks.ts                   # registro de chaves de lock advisory
-├── erros-pg.ts                # codigoSqlstate(error): error.code ou error.cause.code
+├── erros-pg.ts                # codigoSqlstate(error): error.cause.code ou error.code só se NeonDbError (batch)
 └── migrations/                # 1ª migration: drizzle-kit generate + edição à mão (função, tabela, seed; D1-A)
 src/lib/categorias/            # novo módulo (⇒ doc-sync)
 ├── index.ts                   # barrel SOMENTE LEITURA (consumidores 003/IA)

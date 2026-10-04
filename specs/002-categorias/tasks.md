@@ -152,28 +152,46 @@ tradução em `erros.ts` e Server Actions `criarCategoria`/`renomearCategoria`
 
 ## SF4 — Remover com mínimo de 1 (US4)
 
-**Objetivo**: remoção com confirmação delegada à UI, bloqueio por produtos (FK `23503`) com
+**Objetivo**: remoção com confirmação delegada à UI, bloqueio por produtos (FK `23001`) com
 contagem real (H3-A) e mínimo de 1 categoria sob concorrência via `db.batch` +
 `pg_advisory_xact_lock` (D3-B, ADR-008, FR-010, FR-011, FR-019, FR-020). Depende de SF3 e do
 probe T005 verde (T012).
 
+**Decisões do humano (2026-10-04, abertura da SF4)**:
+1. **Sem log em `traduzirExcecao`** (recusado): a tradução de exceção continua sem efeito
+   colateral; nenhum dado do erro sai da função.
+2. **Forma do erro no `db.batch` (opção A)**: observado na SF4 que o erro do `db.batch` no
+   neon-http chega como `NeonDbError` **sem embrulho** (SQLSTATE em `error.code`, sem `cause`),
+   enquanto o statement isolado chega como `DrizzleQueryError` com o SQLSTATE em
+   `error.cause.code`. `codigoSqlstate` passa a ler `error.cause.code` **ou** `error.code`
+   somente quando `error instanceof NeonDbError` (nunca por `name`); `code` no topo de qualquer
+   outro erro continua ignorado. Emenda a decisão 3 da SF3 (contrato §4, ADR-008). Afeta T068,
+   T069, T046.
+3. **SQLSTATE do bloqueio por produtos é `23001` (opção X)**: a FK `ON DELETE RESTRICT`
+   produz `23001` (restrict_violation); `23503` só sai de `NO ACTION` (confirmado no psql,
+   PG 18.6). Só `23001` é tratado; contrato §4/§5, ADR-008, plan, research e data-model
+   corrigidos. Afeta T068, T046, T047.
+
 ### Testes primeiro (Red)
 
-- [ ] T041 [test-writer] Em `src/lib/db/categorias.remocao.int.test.ts` (reseta via T001): `remover(db, sessao, id, versao)` com `id` + `versao` corretos apaga a linha (`{ tipo: "removido" }`); `versao` velha ⇒ `versao_diferente`; id ausente ⇒ `ausente`; id e versão batem mas só resta 1 ⇒ `ultima` (leitura posterior escolhe o resultado).
-- [ ] T042 [test-writer] Em `src/lib/db/categorias.produtos-fixture.int.test.ts` (D4-A, H3-A, SC-009): `beforeAll` chama `criarFixtureProdutos` (T001; tabela **comum**; se falhar por `produtos` sobrada de execução interrompida, recuperar com `npm run db:reset` + `npm run db:migrate`, ver T001); com 3 produtos vinculados, `contarProdutosDaCategoria` devolve `3` e `remover` ⇒ `{ tipo: "tem_produtos", quantidade: 3 }` sem apagar nada; com 1 produto ⇒ `quantidade: 1`; sem produtos remove; `afterAll` chama `descartarFixtureProdutos` **antes** de qualquer `resetCategorias` (a FK bloquearia o `TRUNCATE`).
-- [ ] T043 [test-writer] Em `src/lib/db/categorias.concorrencia-remocao.int.test.ts` (SC-009, FR-020, FR-019; `Promise.all` no driver HTTP/proxy local): com 2 categorias restantes, duas remoções simultâneas de ids diferentes ⇒ exatamente 1 `removido` e 1 `ultima`, e a tabela termina com 1 linha; remover e renomear a mesma categoria simultaneamente ⇒ 1 vence, outro `versao_diferente`/`ausente`; repetir o cenário várias vezes (ex.: 20 rodadas) para expor corrida. Complementa o probe determinístico T005; não o substitui.
-- [ ] T044 [P] [test-writer] Em `src/lib/categorias/actions.remocao.test.ts` (unitário, dados mockados): `removerCategoria` sem sessão ⇒ `UnauthorizedError`; cada resultado discriminado traduzido conforme `erros.ts`; entrada `{ id, versao }` validada.
-- [ ] T045 [test-writer] Confirmar Red de T041–T044 (output real).
+- [x] T041 [test-writer] Em `src/lib/db/categorias.remocao.int.test.ts` (reseta via T001): `remover(db, sessao, id, versao)` com `id` + `versao` corretos apaga a linha (`{ tipo: "removido" }`); `versao` velha ⇒ `versao_diferente`; id ausente ⇒ `ausente`; id e versão batem mas só resta 1 ⇒ `ultima` (leitura posterior escolhe o resultado).
+- [x] T042 [test-writer] Em `src/lib/db/categorias.produtos-fixture.int.test.ts` (D4-A, H3-A, SC-009): `beforeAll` chama `criarFixtureProdutos` (T001; tabela **comum**; se falhar por `produtos` sobrada de execução interrompida, recuperar com `npm run db:reset` + `npm run db:migrate`, ver T001); com 3 produtos vinculados, `contarProdutosDaCategoria` devolve `3` e `remover` ⇒ `{ tipo: "tem_produtos", quantidade: 3 }` sem apagar nada; com 1 produto ⇒ `quantidade: 1`; sem produtos remove; `afterAll` chama `descartarFixtureProdutos` **antes** de qualquer `resetCategorias` (a FK bloquearia o `TRUNCATE`).
+- [x] T043 [test-writer] Em `src/lib/db/categorias.concorrencia-remocao.int.test.ts` (SC-009, FR-020, FR-019; `Promise.all` no driver HTTP/proxy local): com 2 categorias restantes, duas remoções simultâneas de ids diferentes ⇒ exatamente 1 `removido` e 1 `ultima`, e a tabela termina com 1 linha; remover e renomear a mesma categoria simultaneamente ⇒ 1 vence, outro `versao_diferente`/`ausente`; repetir o cenário várias vezes (ex.: 20 rodadas) para expor corrida. Complementa o probe determinístico T005; não o substitui.
+- [x] T044 [P] [test-writer] Em `src/lib/categorias/actions.remocao.test.ts` (unitário, dados mockados): `removerCategoria` sem sessão ⇒ `UnauthorizedError`; cada resultado discriminado traduzido conforme `erros.ts`; entrada `{ id, versao }` validada.
+- [x] T045 [test-writer] Confirmar Red de T041–T044 (output real).
+- [x] T068 [test-writer] **(decisões 2 e 3)** Atualizar `src/lib/db/erros-pg.test.ts`: `codigoSqlstate` lê de `error.cause.code` (forma `DrizzleQueryError` → `NeonDbError`, statement isolado); lê `error.code` do topo quando o erro é `NeonDbError` (instância real exportada por `@neondatabase/serverless`; forma do `db.batch`); continua ignorando `code` no topo de `Error` comum e de objeto com `name: "NeonDbError"` que não é instância; casos com `23001`. Corrigir o comentário `23503` → `23001` em `src/lib/db/categorias.produtos-fixture.int.test.ts`. Confirmar Red (output real).
 
 ### Implementação
 
-- [ ] T046 [tech-lead] Em `src/lib/db/locks.ts`, registrar `LOCK_REMOCAO_CATEGORIAS`; em `src/lib/db/categorias.ts`: `remover(db, sessao, id, versao)` com **`db.batch([ SELECT pg_advisory_xact_lock(LOCK_REMOCAO_CATEGORIAS), DELETE FROM categorias WHERE id = $1 AND versao = $2 AND (SELECT count(*) FROM categorias) > 1 RETURNING id ])`**; 0 linhas ⇒ leitura posterior para devolver `ausente` / `versao_diferente` / `ultima`; `23503` ⇒ `contarProdutosDaCategoria` e `{ tipo: "tem_produtos", quantidade }`; nenhum outro caminho de `DELETE` em `categorias` (FR-020).
-- [ ] T047 [tech-lead] Em `src/lib/db/categorias.ts`: `contarProdutosDaCategoria(db, categoriaId)` (H3-A, contrato §5): um único statement `SELECT count(*)::int FROM produtos WHERE categoria_id = $1` (SQL cru). Só é chamada após `23503`, que já implica a existência de `produtos`; erro aqui propaga e vira `falha_geral` na tradução. Comentário: a 003 troca o SQL cru pela referência ao schema Drizzle de `produtos`.
-- [ ] T048 [tech-lead] Em `src/lib/categorias/actions.ts`: `removerCategoria({ id, versao })` com `requireAdminAction()` primeiro, Zod, `dbDoContexto()`, tradução por `erros.ts`, retorno tipado; a confirmação é da UI (tela própria, SF5).
+- [x] T069 [tech-lead] **(decisão 2)** Ajustar `codigoSqlstate` em `src/lib/db/erros-pg.ts`: `error.cause.code` ou, somente se `error instanceof NeonDbError`, `error.code`; qualquer outro `code` no topo ignorado. Antes de T046.
+
+- [x] T046 [tech-lead] Em `src/lib/db/locks.ts`, registrar `LOCK_REMOCAO_CATEGORIAS`; em `src/lib/db/categorias.ts`: `remover(db, sessao, id, versao)` com **`db.batch([ SELECT pg_advisory_xact_lock(LOCK_REMOCAO_CATEGORIAS), DELETE FROM categorias WHERE id = $1 AND versao = $2 AND (SELECT count(*) FROM categorias) > 1 RETURNING id ])`**; 0 linhas ⇒ leitura posterior para devolver `ausente` / `versao_diferente` / `ultima`; `23001` (via `codigoSqlstate`, decisão 2) ⇒ `contarProdutosDaCategoria` e `{ tipo: "tem_produtos", quantidade }`; nenhum outro caminho de `DELETE` em `categorias` (FR-020).
+- [x] T047 [tech-lead] Em `src/lib/db/categorias.ts`: `contarProdutosDaCategoria(db, categoriaId)` (H3-A, contrato §5): um único statement `SELECT count(*)::int FROM produtos WHERE categoria_id = $1` (SQL cru). Só é chamada após `23001`, que já implica a existência de `produtos`; erro aqui propaga e vira `falha_geral` na tradução. Comentário: a 003 troca o SQL cru pela referência ao schema Drizzle de `produtos`.
+- [x] T048 [tech-lead] Em `src/lib/categorias/actions.ts`: `removerCategoria({ id, versao })` com `requireAdminAction()` primeiro, Zod, `dbDoContexto()`, tradução por `erros.ts`, retorno tipado; a confirmação é da UI (tela própria, SF5).
 
 ### Fechamento SF4
 
-- [ ] T049 [junior] `npm run check` + `npm run test:int` (output real), incluindo T043 repetido.
+- [x] T049 [junior] `npm run check` + `npm run test:int` (output real), incluindo T043 repetido.
 
 **Commit sugerido (SF4)**: `feat(categorias): adiciona remoção com bloqueio por produtos e mínimo de uma categoria`
 
@@ -265,7 +283,7 @@ e `docs(readme): ...` (T066) em commit próprio.
 - Ordem: SF1 → SF2 → SF3 → SF4 → SF5 → abertura do PR em rascunho → SF6 → SF7 (cada uma fecha verde e com commit antes da próxima; todas tocam o mesmo banco local e `src/lib/db/categorias.ts`).
 - PR em rascunho só depois de SF1–SF5 fechadas: o primeiro run aplica a migration `0000` no Neon dev e a congela. Dentro da SF6: abertura do PR → T062 (probe no CI) → T063 (cenários no dev online); T067 tira o PR de rascunho depois do probe verde e de T063 anotado.
 - O probe T005 (verde em T012) é pré-requisito da implementação da remoção (T046): se falhar, D3-B não vale e o ADR-008 é reaberto.
-- Dentro das sub-fases, só são [P] os testes unitários sem banco em arquivos distintos: T018 (SF2), T026–T029 (SF3), T044 (SF4), T051 (SF5). Todo o resto compartilha arquivo (`categorias.ts`, `actions.ts`, `mensagens.ts`, `erros.ts`) ou o Postgres local.
+- Dentro das sub-fases, só são [P] os testes unitários sem banco em arquivos distintos: T018 (SF2), T026–T029 (SF3), T044 (SF4), T051 (SF5). T068 é sem banco, mas vem depois de T045 (Red já confirmado) e antes de T069. Todo o resto compartilha arquivo (`categorias.ts`, `actions.ts`, `mensagens.ts`, `erros.ts`) ou o Postgres local.
 - Dentro de uma sub-fase: testes (Red) → implementação (Green) → fechamento (`junior`).
 
 ## Cobertura (rastreabilidade)
@@ -282,7 +300,7 @@ e `docs(readme): ...` (T066) em commit próprio.
 | FR-008 | T026, T002 | T034, T008 |
 | FR-009 | T016, T031 | T038 |
 | FR-010 | T051 | T056 |
-| FR-011 | T042 | T046, T047, T048 |
+| FR-011 | T042, T068 | T069, T046, T047, T048 |
 | FR-012 | T004, T016, T017 | T021 |
 | FR-013 | — (contrato com a 003) | T067 (checklist) |
 | FR-014 | T016, T018 | T022 |
@@ -300,7 +318,7 @@ e `docs(readme): ...` (T066) em commit próprio.
 | SC-006 | T016, T018 | T022, T024 |
 | SC-007 | validação adiada (anotada no PR, T063) | — |
 | SC-008 | T003 | T009 (+ T063) |
-| SC-009 | T041, T042, T043, T044 | T046, T047, T048 |
+| SC-009 | T041, T042, T043, T044, T068 | T069, T046, T047, T048 |
 | SC-010 | T026, T004 | T034, T021 |
 
 | Item operacional | Tasks |

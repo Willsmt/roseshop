@@ -1,8 +1,8 @@
 # Contratos — Feature 002 (categorias)
 
 Sem API HTTP pública. Interfaces: (1) leitura para consumidores (003, IA, catálogo
-futuro); (2) Server Actions do painel; (3) contrato com a 003. Só assinaturas e
-comportamento; sem implementação.
+futuro); (2) leitura do painel; (3) Server Actions do painel; (4) camadas internas
+(db → domínio); (5) contrato com a 003. Só assinaturas e comportamento; sem implementação.
 
 ## 1. Leitura — `@/lib/categorias` (barrel somente leitura)
 
@@ -11,11 +11,23 @@ comportamento; sem implementação.
 | `listarCategorias()` | `{ id: number; nome: string }[]` | Ordem alfabética (FR-012), fonte única |
 | `obterCategoria(id)` | `{ id; nome } \| null` | `null` se não existe |
 | `exigirCategoriaValida(id)` | `number` (o id) ou lança `CategoriaInvalidaError` | Rejeita id fora da lista; nunca cria (FR-014, SC-006) |
+| `CategoriaInvalidaError` | classe (re-export de `erros.ts`) | Para consumidores tratarem a rejeição |
 
-Regras: consumidores guardam **somente `id`**; o barrel não exporta criar/renomear/remover
-nem o schema. Conformidade verifica (FR-015).
+Regras: consumidores guardam **somente `id`**; o barrel não expõe `versao`, não exporta
+criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade verifica (FR-015).
 
-## 2. Server Actions — `src/lib/categorias/actions.ts`
+## 2. Leitura do painel — `@/lib/categorias/painel` (H4-A)
+
+| Função | Retorno | Comportamento |
+|--------|---------|---------------|
+| `listarCategoriasDoPainel()` | `{ id: number; nome: string; versao: number }[]` | Mesma ordem de `listarCategorias()` |
+| `obterCategoriaDoPainel(id)` | `{ id; nome; versao } \| null` | `null` se não existe ou se o id é inválido (Zod) |
+
+Regras: `versao` é detalhe de concorrência (FR-019) e só serve aos formulários do painel.
+Importável apenas por `src/app/painel/**` e `src/lib/categorias/**` (conformidade + ESLint).
+A página chama `requireAdminPage` antes de ler.
+
+## 3. Server Actions — `src/lib/categorias/actions.ts`
 
 Toda action começa com `requireAdminAction()` (`src/lib/auth/guard.ts:36`); sem sessão
 ⇒ `UnauthorizedError`, sem efeito e sem dados (FR-016). Entrada validada com Zod.
@@ -24,10 +36,19 @@ Toda action começa com `requireAdminAction()` (`src/lib/auth/guard.ts:36`); sem
 |--------|---------|---------|
 | `criarCategoria` | `{ nome }` | `{ ok: true }` |
 | `renomearCategoria` | `{ id, versao, nome }` | `{ ok: true }` |
-| `removerCategoria` | `{ id, versao }` (a confirmação é da UI, com texto claro, antes de chamar) | `{ ok: true }` |
+| `removerCategoria` | `{ id, versao }` (a confirmação é da UI, em tela própria, antes de chamar) | `{ ok: true }` |
 
 Falha: `{ ok: false, motivo, mensagem, campo? }` (texto sempre pt-BR; o campo preservado
-na UI). Páginas: `requireAdminPage("/painel/categorias")` (`guard.ts:28`).
+na UI). Sucesso chama `revalidatePath("/painel/categorias")`; a UI volta para a lista.
+
+Páginas (H7-A, uma tarefa por tela), cada uma com `requireAdminPage(<rota>)` (`guard.ts:28`):
+
+| Rota | Tarefa |
+|------|--------|
+| `/painel/categorias` | lista |
+| `/painel/categorias/nova` | criar |
+| `/painel/categorias/[id]/renomear` | renomear |
+| `/painel/categorias/[id]/remover` | confirmar remoção |
 
 ### Mensagens (FR-017; revisadas no SC-005)
 
@@ -43,21 +64,48 @@ na UI). Páginas: `requireAdminPage("/painel/categorias")` (`guard.ts:28`).
 | `ultima` | "A loja precisa ter pelo menos uma categoria. Crie outra antes de remover esta." |
 | `falha_geral` | "Não foi possível salvar agora. Tente de novo em instantes." |
 
-Mapeamento (D2-B/D3-B): `23505` ⇒ `nome_repetido` (nome lido com
-`WHERE chave = categoria_chave($1)`); `23503` ⇒ `tem_produtos`; remoção que devolve 0
-linhas no `DELETE … RETURNING` ⇒ leitura posterior só para escolher entre `nao_existe`
-(id ausente), `alterada` (`versao` diferente) e `ultima` (id e versão batem, mas só resta
-1 categoria); o texto do banco nunca chega ao usuário.
+O texto do banco nunca chega ao usuário.
 
-## 3. Contrato com a feature 003 (produtos)
+## 4. Camadas internas (M3, M5)
+
+- `src/lib/db/contexto.ts` — `dbDoContexto()`: `getCloudflareContext` → `createDb`. Única
+  porta de obtenção do `db` para barrel, módulo do painel e actions. Testes de integração
+  injetam `createDb(process.env)`.
+- `src/lib/db/categorias.ts` — toda função **recebe `db`** como primeiro parâmetro e devolve
+  **resultado discriminado**; não conhece motivos nem mensagens:
+
+| Função | Resultados |
+|--------|------------|
+| `inserir(db, sessao, nome)` | `{ tipo: "ok", id }` · `{ tipo: "nome_repetido", nomeExistente }` |
+| `renomear(db, sessao, id, versao, nome)` | `{ tipo: "ok" }` · `{ tipo: "nome_repetido", nomeExistente }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` |
+| `remover(db, sessao, id, versao)` | `{ tipo: "removido" }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` · `{ tipo: "ultima" }` · `{ tipo: "tem_produtos", quantidade }` |
+
+  O SQLSTATE do driver (`23505`, `23503`) é lido em `src/lib/db/erros-pg.ts`
+  (`error.code` ou `error.cause.code`) e não sai de `src/lib/db/`. `23505` ⇒ lookup
+  `WHERE chave = categoria_chave($1)` para `nomeExistente`; `23503` ⇒
+  `contarProdutosDaCategoria`; 0 linhas no `UPDATE`/`DELETE … RETURNING` ⇒ leitura por id
+  para distinguir `ausente` / `versao_diferente` / `ultima`. Outros erros propagam.
+- `src/lib/categorias/erros.ts` — traduz o resultado em `{ motivo, mensagem, campo? }`:
+  `nome_repetido` ⇒ `nome_repetido` (`campo: "nome"`); `ausente` ⇒ `nao_existe`;
+  `versao_diferente` ⇒ `alterada`; `ultima` ⇒ `ultima`; `tem_produtos` com
+  `quantidade ≥ 1` ⇒ `tem_produtos`; `tem_produtos` com `quantidade ≤ 0` (produtos movidos
+  entre a recusa e a contagem) ⇒ `falha_geral`; exceção desconhecida ⇒ `falha_geral`.
+
+## 5. Contrato com a feature 003 (produtos)
 
 - `produtos.categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT`.
 - Cadastro/edição valida o valor com `exigirCategoriaValida(id)`; IA sugere apenas
   entre `listarCategorias()` e o resultado passa pela mesma validação.
-- 003 implementa `contarProdutosDaCategoria(categoriaId)` (usada na mensagem
-  `tem_produtos`). Na 002 ela retorna 0 e o mecanismo é provado por uma tabela
-  `produtos` temporária criada no teste de integração (SQL cru, FK `ON DELETE RESTRICT`)
-  (D4-A).
-- **A primeira task da 003 substitui o SQL cru dessa fixture pela referência ao schema
-  Drizzle de `produtos` e remove a fixture** (e implementa `contarProdutosDaCategoria`).
+- `contarProdutosDaCategoria(db, categoriaId)` (H3-A) já conta de verdade na 002:
+  `to_regclass('public.produtos')`; se a tabela existir, `count(*)` em SQL cru por
+  `categoria_id`; senão `0`. Na 002 o mecanismo (FK + contagem + mensagem) é provado por
+  uma tabela `produtos` **comum** criada e descartada pelo próprio teste de integração
+  (`criarFixtureProdutos`/`descartarFixtureProdutos` em `src/test/db/categorias-fixtures.ts`).
+- **Checklist da primeira task da 003**:
+  1. Criar `produtos` pelo schema Drizzle com a FK acima.
+  2. Trocar o SQL cru de `contarProdutosDaCategoria` pela referência ao schema e remover o
+     `to_regclass`.
+  3. Remover `criarFixtureProdutos`/`descartarFixtureProdutos` do helper (a criação da
+     fixture falharia com a tabela real, de propósito) e passar o teste de bloqueio por
+     produtos a usar a tabela real.
 - Nenhuma categoria criada, renomeada ou removida fora das actions da 002.

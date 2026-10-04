@@ -11,18 +11,24 @@ CLAUDE.md, ADR-002 (banco/driver), ADR-003 (auth), ADR-006 (ambientes/entrega),
 > histórico. D2 e D3 estão no
 > [ADR-008](../adr/008-integridade-de-dados-neon-http.md) (status: **aceito**, com emenda
 > de 2026-10-04 sobre a geração da migration). `tasks.md` gerado e revisado após o
-> `/speckit-analyze` (decisões H3-A, H4-A, H7-A e C1-A, ver "Decisões da análise").
+> `/speckit-analyze` (decisões H3-A, H4-A, H7-A e C1-A) e da segunda análise (N1–N17),
+> ver "Decisões da análise".
 > Sem código, sem migration.
 
 ## Decisões da análise (2026-10-04)
 
 | ID | Decisão |
 |----|---------|
-| H3-A | `contarProdutosDaCategoria` conta de verdade já na 002 (`to_regclass` + `count(*)`); SC-009 fecha na 002 |
+| H3-A | `contarProdutosDaCategoria` conta de verdade já na 002 (`count(*)`; o `to_regclass` original saiu em N10); SC-009 fecha na 002 |
 | H4-A | Leitura própria do painel (`@/lib/categorias/painel`) com `versao`; o barrel dos consumidores não expõe `versao` |
 | H7-A | Telas separadas: lista, criar, renomear, confirmar remoção |
 | C1-A | Probe do batch no Neon dev em passo de CI do `pull-request.yml`, com secret do environment `dev`; a máquina local nunca conecta ao dev |
 | L4 | Charset `\p{L}`, `\p{N}`, espaço e hífen; normalização NFC (spec, Clarifications e FR-008) |
+| N1 | O probe no Neon dev usa o mesmo `secrets.DATABASE_URL` do environment `dev` que a migration e o app já usam (string **direta**, sem pooler); nenhum secret novo. Se o app passar a usar a string pooled, o probe é repetido (ADR-008) |
+| N2 | "Escrita" na conformidade = funções de `@/lib/db/categorias`; `@/lib/categorias/actions` só em `src/app/painel/**` |
+| N3/N4 | Probe ganha o caso (c) `transaction_isolation = read committed`; polling em `pg_locks` com prazo; A devolve `clock_timestamp()`; `pg_sleep` maior no CI |
+| N10 | `contarProdutosDaCategoria` sem `to_regclass`: um único `SELECT count(*)::int` (só roda após `23503`) |
+| N17 | PR em rascunho aberto no início da SF6, com SF1–SF5 fechadas; o 1º run congela a migration `0000` no Neon dev |
 
 ## Summary
 
@@ -64,7 +70,7 @@ teste). Componentes (jsdom, obrigatórios). Conformidade: `painel-guard.test.ts`
 **Constraints**: free tier (sem extensão paga, sem CPU extra); driver HTTP único
 (ADR-002); acesso a banco só em `src/lib/db/` (constitution IV); UI ≥16px/≥48px.
 
-**Scale/Scope**: ≤ dezenas de categorias; 3 administradoras; 1 tela com 3 ações.
+**Scale/Scope**: ≤ dezenas de categorias; 3 administradoras; 4 telas (lista, criar, renomear, confirmar remoção; H7-A).
 
 ## Reaproveitamento da sessão de admin (feature 001)
 
@@ -166,7 +172,7 @@ interativo. Nível de isolamento: READ COMMITTED (padrão).
 | FR-005/006 renomear | `UPDATE … SET nome = $3, versao = versao + 1, atualizado_em = now()` — `chave` **não** entra no `SET` (coluna gerada, recalculada pelo banco); o índice único compara com as outras linhas, então trocar só caixa/acento da própria categoria é aceito | **[DETERMINADO]** |
 | FR-019 mesma categoria | Concorrência otimista: coluna `versao`; `UPDATE/DELETE … WHERE id = $1 AND versao = $2 … RETURNING`; 0 linhas ⇒ "alterada por outra pessoa / não existe mais". O formulário carrega a `versao` lida com a lista. Cobre também rename×delete (linha travada, reavaliação do `WHERE`) | **[DETERMINADO]** |
 | FR-011 produtos | FK `produtos.categoria_id → categorias.id ON DELETE RESTRICT` (criada pela 003); o banco recusa o `DELETE` (`23503`), inclusive contra insert concorrente de produto (lock `FOR KEY SHARE`). A contagem da mensagem é lida após a recusa | **[DETERMINADO]** (mecanismo; contrato com a 003 em D4-A) |
-| FR-020 mínimo 1, inclusive remoções simultâneas | Um `DELETE … WHERE (select count(*)) > 1` isolado **não basta**: dois deletes concorrentes enxergam o mesmo snapshot (2 linhas) e ambos passam. **Decisão D3-B**: `db.batch([ SELECT pg_advisory_xact_lock(k), DELETE … WHERE id = $1 AND versao = $2 AND (SELECT count(*) FROM categorias) > 1 RETURNING id ])`. Batch = uma transação READ COMMITTED; o lock serializa e o 2º statement toma snapshot novo depois do lock. 0 linhas ⇒ leitura posterior só para escolher o resultado (`ausente` / `versao_diferente` / `ultima`). Pré-requisito: probe determinístico provando que o batch roda numa única transação no proxy local (`test:int`) e no Neon dev (passo de CI) | **[DETERMINADO]** (D3-B; ADR-008) |
+| FR-020 mínimo 1, inclusive remoções simultâneas | Um `DELETE … WHERE (select count(*)) > 1` isolado **não basta**: dois deletes concorrentes enxergam o mesmo snapshot (2 linhas) e ambos passam. **Decisão D3-B**: `db.batch([ SELECT pg_advisory_xact_lock(k), DELETE … WHERE id = $1 AND versao = $2 AND (SELECT count(*) FROM categorias) > 1 RETURNING id ])`. Batch = uma transação READ COMMITTED; o lock serializa e o 2º statement toma snapshot novo depois do lock. 0 linhas ⇒ leitura posterior só para escolher o resultado (`ausente` / `versao_diferente` / `ultima`). Pré-requisito: probe determinístico provando que o batch roda numa única transação, em READ COMMITTED, com o lock mantido até o fim do batch, no proxy local (`test:int`) e no Neon dev (passo de CI) | **[DETERMINADO]** (D3-B; ADR-008) |
 
 Consequência de D3-B (aceita, registrada no ADR-008): FR-020 vale para quem usar a
 função de remoção; a única porta de escrita é a action (FR-015, teste de conformidade);
@@ -177,8 +183,9 @@ não há trigger. O lock é de transação (`xact`), compatível com o pooler do
 A 002 **não** cria `produtos`. A garantia em banco é a FK da 003 (`ON DELETE
 RESTRICT`). A 002 entrega o fluxo de remoção que traduz `23503` em mensagem com
 contagem, atrás de `contarProdutosDaCategoria(db, categoriaId)`, que **já conta de
-verdade (H3-A)**: `to_regclass('public.produtos')`; se a tabela existir, `count(*)` em
-SQL cru por `categoria_id`; senão `0` (contagem ≤ 0 após `23503` ⇒ `falha_geral`). O
+verdade (H3-A)**: um único `SELECT count(*)::int FROM produtos WHERE categoria_id = $1`
+em SQL cru (N10: sem `to_regclass`; só é chamada após `23503`, que já implica a existência
+de `produtos`). Contagem ≤ 0 após `23503` ou erro na contagem ⇒ `falha_geral`. O
 mecanismo é provado por **teste de integração** que cria uma tabela `produtos` **comum**
 (não `TEMP`: o Postgres recusa FK de temp para tabela permanente, e no neon-http cada
 statement é uma sessão nova) com `categoria_id integer NOT NULL REFERENCES categorias(id)
@@ -188,7 +195,7 @@ produção; o helper só descarta a tabela que ele mesmo criou.
 **Contrato com a 003**: referenciar por `categorias.id`, `NOT NULL`, `ON DELETE
 RESTRICT`; validar com `exigirCategoriaValida(id)`. **A primeira task da 003 cria
 `produtos` pelo schema, troca o SQL cru de `contarProdutosDaCategoria` pela referência
-ao schema (sem `to_regclass`) e remove as funções de fixture do helper.** Ver
+ao schema e remove as funções de fixture do helper.** Ver
 `contracts/categorias.md` §5.
 
 ### 6. Ponto de acesso único (FR-014, FR-015) — **[DETERMINADO]**
@@ -203,14 +210,17 @@ ao schema (sem `to_regclass`) e remove as funções de fixture do helper.** Ver
   fora da lista — SC-006) e re-export de `CategoriaInvalidaError`. 003 e IA importam
   **só** do barrel.
 - Leitura do painel (H4-A): `src/lib/categorias/painel.ts` com
-  `listarCategoriasDoPainel()` e `obterCategoriaDoPainel(id)`, que incluem `versao`; fora
+  `listarCategoriasDoPainel()` e `obterCategoriaDoPainel(id)` (o `[id]` da URL chega como
+  string e é coagido por `z.coerce` para inteiro positivo), que incluem `versao`; fora
   do barrel, importável só por `src/app/painel/**` e `src/lib/categorias/**`.
 - Escrita (`criar`, `renomear`, `remover`) **não** é exportada pelo barrel: vive em
   `src/lib/categorias/actions.ts` ("use server"), cada action começando por
   `requireAdminAction()`, e as funções SQL de escrita recebem um `AdminSession`.
 - FR-015 imposto por teste de conformidade (novo, no estilo do `painel-guard`): nenhum
-  arquivo fora de `src/lib/categorias/` e `src/lib/db/` importa as funções de escrita
-  nem o schema de `categorias`; `src/lib/ai/` só importa o barrel. Regra
+  arquivo fora de `src/lib/categorias/` e `src/lib/db/` importa `@/lib/db/categorias`
+  (funções de escrita da camada db) nem o schema de `categorias`;
+  `@/lib/categorias/actions` só é importado por `src/app/painel/**` (proibido em
+  `src/lib/ai/`, no barrel e no resto de `src/`); `src/lib/ai/` só importa o barrel. Regra
   `no-restricted-imports` no ESLint como segunda camada.
 - Referência por `id` (inteiro, identity), nunca pelo nome (FR-009, US5-4).
 
@@ -227,14 +237,15 @@ ao schema (sem `to_regclass`) e remove as funções de fixture do helper.** Ver
 | V. UX | OK. ≥16px, ≥48px, uma tarefa por tela (H7-A: lista, criar, renomear e confirmar remoção em telas separadas), confirmação de remoção, pt-BR sem jargão (`contracts/categorias.md`) |
 | VI. Qualidade | OK. Testes antes da implementação; "pronto" = lint+typecheck+testes (+ `test:int` com migrations aplicadas). Commits sem trailer de co-autoria (a constitution prevalece sobre a instrução de atribuição do harness). `checks.yml`, `pull-request.yml` e docs alterados ⇒ doc-sync no fechamento; `README.md` atualizado em commit `docs(readme)` próprio |
 | VII. Free tier | OK. Tabela pequena, funções built-in, sem extensão nem conexão persistente |
-| VIII. Ambientes | OK. Migration local → dev → produção pelo fluxo do ADR-006; seed vem na migration; `test:int` roda contra Postgres local/CI, nunca dev/prod. O probe do batch no Neon dev roda só no CI (config dedicada que inclui apenas o probe, que não toca tabelas); a máquina local nunca conecta ao dev. Atenção: **primeira migration real** do projeto |
+| VIII. Ambientes | OK. Migration local → dev → produção pelo fluxo do ADR-006; seed vem na migration; `test:int` roda contra Postgres local/CI, nunca dev/prod. O probe do batch no Neon dev roda só no CI (config dedicada que inclui apenas o probe, que não toca tabelas), com o mesmo `secrets.DATABASE_URL` do environment `dev` usado pela migration e pelo app (string direta, sem pooler; nenhum secret novo); a máquina local nunca conecta ao dev. Atenção: **primeira migration real** do projeto; o PR em rascunho só é aberto com SF1–SF5 fechadas, porque o 1º run congela a migration `0000` no Neon dev |
 
 Pontos de atenção residuais (não são violações):
 1. FR-020 (D3-B) é garantido pela aplicação, não pelo banco: um delete fora da função
    de remoção o contornaria. Mitigação: conformidade FR-015 e ADR-008.
 2. Lock advisory e `db.batch` precisam ser provados de forma determinística (mesmo txid;
-   lock visível em `pg_locks` e bloqueando o segundo batch) no proxy local (`test:int`) e
-   no Neon `dev` (passo de CI), além dos testes de concorrência em loop, antes de produção.
+   lock visível em `pg_locks`, por polling com prazo, e bloqueando o segundo batch;
+   isolamento `read committed`) no proxy local (`test:int`) e no Neon `dev` (passo de CI),
+   além dos testes de concorrência em loop, antes de produção.
 3. `fileParallelism: false` no vitest de integração deixa os testes mais lentos.
 
 **Complexity Tracking**: sem violações a justificar.

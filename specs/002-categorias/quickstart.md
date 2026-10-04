@@ -1,7 +1,7 @@
 # Quickstart — validação da feature 002
 
 Roteiro para provar a feature ponta a ponta depois de implementada (decisões D1–D5
-e da análise H3-A, H4-A, H7-A, C1-A; ver `research.md` e `plan.md`).
+e das análises: H3-A, H4-A, H7-A, C1-A e N1–N17; ver `research.md` e `plan.md`).
 
 ## Pré-requisitos
 
@@ -32,17 +32,22 @@ e da análise H3-A, H4-A, H7-A, C1-A; ver `research.md` e `plan.md`).
    com produtos vinculados bloqueia com a contagem (na 002, provado pelo teste de
    integração com a tabela `produtos` de teste); remover a última é bloqueado.
 6. **Concorrência (FR-019/020, SC-009)**: probe determinístico do batch (mesmo txid; lock
-   visível em `pg_locks` e bloqueando o segundo batch) e testes de integração com chamadas
+   visível em `pg_locks`, por polling com prazo, e bloqueando o segundo batch; isolamento
+   `read committed`) e testes de integração com chamadas
    simultâneas: criar nomes equivalentes (1 vence); renomear a mesma categoria (1 vence,
    outra `alterada`); remover as duas últimas (1 vence, outra `ultima`).
 7. **Acesso (SC-004/006)**: sem sessão, as quatro telas ⇒ `/painel/entrar`; actions chamadas
    direto ⇒ recusadas; `exigirCategoriaValida(id inexistente)` rejeita; teste de
    conformidade FR-015 passa.
-8. **Runtime real**: repetir 1–5 em `npm run preview` (workerd) e, no PR, no `dev` online
-   pelo navegador. A máquina local nunca conecta ao banco do dev: o probe do batch no Neon
-   dev roda em passo de CI do `pull-request.yml`.
+8. **Runtime real**: repetir 1–5 em `npm run preview` (workerd) e, no PR em rascunho
+   (aberto com SF1–SF5 fechadas; o 1º run aplica e congela a migration `0000` no Neon dev,
+   confirmada pelo log do passo `Migrations (Neon dev)`), no `dev` online pelo navegador.
+   A máquina local nunca conecta ao banco do dev: o probe do batch no Neon dev roda em
+   passo de CI do `pull-request.yml`, com o mesmo `secrets.DATABASE_URL` do environment
+   `dev` (string direta).
 9. **SC-002 (manual)**: no celular, contar toques e tempo para criar, renomear e remover
-   (no máximo 3 toques, sem contar digitação nem confirmação; < 30 s); anotar no PR.
+   (no máximo 3 toques, sem contar a digitação; hoje 2 por ação, contando o "Remover" da
+   confirmação; < 30 s); anotar no PR.
    SC-007 é validação adiada (vinculada ao SC-005 da 001), anotada no PR.
 
 ## Comandos de "pronto"

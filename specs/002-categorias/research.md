@@ -52,9 +52,14 @@ Efeitos práticos das escolhas, registrados para as tasks:
   modela a função (migration gerada pelo `drizzle-kit generate` e editada à mão: função
   antes do `CREATE TABLE`, seed depois; sem `--custom`, ver "Riscos").
 - D3-B: FR-020 depende de todos os deletes passarem pela função de remoção; a atomicidade
-  do batch é provada por probe determinístico no proxy local e no Neon dev (CI).
+  do batch é provada por probe determinístico no proxy local e no Neon dev (CI): mesmo
+  txid, lock mantido até o fim do batch (polling em `pg_locks` com prazo) e isolamento
+  `read committed`. No CI, o probe usa o mesmo `secrets.DATABASE_URL` do environment `dev`
+  que a migration e o app usam (string **direta**, sem pooler; segunda análise, N1). Se o
+  app passar a usar a string pooled, o probe é repetido com ela (ADR-008).
 - D4-A: a fixture `produtos` é tabela comum (não `TEMP`). Refinamento da análise (H3-A):
-  `contarProdutosDaCategoria` já conta de verdade (`to_regclass` + `count(*)`). A 1ª task
+  `contarProdutosDaCategoria` já conta de verdade, com um único `SELECT count(*)::int`
+  (segunda análise, N10: sem `to_regclass`, pois só roda após `23503`). A 1ª task
   da 003 cria `produtos` pelo schema, troca o SQL cru da contagem e remove a fixture do helper.
 
 ## Opções avaliadas (histórico)
@@ -93,7 +98,7 @@ snapshot novo depois do lock.
 | Opção | Como | Prós | Contras |
 |-------|------|------|---------|
 | **A. Trigger no banco** | `BEFORE DELETE` (plpgsql): `pg_advisory_xact_lock(chave fixa)`; conta; `RAISE EXCEPTION` se ≤ 1 | Vale para **qualquer** writer, hoje e futuro (003, scripts); a app só mapeia o erro; um único statement no driver HTTP | Regra de negócio em plpgsql na migration (padrão novo no projeto, provável ADR); migration "custom" no drizzle-kit; teste só por integração |
-| **B. `db.batch` na aplicação** | batch de 2 statements: (1) `SELECT pg_advisory_xact_lock(k)`; (2) `DELETE … WHERE id AND versao AND (count(*)>1) RETURNING` | Sem plpgsql; usa só o que o driver HTTP suporta (batch = 1 transação, READ COMMITTED, snapshot novo por statement); regra legível em TS | Só vale para quem usar essa função (outro caminho de delete fura FR-020); lock advisory de transação precisa funcionar atrás do endpoint pooled do Neon (xact-level funciona, validar em dev) |
+| **B. `db.batch` na aplicação** | batch de 2 statements: (1) `SELECT pg_advisory_xact_lock(k)`; (2) `DELETE … WHERE id AND versao AND (count(*)>1) RETURNING` | Sem plpgsql; usa só o que o driver HTTP suporta (batch = 1 transação, READ COMMITTED, snapshot novo por statement); regra legível em TS | Só vale para quem usar essa função (outro caminho de delete fura FR-020); lock advisory de transação precisa funcionar no endpoint do Neon que o app usa (hoje a string direta; xact-level funciona também atrás do pooler; validar em dev pelo probe de CI) |
 | **C. Driver WebSocket (`Pool`) com transação interativa** | `BEGIN; SELECT … FOR UPDATE; … COMMIT` | Modelo mental mais comum | **Muda o driver único do ADR-002** (novo ADR); WebSocket no Worker e no proxy local a confirmar; sai do "mesmo código do local à produção"; risco no free tier |
 
 O que não precisa de D3: FR-011 (FK) e FR-019 (versão), que já são atômicos com o

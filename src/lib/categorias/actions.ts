@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireAdminAction } from "@/lib/auth";
-import { inserir, renomear } from "@/lib/db/categorias";
+import { inserir, remover, renomear } from "@/lib/db/categorias";
 import { dbDoContexto } from "@/lib/db/contexto";
 
 import { type Falha, falhaDeNome, falhaGeral, traduzirExcecao, traduzirResultado } from "./erros";
@@ -22,6 +22,7 @@ const LISTA = "/painel/categorias";
 // `id` e `versao` vêm de campos ocultos; inválidos não são erro de digitação.
 const entradaCriar = z.object({ nome: z.unknown() });
 const entradaRenomear = z.object({ id: idCategoria, versao: versaoCategoria, nome: z.unknown() });
+const entradaRemover = z.object({ id: idCategoria, versao: versaoCategoria });
 
 const falhar = (f: Falha): ResultadoAction => ({ ok: false, ...f });
 
@@ -53,6 +54,23 @@ export async function renomearCategoria(entrada: unknown): Promise<ResultadoActi
     const { id, versao } = dados.data;
     const r = await renomear(await dbDoContexto(), sessao, id, versao, nome.nome);
     if (r.tipo !== "ok") return falhar(traduzirResultado(r));
+  } catch (erro) {
+    return falhar(traduzirExcecao(erro));
+  }
+  revalidatePath(LISTA);
+  return { ok: true };
+}
+
+// A confirmação é da UI (tela própria, SF5): a action só é chamada depois dela.
+export async function removerCategoria(entrada: unknown): Promise<ResultadoAction> {
+  const sessao = await requireAdminAction();
+  const dados = entradaRemover.safeParse(entrada);
+  if (!dados.success) return falhar(falhaGeral());
+
+  try {
+    const { id, versao } = dados.data;
+    const r = await remover(await dbDoContexto(), sessao, id, versao);
+    if (r.tipo !== "removido") return falhar(traduzirResultado(r));
   } catch (erro) {
     return falhar(traduzirExcecao(erro));
   }

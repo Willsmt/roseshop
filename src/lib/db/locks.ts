@@ -9,3 +9,9 @@
 
 /** Uso exclusivo do probe de transação do `db.batch` (feature 002, T005/T062). */
 export const LOCK_PROBE_BATCH = 2_001;
+
+/**
+ * Serializa as remoções de categoria para manter ao menos uma (feature 002, FR-020,
+ * D3-B). Usado só por `remover` em `categorias.ts`.
+ */
+export const LOCK_REMOCAO_CATEGORIAS = 2_002;

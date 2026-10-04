@@ -34,6 +34,7 @@
 - "Google" aparece na spec como requisito de produto (a usuária entra com a conta
   Google do celular) e decisão já aceita no ADR-003, não como detalhe de
   implementação.
-- FR-016 (validade da sessão) ainda não tem valor definido e não tem cenário de
-  aceite próprio: pendente para o `/speckit-clarify`. Item "testable and
-  unambiguous" fica em aberto até lá.
+- FR-016 resolvida no clarify e ajustada no pós-analyze: a sessão expira entre 29 e 30
+  dias sem uso, com os cenários US3-5 e US3-6.
+- Spec **Approved** pelo humano em 2026-10-03, depois do clarify, plan, tasks e analyze
+  (16/16 itens). Achados do analyze resolvidos com aprovação humana.

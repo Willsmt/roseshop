@@ -56,16 +56,16 @@ pode ser entregue com segurança, porque qualquer conta Google entraria.
 
 ### Testes (escrever primeiro e confirmar que falham)
 
-- [ ] T003 Adicionar `vi.mock("server-only", () => ({}))` em `vitest.setup.ts`. O pacote lança erro fora da condição `react-server`, então sem o mock os testes de `config.ts`, `guard.ts` e `actions.ts` não carregam (test-writer)
-- [ ] T004 [P] Testes de `parseAllowlist`, `isAllowedEmail` e `decideSignIn` em `src/lib/auth/allowlist.test.ts` (test-writer). Casos obrigatórios:
+- [x] T003 Adicionar `vi.mock("server-only", () => ({}))` em `vitest.setup.ts`. O pacote lança erro fora da condição `react-server`, então sem o mock os testes de `config.ts`, `guard.ts` e `actions.ts` não carregam (test-writer)
+- [x] T004 [P] Testes de `parseAllowlist`, `isAllowedEmail` e `decideSignIn` em `src/lib/auth/allowlist.test.ts` (test-writer). Casos obrigatórios:
   - formato bruto "e-mails separados por vírgula";
   - `trim()` + `toLowerCase()` dos dois lados (US2-3, FR-003);
   - descarta entradas vazias e e-mails inválidos; remove duplicatas;
   - `undefined` ou `""` → conjunto vazio → ninguém entra (FR-014);
   - `decideSignIn` recusa e-mail ausente, `emailVerified !== true` (US2-4) e e-mail fora da lista (US2-1), e aceita e-mail verificado na lista (US1-1);
   - a allowlist é lida a cada chamada, sem cache de módulo: trocar o valor entre duas chamadas muda o resultado (US3-3).
-- [ ] T005 [P] Testes de `safeCallbackPath` em `src/lib/auth/callback-path.test.ts` (test-writer). Aceita `/painel` e `/painel/...`. Para qualquer outro valor retorna `/painel`: `//evil.com`, `https://evil.com`, `/\evil`, `/`, `/painelx`, `javascript:`, não-string, `undefined`. Cobre FR-009, US1-4 e o caso-limite de retorno externo.
-- [ ] T006 [P] Testes da config em `src/lib/auth/config.test.ts` (test-writer):
+- [x] T005 [P] Testes de `safeCallbackPath` em `src/lib/auth/callback-path.test.ts` (test-writer). Aceita `/painel` e `/painel/...`. Para qualquer outro valor retorna `/painel`: `//evil.com`, `https://evil.com`, `/\evil`, `/`, `/painelx`, `javascript:`, não-string, `undefined`. Cobre FR-009, US1-4 e o caso-limite de retorno externo.
+- [x] T006 [P] Testes da config em `src/lib/auth/config.test.ts` (test-writer):
   - provedor só Google;
   - `session.strategy === "jwt"` **e** ausência de `adapter` na config. Cobre US4-4 (sair só neste aparelho: não há sessão no servidor para encerrar em outros aparelhos) e FR-017;
   - `session.maxAge` = 30 dias em segundos e `session.updateAge` = 24 h em segundos (FR-016: expira entre 29 e 30 dias sem uso; US3-5, US3-6);
@@ -73,7 +73,7 @@ pode ser entregue com segurança, porque qualquer conta Google entraria.
   - callback `redirect` usa `safeCallbackPath`;
   - callback `signIn` delega a `decideSignIn` com o `email` e o `email_verified` do perfil Google;
   - callbacks `jwt`/`session` expõem só `email` e `name` (FR-013, sem papéis).
-- [ ] T007 [P] Testes de `getAdminSession`, `requireAdminPage` e `requireAdminAction` em `src/lib/auth/guard.test.ts`, com `auth()` e `redirect` mockados (test-writer):
+- [x] T007 [P] Testes de `getAdminSession`, `requireAdminPage` e `requireAdminAction` em `src/lib/auth/guard.test.ts`, com `auth()` e `redirect` mockados (test-writer):
   - `getAdminSession`: retorna `{ email, name }` com sessão autorizada; `null` sem sessão, com sessão inválida ou com e-mail fora da lista **atual**; **nunca** chama `redirect`;
   - `requireAdminPage(currentPath)`: sem sessão → `redirect("/painel/entrar?callbackUrl=" + encodeURIComponent(safeCallbackPath(currentPath)))` (US3-1, US1-4, FR-006). Com `currentPath` externo → `callbackUrl=%2Fpainel`;
   - sessão sem e-mail ou com valor inválido → igual a sem sessão (US3-4);
@@ -81,17 +81,17 @@ pode ser entregue com segurança, porque qualquer conta Google entraria.
   - allowlist vazia → recusa (FR-014);
   - `requireAdminAction` lança `UnauthorizedError` sem devolver dados (US3-2, FR-007);
   - sessão válida e autorizada → `requireAdminPage`/`requireAdminAction` retornam `{ email, name }`.
-- [ ] T008 [P] Testes do `Button` em `src/components/ui/button.test.tsx` (test-writer): renderiza `<button>`, repassa `type`, tem as classes que garantem `min-height` de 48px, `font-size` de no mínimo 16px e largura total no celular (FR-012), com variantes `primary`/`secondary`.
+- [x] T008 [P] Testes do `Button` em `src/components/ui/button.test.tsx` (test-writer): renderiza `<button>`, repassa `type`, tem as classes que garantem `min-height` de 48px, `font-size` de no mínimo 16px e largura total no celular (FR-012), com variantes `primary`/`secondary`.
 
 ### Implementação
 
-- [ ] T009 [P] Implementar `parseAllowlist`, `isAllowedEmail` e `decideSignIn` com Zod em `src/lib/auth/allowlist.ts`. São funções puras, **sem** `server-only`, que leem o valor bruto passado como argumento (data-model.md) (tech-lead)
-- [ ] T010 [P] Implementar `safeCallbackPath` em `src/lib/auth/callback-path.ts`, pura, sem `server-only` (tech-lead)
-- [ ] T011 Implementar a config do Auth.js em `src/lib/auth/config.ts` e a instância em `src/lib/auth/index.ts` (exporta `handlers`, `auth`, `signIn`, `signOut`), ambos começando com `import "server-only"`, conforme T006. Ler `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` de `process.env` em tempo de request (R12). Sem `adapter`. Depende de T009 e T010 (tech-lead)
-- [ ] T012 Criar o route handler `src/app/api/auth/[...nextauth]/route.ts` exportando `GET`/`POST` de `handlers`. Depende de T011 (tech-lead)
-- [ ] T013 Implementar `getAdminSession`, `requireAdminPage`, `requireAdminAction` e `UnauthorizedError` em `src/lib/auth/guard.ts`, começando com `import "server-only"`. Todos reverificam a allowlist **atual** a cada chamada. `getAdminSession` nunca redireciona. Depende de T011 (tech-lead)
-- [ ] T014 [P] Implementar o `Button` em `src/components/ui/button.tsx` com Tailwind (48px/16px, largura total no celular) (ui-dev)
-- [ ] T015 Revisar T014 e confirmar T003 a T008 verdes com `npm test` (output real via junior) (tech-lead)
+- [x] T009 [P] Implementar `parseAllowlist`, `isAllowedEmail` e `decideSignIn` com Zod em `src/lib/auth/allowlist.ts`. São funções puras, **sem** `server-only`, que leem o valor bruto passado como argumento (data-model.md) (tech-lead)
+- [x] T010 [P] Implementar `safeCallbackPath` em `src/lib/auth/callback-path.ts`, pura, sem `server-only` (tech-lead)
+- [x] T011 Implementar a config do Auth.js em `src/lib/auth/config.ts` e a instância em `src/lib/auth/index.ts` (exporta `handlers`, `auth`, `signIn`, `signOut`), ambos começando com `import "server-only"`, conforme T006. Ler `ADMIN_EMAILS`, `AUTH_SECRET`, `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` de `process.env` em tempo de request (R12). Sem `adapter`. Depende de T009 e T010 (tech-lead)
+- [x] T012 Criar o route handler `src/app/api/auth/[...nextauth]/route.ts` exportando `GET`/`POST` de `handlers`. Depende de T011 (tech-lead)
+- [x] T013 Implementar `getAdminSession`, `requireAdminPage`, `requireAdminAction` e `UnauthorizedError` em `src/lib/auth/guard.ts`, começando com `import "server-only"`. Todos reverificam a allowlist **atual** a cada chamada. `getAdminSession` nunca redireciona. Depende de T011 (tech-lead)
+- [x] T014 [P] Implementar o `Button` em `src/components/ui/button.tsx` com Tailwind (48px/16px, largura total no celular) (ui-dev)
+- [x] T015 Revisar T014 e confirmar T003 a T008 verdes com `npm test` (output real via junior) (tech-lead)
 
 **Checkpoint**: núcleo de auth pronto, testes da fase verdes.
 

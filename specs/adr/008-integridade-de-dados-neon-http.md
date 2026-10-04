@@ -5,6 +5,15 @@
 **Emenda (2026-10-04, aprovada pelo humano):** a migration não usa `generate --custom`
 (o modo custom grava um snapshot sem a tabela). É gerada pelo `drizzle-kit generate` e
 editada à mão: função antes do `CREATE TABLE`, seed depois. A decisão não muda.
+**Emenda (2026-10-04, segunda análise da feature 002, aprovada pelo humano):**
+- Probe no Neon dev: roda em passo de CI com o mesmo `DATABASE_URL` do environment `dev`
+  que a migration e o app usam (connection string direta, sem pooler). Além do mesmo txid e
+  do lock mantido até o fim do batch, verifica isolamento `read committed`. **Se o app passar
+  a usar a string pooled, o probe deve ser repetido com ela** antes da troca chegar a produção.
+- Nomenclatura: na camada db, as remoções que afetam 0 linhas devolvem os resultados
+  `ausente` / `versao_diferente` / `ultima`; os motivos de domínio exibidos ao usuário são
+  `nao_existe` / `alterada` / `ultima` (tradução em `src/lib/categorias/erros.ts`). O texto
+  da Decisão 2 abaixo usa os motivos de domínio.
 
 ## Contexto
 

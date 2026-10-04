@@ -232,7 +232,7 @@ da allowlist e recarregar (quickstart passos 2 e 9).
 ### Implementação para US5
 
 - [x] T042 [US5] (Não necessária: a T041 passou sem ajuste, em 2026-10-04.) Ajustar `src/app/page.tsx` só se T041 falhar (hoje é o boilerplate, sem link para o painel); não mexer em visual (ui-dev)
-- [ ] T043 [US5] Executar o passo 1 do quickstart no `preview` (junior, output real do `curl -sI` em `/` e `/api/health`)
+- [x] T043 [US5] Executar o passo 1 do quickstart no `preview` (junior, output real do `curl -sI` em `/` e `/api/health`). `/` = 200 pelo junior; `/api/health` = 200 verificado pelo humano em 2026-10-04, depois de reativar o Docker (no run do junior, o Docker estava indisponível no WSL)
 
 **Checkpoint**: todas as stories P1 prontas.
 
@@ -266,13 +266,23 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T049 Contingência R12: **só se** o `preview` falhar e a única correção for acrescentar `"nodejs_compat"` em `compatibility_flags` do `wrangler.jsonc`, aplicar (pré-aprovado). Qualquer outra mudança no `wrangler.jsonc` → parar e reportar ao humano (tech-lead)
-- [ ] T050 [P] Revisar todos os textos das telas (contracts/auth.md, tabela "Textos") quanto a linguagem simples e ausência de jargão (redator, revisão do tech-lead)
+- [x] T049 (Não necessária: o `preview` rodou o Auth.js no workerd sem `nodejs_compat`, Phases 3 a 6; `wrangler.jsonc` intocado.) Contingência R12: **só se** o `preview` falhar e a única correção for acrescentar `"nodejs_compat"` em `compatibility_flags` do `wrangler.jsonc`, aplicar (pré-aprovado). Qualquer outra mudança no `wrangler.jsonc` → parar e reportar ao humano (tech-lead)
+- [x] T050 [P] Revisar todos os textos das telas (contracts/auth.md, tabela "Textos") quanto a linguagem simples e ausência de jargão (redator, revisão do tech-lead)
 - [ ] T051 [P] Atualizar `README.md`: dependências novas (`next-auth` beta exata, `zod`, `server-only`), como incluir/remover administradora (`ADMIN_EMAILS` + `wrangler secret put`), procedimento de emergência (trocar o `AUTH_SECRET` do ambiente), orientação de salvar `/painel` como atalho no celular (redator)
-- [ ] T052 Conferir o mapa critério → teste do `plan.md`: cada cenário de US1-1 a US5-3 tem pelo menos um teste automatizado (constitution I), e o quickstart é só complemento; registrar as lacunas (tech-lead)
-- [ ] T053 Rodar `npm run check`, `npm audit --omit=dev` e `npm run preview` e devolver o output real (junior)
-- [ ] T054 Rodar `graphify update .` (tech-lead)
-- [ ] T055 Propor ao humano a mensagem de commit em Conventional Commits, sem `Co-Authored-By`, com **justificativa no corpo para cada dependência nova** (`next-auth@5.0.0-beta.32` exata: ADR-003 e adendo; `zod`: constitution II/III.3; `server-only`: impedir vazamento de segredos para o bundle). O humano commita (tech-lead)
+- [x] T052 Conferir o mapa critério → teste do `plan.md`: cada cenário de US1-1 a US5-3 tem pelo menos um teste automatizado (constitution I), e o quickstart é só complemento; registrar as lacunas (tech-lead)
+  - **Resultado (2026-10-04)**: os 23 cenários (US1-1 a US5-3) têm pelo menos um teste automatizado
+    que cita o critério (constitution I atendida). Lacunas qualitativas, sem cenário descoberto:
+    - US3-5/US3-6 (expira com 30 dias sem uso, renova com o uso): testados pelos valores de config
+      (`maxAge`/`updateAge`); o comportamento de expirar e renovar é do Auth.js e não tem teste próprio.
+    - US3-4 (sessão adulterada): o guard trata sessão com e-mail ausente ou inválido como sem sessão;
+      a rejeição de um cookie JWT adulterado é do Auth.js (no log do `preview` apareceu
+      `JWTSessionError: Invalid Compact JWE` com um cookie antigo, tratado como sem sessão), sem teste
+      automatizado de ponta a ponta.
+    - US4-4 (sair só neste aparelho): garantido pela config (`jwt`, sem `adapter`) e validado pelo
+      humano com dois navegadores (T048).
+- [x] T053 Rodar `npm run check`, `npm audit --omit=dev` e `npm run preview` e devolver o output real (junior)
+- [x] T054 Rodar `graphify update .` (tech-lead)
+- [x] T055 Propor ao humano a mensagem de commit em Conventional Commits, sem `Co-Authored-By`, com **justificativa no corpo para cada dependência nova** (`next-auth@5.0.0-beta.32` exata: ADR-003 e adendo; `zod`: constitution II/III.3; `server-only`: impedir vazamento de segredos para o bundle). O humano commita (tech-lead)
 - [ ] T056 Acionar o `doc-sync-onboarding` (rota nova, zona protegida, dependências, procedimento de emergência em `docs/operacao.md`); docs em commit próprio `docs(...)`, feito pelo humano (tech-lead)
 - [ ] T057 Abrir PR → deploy no dev online pelo CI → executar o quickstart completo no dev com o celular da dona, incluindo o passo 10 e o teste de emergência no dev. Merge só pelo humano (humano)
 

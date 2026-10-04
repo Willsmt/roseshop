@@ -226,12 +226,12 @@ da allowlist e recarregar (quickstart passos 2 e 9).
 
 ### Testes para US5 (escrever primeiro)
 
-- [ ] T040 [P] [US5] Ampliar `src/test/conformance/painel-guard.test.ts` (test-writer): `src/app/page.tsx` e `src/app/layout.tsx` não importam `@/lib/auth` (a página pública não depende de sessão), e `src/app/api/health/route.ts#GET` está em `EXCECOES_PUBLICAS`. Cobre US5-1, US5-3 e FR-011.
-- [ ] T041 [P] [US5] Teste da home em `src/app/page.test.tsx` (test-writer): não renderiza `a[href^="/painel"]` nem `a[href^="/api/auth"]` nem texto "Entrar"/"Login" (US5-2, FR-018)
+- [x] T040 [P] [US5] Ampliar `src/test/conformance/painel-guard.test.ts` (test-writer): `src/app/page.tsx` e `src/app/layout.tsx` não importam `@/lib/auth` (a página pública não depende de sessão), e `src/app/api/health/route.ts#GET` está em `EXCECOES_PUBLICAS`. Cobre US5-1, US5-3 e FR-011.
+- [x] T041 [P] [US5] Teste da home em `src/app/page.test.tsx` (test-writer): não renderiza `a[href^="/painel"]` nem `a[href^="/api/auth"]` nem texto "Entrar"/"Login" (US5-2, FR-018)
 
 ### Implementação para US5
 
-- [ ] T042 [US5] Ajustar `src/app/page.tsx` só se T041 falhar (hoje é o boilerplate, sem link para o painel); não mexer em visual (ui-dev)
+- [x] T042 [US5] (Não necessária: a T041 passou sem ajuste, em 2026-10-04.) Ajustar `src/app/page.tsx` só se T041 falhar (hoje é o boilerplate, sem link para o painel); não mexer em visual (ui-dev)
 - [ ] T043 [US5] Executar o passo 1 do quickstart no `preview` (junior, output real do `curl -sI` em `/` e `/api/health`)
 
 **Checkpoint**: todas as stories P1 prontas.

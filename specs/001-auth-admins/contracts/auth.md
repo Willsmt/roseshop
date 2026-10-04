@@ -34,12 +34,18 @@ safeCallbackPath(raw: unknown): `/painel${string}`   // fallback "/painel"
 type LoginNotice = "recusada" | "falhou" | null
 loginNoticeFromError(code: unknown): LoginNotice
 
-// Arquivos só de servidor começam com `import "server-only"`: config.ts, index.ts,
-// guard.ts, actions.ts. As funções puras (allowlist.ts, callback-path.ts,
+// Arquivos só de servidor começam com `import "server-only"`: config.ts, instance.ts,
+// index.ts, guard.ts, actions.ts. As funções puras (allowlist.ts, callback-path.ts,
 // error-message.ts) não importam `server-only`.
 
-// index.ts: instância do Auth.js
+// instance.ts: instância do Auth.js (NextAuth(() => createAuthConfig()))
 export { handlers, auth, signIn, signOut }
+// config.ts: createAuthConfig(): NextAuthConfig, avaliada a cada request
+
+// index.ts: barrel público, a única importação permitida à UI ("@/lib/auth").
+// Reexporta a instância (handlers, auth, signIn, signOut), os guards, as actions
+// e as funções puras. A instância fica em instance.ts para que guard.ts e
+// actions.ts a importem sem ciclo com o barrel.
 
 // guard.ts: servidor apenas
 type AdminSession = { email: string; name: string | null }
@@ -74,6 +80,7 @@ sair(): Promise<void>
 // Button: único primitivo de botão nesta feature (até o ADR-005 definir a lib de UI)
 <Button type="submit" variant="primary" | "secondary">…</Button>
 // garante min-height 48px, font-size ≥ 16px, largura total no celular
+// renderiza data-variant={variant}: é por ele que os testes contam um único primary por tela
 ```
 
 ## Regras para o ui-dev

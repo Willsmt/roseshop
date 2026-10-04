@@ -72,3 +72,22 @@ Consequências:
   precisa acompanhar novos padrões de arquivo.
 - (−) Se no futuro o OpenNext suportar `proxy.ts` oficialmente, reavaliar com
   novo adendo. O guard por página continua obrigatório (constitution III.2).
+
+### `trustHost: true`
+
+**Decisão (aceita pelo humano em 2026-10-03):** manter `trustHost: true` na config do
+Auth.js, sem `AUTH_URL` fixo. O Auth.js passa a derivar a URL base do host da
+requisição. Esse host é confiável aqui porque:
+
+- a Cloudflare roteia a requisição pelo host do Worker, então um host que não seja
+  dele não chega ao Worker;
+- o navegador não permite que uma página forje o header `X-Forwarded-Host`;
+- o Google recusa qualquer `redirect_uri` que não esteja cadastrado no OAuth client,
+  então um host forjado não completa o login;
+- as respostas de `/painel` são `Cache-Control: private, no-store`, então uma resposta
+  gerada com host forjado não fica em cache compartilhado;
+- um `AUTH_URL` fixo quebraria o uso local, que roda em duas portas (3000 no `dev` e
+  8787 no `preview`).
+
+Consequência: (−) se o Worker passar a ficar atrás de um proxy que repasse
+`X-Forwarded-Host` de forma não confiável, reavaliar com novo adendo.

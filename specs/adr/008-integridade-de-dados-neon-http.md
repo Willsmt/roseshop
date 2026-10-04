@@ -14,6 +14,15 @@ editada à mão: função antes do `CREATE TABLE`, seed depois. A decisão não 
   `ausente` / `versao_diferente` / `ultima`; os motivos de domínio exibidos ao usuário são
   `nao_existe` / `alterada` / `ultima` (tradução em `src/lib/categorias/erros.ts`). O texto
   da Decisão 2 abaixo usa os motivos de domínio.
+**Emenda (2026-10-04, abertura da SF4 da feature 002, aprovada pelo humano):**
+- Fato 1: o erro de um statement dentro do `db.batch` chega como `NeonDbError` sem embrulho
+  (SQLSTATE em `error.code`, sem `cause`); em statement isolado chega como `DrizzleQueryError`
+  com o SQLSTATE em `error.cause.code`. Decisão: `codigoSqlstate` (`src/lib/db/erros-pg.ts`)
+  lê `error.cause.code` ou, somente quando `error instanceof NeonDbError`, `error.code`;
+  `code` no topo de qualquer outro erro é ignorado.
+- Fato 2: a FK `ON DELETE RESTRICT` recusa o `DELETE` com `23001` (restrict_violation);
+  `23503` só é produzido por `NO ACTION` (confirmado no psql, PG 18.6). Decisão: o bloqueio
+  por produtos (FR-011) é reconhecido só por `23001`.
 
 ## Contexto
 
@@ -61,8 +70,8 @@ leem o mesmo snapshot (2 linhas) e ambos passam.
   de lock advisory em `src/lib/db/`, para que invariantes futuros não colidam.
 - Concorrência na mesma categoria (FR-019): coluna `versao` (otimista) no
   `WHERE` de `UPDATE` e `DELETE`.
-- Bloqueio por produtos (FR-011) é da FK `ON DELETE RESTRICT` da feature 003, não
-  deste mecanismo.
+- Bloqueio por produtos (FR-011) é da FK `ON DELETE RESTRICT` da feature 003 (SQLSTATE
+  `23001`, ver emenda da SF4), não deste mecanismo.
 
 **Regra geral derivada**: com `neon-http`, invariantes de integridade vão para
 constraints/colunas geradas/FKs sempre que o banco puder expressá-las; o que exigir

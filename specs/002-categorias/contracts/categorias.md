@@ -97,11 +97,16 @@ O texto do banco nunca chega ao usuário.
 | `renomear(db, sessao, id, versao, nome)` | `{ tipo: "ok" }` · `{ tipo: "nome_repetido", nomeExistente }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` |
 | `remover(db, sessao, id, versao)` | `{ tipo: "removido" }` · `{ tipo: "ausente" }` · `{ tipo: "versao_diferente" }` · `{ tipo: "ultima" }` · `{ tipo: "tem_produtos", quantidade }` |
 
-  O SQLSTATE do driver (`23505`, `23503`) é lido em `src/lib/db/erros-pg.ts` e não sai de
-  `src/lib/db/`. Ele chega **somente** em `error.cause.code` (`DrizzleQueryError` embrulha o
-  `NeonDbError`; observado em T002), nunca em `error.code`; `codigoSqlstate` lê só `cause.code`. `23505` ⇒ lookup
-  `WHERE chave = categoria_chave($1)` para `nomeExistente`; `23503` ⇒
-  `contarProdutosDaCategoria`; 0 linhas no `UPDATE`/`DELETE … RETURNING` ⇒ leitura por id
+  O SQLSTATE do driver (`23505`, `23001`) é lido em `src/lib/db/erros-pg.ts` e não sai de
+  `src/lib/db/`. Há duas formas observadas: em statement isolado, `DrizzleQueryError` embrulha o
+  `NeonDbError` e o código chega em `error.cause.code` (T002); no `db.batch`, o `NeonDbError`
+  chega **sem embrulho**, com o código em `error.code` e sem `cause` (observado na SF4).
+  `codigoSqlstate` lê `error.cause.code` **ou** `error.code` somente quando
+  `error instanceof NeonDbError` (exportado em runtime por `@neondatabase/serverless`; nunca
+  pelo `name`); `code` no topo de qualquer outro erro continua ignorado. `23505` ⇒ lookup
+  `WHERE chave = categoria_chave($1)` para `nomeExistente`; `23001` (restrict_violation,
+  produzido pela FK `ON DELETE RESTRICT` do §5; `23503` seria de `NO ACTION` e não é tratado,
+  observado na SF4) ⇒ `contarProdutosDaCategoria`; 0 linhas no `UPDATE`/`DELETE … RETURNING` ⇒ leitura por id
   para distinguir `ausente` / `versao_diferente` / `ultima`. Outros erros propagam.
 - `src/lib/categorias/erros.ts` — traduz o resultado em `{ motivo, mensagem, campo? }`:
   `nome_repetido` ⇒ `nome_repetido` (`campo: "nome"`); `ausente` ⇒ `nao_existe`;
@@ -112,11 +117,14 @@ O texto do banco nunca chega ao usuário.
 ## 5. Contrato com a feature 003 (produtos)
 
 - `produtos.categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT`.
+  O `RESTRICT` é obrigatório: é ele que faz o banco recusar a remoção com `23001`, o único
+  código que a 002 traduz em `tem_produtos` (sem ação declarada, seria `23503` e viraria
+  `falha_geral`).
 - Cadastro/edição valida o valor com `exigirCategoriaValida(id)`; IA sugere apenas
   entre `listarCategorias()` e o resultado passa pela mesma validação.
 - `contarProdutosDaCategoria(db, categoriaId)` (H3-A) já conta de verdade na 002, com um
   único `SELECT count(*)::int FROM produtos WHERE categoria_id = $1` em SQL cru. Só é
-  chamada após `23503`, que já implica a existência de `produtos`; por isso não verifica a
+  chamada após `23001`, que já implica a existência de `produtos`; por isso não verifica a
   existência da tabela. Contagem ≤ 0 ou erro na contagem ⇒ `falha_geral`. Na 002 o mecanismo (FK + contagem + mensagem) é provado por
   uma tabela `produtos` **comum** criada e descartada pelo próprio teste de integração
   (`criarFixtureProdutos`/`descartarFixtureProdutos` em `src/test/db/categorias-fixtures.ts`).

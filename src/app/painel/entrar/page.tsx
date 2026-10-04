@@ -31,7 +31,7 @@ export default async function EntrarPage({
     aviso === "recusada"
       ? "Esta conta Google não tem acesso ao painel. Tente entrar com outra conta."
       : aviso === "falhou"
-        ? "Não foi possível entrar agora. Tente de novo em instantes."
+        ? "Não foi possível entrar agora. Tente de novo em instantes. Se continuar assim, avise o Willians."
         : null;
 
   return (

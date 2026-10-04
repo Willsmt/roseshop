@@ -120,7 +120,7 @@ DevTools no modo mobile) no `preview`, tocar no botão e chegar a `/painel` vend
   - com `getAdminSession()` mockado devolvendo `null`: exatamente um botão `variant="primary"` ("Entrar com Google"), nenhum `input[type=password]`, título "Painel da loja" (US1-2);
   - nenhum elemento com classe `text-sm` ou `text-xs` (FR-012);
   - campo oculto `callbackUrl` já sanitizado;
-  - `error=OAuthCallbackError` → texto "Não foi possível entrar agora. Tente de novo em instantes." (US1-5);
+  - `error=OAuthCallbackError` → texto "Não foi possível entrar agora. Tente de novo em instantes. Se continuar assim, avise o Willians." (US1-5; segunda frase acrescentada pelo humano em 2026-10-04);
   - com sessão autorizada (`getAdminSession()` não nulo) → `redirect` para `safeCallbackPath(callbackUrl)` (US1-3). A tela usa `getAdminSession()`, e não `auth()`, para que uma sessão de e-mail removido da lista não entre em laço entre `/painel/entrar` e `/painel` (aprovado pelo humano em 2026-10-04).
 - [x] T019 [P] [US1] Testes da página inicial do painel em `src/app/painel/(protegido)/page.test.tsx` (test-writer):
   - chama `requireAdminPage("/painel")` antes de renderizar;
@@ -268,7 +268,7 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 
 - [x] T049 (Não necessária: o `preview` rodou o Auth.js no workerd sem `nodejs_compat`, Phases 3 a 6; `wrangler.jsonc` intocado.) Contingência R12: **só se** o `preview` falhar e a única correção for acrescentar `"nodejs_compat"` em `compatibility_flags` do `wrangler.jsonc`, aplicar (pré-aprovado). Qualquer outra mudança no `wrangler.jsonc` → parar e reportar ao humano (tech-lead)
 - [x] T050 [P] Revisar todos os textos das telas (contracts/auth.md, tabela "Textos") quanto a linguagem simples e ausência de jargão (redator, revisão do tech-lead)
-- [ ] T051 [P] Atualizar `README.md`: dependências novas (`next-auth` beta exata, `zod`, `server-only`), como incluir/remover administradora (`ADMIN_EMAILS` + `wrangler secret put`), procedimento de emergência (trocar o `AUTH_SECRET` do ambiente), orientação de salvar `/painel` como atalho no celular (redator)
+- [x] T051 [P] Atualizar `README.md`: dependências novas (`next-auth` beta exata, `zod`, `server-only`), como incluir/remover administradora (`ADMIN_EMAILS` + `wrangler secret put`), procedimento de emergência (trocar o `AUTH_SECRET` do ambiente), orientação de salvar `/painel` como atalho no celular (redator)
 - [x] T052 Conferir o mapa critério → teste do `plan.md`: cada cenário de US1-1 a US5-3 tem pelo menos um teste automatizado (constitution I), e o quickstart é só complemento; registrar as lacunas (tech-lead)
   - **Resultado (2026-10-04)**: os 23 cenários (US1-1 a US5-3) têm pelo menos um teste automatizado
     que cita o critério (constitution I atendida). Lacunas qualitativas, sem cenário descoberto:

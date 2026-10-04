@@ -113,7 +113,8 @@ Opções:
   Essa página lê `?error=` e `?callbackUrl=` (validados com Zod) e mostra:
   - `AccessDenied` → mensagem de recusa (US2) + botão "Entrar com outra conta".
   - qualquer outro código (cancelamento no Google, Google fora do ar, `Configuration`
-    etc.) → "Não foi possível entrar agora. Tente de novo em instantes." + botão
+    etc.) → "Não foi possível entrar agora. Tente de novo em instantes." (em 2026-10-04 o humano
+    acrescentou "Se continuar assim, avise o Willians.") + botão
     "Entrar com Google".
   - sem `error` → só o botão "Entrar com Google".
 - "Entrar com outra conta" envia `prompt=select_account` ao Google, para o seletor de

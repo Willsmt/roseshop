@@ -27,7 +27,8 @@ import EntrarPage from "./page";
 
 const sessionMock = vi.mocked(getAdminSession);
 const redirectMock = vi.mocked(redirect);
-const FALHA = "Não foi possível entrar agora. Tente de novo em instantes.";
+const FALHA =
+  "Não foi possível entrar agora. Tente de novo em instantes. Se continuar assim, avise o Willians.";
 const SMALL = /(^|\s|:)text-(sm|xs)(\s|$)/;
 
 const renderPage = async (sp: { callbackUrl?: string | string[]; error?: string | string[] } = {}) =>
@@ -91,6 +92,14 @@ describe("aviso de falha (US1-5)", () => {
     expect(screen.getByText(FALHA)).toBeInTheDocument();
     expect(container.querySelectorAll('[data-variant="primary"]')).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Entrar com Google" })).toBeInTheDocument();
+  });
+
+  it("com error=Configuration (código real do cancelamento) mostra o aviso e mantém um único primário", async () => {
+    const { container } = await renderPage({ error: "Configuration" });
+    expect(screen.getByText(FALHA)).toBeInTheDocument();
+    const primary = container.querySelectorAll('[data-variant="primary"]');
+    expect(primary).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Entrar com Google" })).toBe(primary[0]);
   });
 
   it("sem error não mostra o aviso", async () => {

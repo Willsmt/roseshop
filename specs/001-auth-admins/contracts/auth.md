@@ -110,7 +110,6 @@ sair(): Promise<void>
 | Botão principal | "Entrar com Google" |
 | Recusa | "Esta conta Google não tem acesso ao painel. Tente entrar com outra conta." |
 | Botão na recusa | "Entrar com outra conta" |
-| Falha/cancelamento | "Não foi possível entrar agora. Tente de novo em instantes." |
-| Recusa e cancelamento indistinguíveis (decisão do humano) | "Não foi possível entrar com essa conta. Tente de novo ou use outra conta." + botão "Entrar com outra conta" |
+| Falha/cancelamento | "Não foi possível entrar agora. Tente de novo em instantes. Se continuar assim, avise o Willians." |
 | Saudação | "Olá, {nome ou e-mail}" |
 | Botão sair | "Sair" |

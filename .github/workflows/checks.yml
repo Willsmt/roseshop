@@ -70,6 +70,10 @@ jobs:
             sleep 3
           done
           echo "proxy não respondeu"; exit 1
+      # D5-A (feature 002): aplica as migrations (schema + seed) no Postgres do service
+      # antes dos testes. Usa o DATABASE_URL do job, nunca dev/produção.
+      - name: Migrations (Postgres do job)
+        run: npm run db:migrate
       - run: npm run test:int
 
   security:

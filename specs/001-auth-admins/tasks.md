@@ -41,8 +41,8 @@ Monolito Next.js. Código em `src/`, testes ao lado do código (`*.test.ts(x)`, 
 
 **Purpose**: dependências aprovadas (R1, R11) e linha de base verde
 
-- [ ] T001 Rodar `npm run check` antes de qualquer mudança e devolver o output real, como linha de base (junior)
-- [ ] T002 Instalar com versão **exata** (sem `^`) `next-auth@5.0.0-beta.32` e `server-only@0.0.1`, e `zod` como dependência direta, em `package.json`/`package-lock.json`. Logo depois, rodar `npm audit --omit=dev` e registrar o output real no relatório (ADR-007). Se o audit acusar vulnerabilidade, parar e reportar ao humano (tech-lead)
+- [x] T001 Rodar `npm run check` antes de qualquer mudança e devolver o output real, como linha de base (junior)
+- [x] T002 Instalar com versão **exata** (sem `^`) `next-auth@5.0.0-beta.32` e `server-only@0.0.1`, e `zod` como dependência direta, em `package.json`/`package-lock.json`. Logo depois, rodar `npm audit --omit=dev` e registrar o output real no relatório (ADR-007). Se o audit acusar vulnerabilidade, parar e reportar ao humano (tech-lead)
 
 ---
 

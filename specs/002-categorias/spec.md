@@ -20,6 +20,12 @@
 - Q: Em renomeação concorrente da mesma categoria, qual regra vale? → A: A segunda alteração concorrente sobre a mesma categoria é recusada com mensagem pedindo para atualizar a lista (não vale "última gravação").
 - Q: Quais as regras do nome? → A: De 2 a 40 caracteres após remover espaços nas pontas e colapsar espaços internos repetidos; aceita letras (incluindo acentuadas), números, espaço e hífen. Na checagem de duplicidade são iguais nomes que diferem só em maiúsculas/minúsculas, acentos, espaços extras ou hífen versus espaço. O nome é exibido exatamente como digitado (após a normalização de espaços).
 
+### Session 2026-10-04 (após `/speckit-analyze`)
+
+- Q: O que conta como "letra" e "número" no nome, e como tratar formas Unicode equivalentes? → A: Letras são qualquer caractere Unicode da categoria `\p{L}` (de qualquer alfabeto, incluindo acentuadas) e números são `\p{N}`. Antes de validar e guardar, o nome é normalizado para a forma NFC (mesmo texto visível, codificação única).
+- Q: Como a área de categorias cumpre "uma tarefa por tela" (constitution V)? → A: Telas separadas: a lista; criar; renomear; e a confirmação de remoção, cada uma em sua tela.
+- Q: A mensagem de bloqueio por produtos mostra a quantidade real já na 002? → A: Sim. A contagem lê os produtos ligados no momento da tentativa; na 002, sem cadastro de produtos, isso é verificado com uma tabela de produtos de teste.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ver a lista de categorias (Priority: P1)
@@ -110,7 +116,7 @@ lista; cancelar a confirmação e conferir que nada muda.
 
 **Acceptance Scenarios**:
 
-1. **Given** uma categoria sem produtos ligados, **When** a administradora toca em "Remover", **Then** o painel mostra uma confirmação em português simples dizendo qual categoria será removida e que a ação não pode ser desfeita, com botões claros de confirmar e de cancelar (≥ 48px).
+1. **Given** uma categoria sem produtos ligados, **When** a administradora toca em "Remover", **Then** o painel mostra uma tela de confirmação em português simples dizendo qual categoria será removida e que a ação não pode ser desfeita, com botões claros de confirmar e de cancelar (≥ 48px).
 2. **Given** a confirmação aberta, **When** a administradora cancela, **Then** a categoria continua na lista e nada muda.
 3. **Given** a confirmação aberta, **When** ela confirma, **Then** a categoria sai da lista e deixa de poder ser escolhida por qualquer outra parte do sistema.
 4. **Given** uma categoria que tem produtos ligados (por exemplo, 3), **When** a administradora tenta removê-la, **Then** a remoção é bloqueada, nada muda, e a mensagem diz quantos produtos estão na categoria e orienta a movê-los para outra categoria antes (por exemplo, "Esta categoria tem 3 produtos. Mova esses produtos para outra categoria e tente remover de novo."; com 1 produto, a mensagem usa o singular).
@@ -182,7 +188,7 @@ para criar categoria fora da ação das administradoras no painel.
 - **FR-005**: O sistema MUST recusar um nome de categoria equivalente a outro já existente, na criação e na renomeação. Dois nomes são equivalentes quando diferem apenas em maiúsculas/minúsculas, acentos, espaços extras (nas pontas ou repetidos no meio) ou hífen versus espaço (por exemplo, "Guarda-chuvas" e "Guarda chuvas").
 - **FR-006**: Na renomeação, o nome equivalente à própria categoria MUST ser aceito (permite corrigir maiúsculas, acentos e espaços).
 - **FR-007**: O sistema MUST recusar nome vazio ou composto só por espaços, na criação e na renomeação, com mensagem pedindo que a administradora escreva um nome.
-- **FR-008**: O nome da categoria MUST ser normalizado antes de validar e guardar: sem espaços nas pontas e com espaços repetidos no meio reduzidos a um. Depois disso, o nome MUST ter de 2 a 40 caracteres e conter apenas letras (incluindo acentuadas), números, espaço e hífen; qualquer outro caractere (pontuação, símbolos, emojis) é recusado, com mensagem que diz o que é aceito. O nome MUST ser guardado e exibido exatamente como digitado após essa normalização, preservando maiúsculas e acentos.
+- **FR-008**: O nome da categoria MUST ser normalizado antes de validar e guardar: forma Unicode NFC, sem espaços nas pontas e com espaços repetidos no meio reduzidos a um. Depois disso, o nome MUST ter de 2 a 40 caracteres e conter apenas letras (Unicode `\p{L}`, de qualquer alfabeto, incluindo acentuadas), números (Unicode `\p{N}`), espaço e hífen; qualquer outro caractere (pontuação, símbolos, emojis) é recusado, com mensagem que diz o que é aceito. O nome MUST ser guardado e exibido exatamente como digitado após essa normalização, preservando maiúsculas e acentos.
 - **FR-009**: Renomear uma categoria MUST manter sua identidade: tudo que estiver ligado a ela continua ligado, e qualquer referência guardada por outra parte do sistema permanece válida.
 - **FR-010**: Remover uma categoria MUST exigir confirmação explícita, com texto claro do que vai acontecer, antes de qualquer efeito (constitution V).
 - **FR-011**: A remoção de uma categoria com produtos ligados MUST ser bloqueada, sem alterar nada. A mensagem MUST informar quantos produtos estão na categoria e orientar a administradora a movê-los para outra categoria antes de tentar de novo. A verificação MUST ocorrer no sistema (não só na interface) e valer no momento da remoção.
@@ -213,14 +219,14 @@ para criar categoria fora da ação das administradoras no painel.
 ### Measurable Outcomes
 
 - **SC-001**: Em 100% dos ambientes novos, a lista contém as cinco categorias iniciais logo após o primeiro deploy, sem ação manual.
-- **SC-002**: A administradora cria, renomeia ou remove uma categoria em no máximo 3 toques depois de abrir a área de categorias (sem contar a digitação do nome nem a confirmação de remoção) e em menos de 30 segundos.
+- **SC-002**: A administradora cria, renomeia ou remove uma categoria em no máximo 3 toques depois de abrir a área de categorias (sem contar a digitação do nome nem a confirmação de remoção) e em menos de 30 segundos, com cada ação em tela própria (criar: "Nova categoria" e "Salvar"; renomear: "Renomear" e "Salvar"; remover: "Remover" e a confirmação). Verificado manualmente no celular, com o resultado anotado no PR.
 - **SC-003**: 100% das tentativas de criar ou renomear para um nome equivalente a outro existente (maiúsculas, acentos ou espaços extras) são recusadas, com mensagem clara.
 - **SC-004**: 100% das páginas e ações de categorias recusam acesso sem sessão autorizada (verificado por testes automatizados).
 - **SC-005**: 100% das mensagens de erro e confirmação desta feature estão em português e não contêm termos técnicos (verificado por revisão da lista de mensagens).
 - **SC-006**: Nenhum valor de categoria fora da lista é aceito por consumidores da lista (verificado por teste de rejeição), e nenhuma categoria é criada por qualquer caminho diferente da ação da administradora no painel.
-- **SC-007**: A dona do negócio, no celular, consegue criar e renomear uma categoria sozinha, na primeira tentativa, sem ajuda. **Validação adiada**: vinculada ao SC-005 da feature 001 (a dona ainda não tem acesso em produção); deve ser verificada quando o SC-005 da 001 for fechado.
+- **SC-007**: A dona do negócio, no celular, consegue criar e renomear uma categoria sozinha, na primeira tentativa, sem ajuda. **Validação adiada**: vinculada ao SC-005 da feature 001 (a dona ainda não tem acesso em produção); deve ser verificada quando o SC-005 da 001 for fechado. A pendência fica anotada no PR da 002.
 - **SC-008**: Após uma nova publicação do sistema, 100% das alterações feitas pelas administradoras na lista continuam presentes, e nenhuma categoria inicial removida ou renomeada é recriada.
-- **SC-009**: 100% das tentativas de remover uma categoria com produtos ligados, ou a última categoria existente, são bloqueadas sem alterar dados (verificado por testes automatizados, inclusive por chamada direta da ação), e a mensagem de bloqueio por produtos informa a quantidade correta.
+- **SC-009**: 100% das tentativas de remover uma categoria com produtos ligados, ou a última categoria existente, são bloqueadas sem alterar dados (verificado por testes automatizados, inclusive por chamada direta da ação), e a mensagem de bloqueio por produtos informa a quantidade correta (na 002, verificado com uma tabela de produtos de teste; na 003, com a tabela real).
 - **SC-010**: 100% dos nomes fora da regra (menos de 2 ou mais de 40 caracteres após normalização, ou com caracteres não aceitos) são recusados na criação e na renomeação, e 100% das listas exibidas estão em ordem alfabética (verificado por testes automatizados).
 
 ## Assumptions

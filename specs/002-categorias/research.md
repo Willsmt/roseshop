@@ -23,7 +23,7 @@ Fatos verificados em 2026-10-04 contra o ambiente local (Postgres 18.6 musl em D
 | Ordenação | `ORDER BY chave COLLATE "C", id` | independe de locale; uma query única | `Intl.Collator` no Worker (precisa de todos consumidores ordenarem); collation ICU (varia por ambiente) |
 | Mapeamento de erro | `23505` ⇒ nome repetido (relê o nome existente p/ a mensagem); `23503` ⇒ bloqueio por produtos; 0 linhas ⇒ "mudou/não existe"; resto ⇒ "não foi possível salvar" | mensagens da spec | expor texto do banco (jargão e vazamento de host/usuário) |
 | Acesso único | barrel só leitura + escrita só em actions | FR-014/015; mesmo padrão do barrel de auth | exportar tudo e confiar em convenção |
-| Validação do nome | Zod no servidor: trim, colapso de espaços, NFC, 2–40, letras/números/espaço/hífen; `CHECK` no banco para tamanho e espaços (defesa em profundidade) | constitution III.3 | validar só na UI |
+| Validação do nome | Zod no servidor: NFC, trim, colapso de espaços, 2–40, `\p{L}`/`\p{N}`/espaço/hífen (letras e números de qualquer alfabeto; clarify pós-análise); `CHECK` no banco para tamanho e espaços (defesa em profundidade) | constitution III.3 | validar só na UI |
 | Erros do driver | verificar em teste de integração se o código SQLSTATE chega em `error.cause` (Drizzle 0.45 pode embrulhar) | evita mapear no escuro | — |
 
 Premissa a validar em teste: NFD não decompõe `ß`, `æ`, `ø`, `ł`; esses ficam
@@ -35,9 +35,9 @@ Escolhidas: **D1-A** (seed na migration), **D2-B** (coluna gerada com built-ins,
 expressão encapsulada na função SQL `categoria_chave(text)` `IMMUTABLE`, usada também
 no lookup após `23505`), **D3-B** (`db.batch` com `pg_advisory_xact_lock` + `DELETE`
 condicional com `RETURNING`; 0 linhas ⇒ leitura posterior só para a mensagem),
-**D4-A** (contrato sem tabela; fixture `produtos` temporária no teste de integração),
+**D4-A** (contrato sem tabela; fixture `produtos` como tabela comum de teste, criada e descartada no teste de integração; contagem real refinada na análise, H3-A),
 **D5-A** (`db:migrate` antes de `test:int`, local e CI; testes sem assumir tabela vazia).
-D2 e D3 ⇒ [ADR-008](../adr/008-integridade-de-dados-neon-http.md) (proposto).
+D2 e D3 ⇒ [ADR-008](../adr/008-integridade-de-dados-neon-http.md) (aceito).
 As tabelas abaixo ficam como **histórico**; a coluna "Estado" marca a escolhida.
 
 Verificação adicional (2026-10-04, Postgres 18.6 local, transação revertida): função
@@ -49,9 +49,13 @@ Efeitos práticos das escolhas, registrados para as tasks:
   Fixture `produtos` (D4-A) precisa ser descartada antes do `TRUNCATE`.
   `vitest.int.config.mts` precisa de `fileParallelism: false`.
 - D2-B: mudar a regra exige migration recriando coluna e índice; `drizzle-kit` não
-  modela a função (migration SQL à mão).
-- D3-B: FR-020 depende de todos os deletes passarem pela função de remoção.
-- D4-A: a 1ª task da 003 troca o SQL cru da fixture pela referência ao schema e remove a fixture.
+  modela a função (migration gerada pelo `drizzle-kit generate` e editada à mão: função
+  antes do `CREATE TABLE`, seed depois; sem `--custom`, ver "Riscos").
+- D3-B: FR-020 depende de todos os deletes passarem pela função de remoção; a atomicidade
+  do batch é provada por probe determinístico no proxy local e no Neon dev (CI).
+- D4-A: a fixture `produtos` é tabela comum (não `TEMP`). Refinamento da análise (H3-A):
+  `contarProdutosDaCategoria` já conta de verdade (`to_regclass` + `count(*)`). A 1ª task
+  da 003 cria `produtos` pelo schema, troca o SQL cru da contagem e remove a fixture do helper.
 
 ## Opções avaliadas (histórico)
 
@@ -120,7 +124,11 @@ Hoje `test:int` roda contra o banco local sem schema. Com tabela e seed:
 
 - Primeira migration do projeto: valida pela primeira vez o passo `Migrations` dos
   workflows no Neon `dev` e `production`. Testar em dev antes (ADR-006).
-- `drizzle-kit generate` pode não gerar coluna gerada/trigger/índice funcional como
-  queremos; talvez precise de migration SQL escrita à mão (`drizzle-kit generate --custom`).
+- `drizzle-kit generate` não modela a função SQL. Fluxo: geração normal (o kit emite a
+  tabela com a coluna gerada e grava o snapshot com ela) e edição à mão do SQL (função
+  antes do `CREATE TABLE`, seed depois, separados por `--> statement-breakpoint`).
+  **Não usar `generate --custom`**: conferido no `drizzle-kit` 0.31 instalado
+  (`bin.cjs`), o modo custom grava um snapshot copiado do anterior, sem a tabela; a
+  geração seguinte recriaria `categorias` e a conferência "No schema changes" falharia.
 - Seed escrito em SQL deve produzir exatamente: Bolsas, Guarda-chuvas, Tupperware,
   Panos de prato, Meias (grafia da spec).

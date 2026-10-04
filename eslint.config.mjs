@@ -11,5 +11,6 @@ export default defineConfig([
     ".wrangler/**",
     "node_modules/**",
     "cloudflare-env.d.ts",
+    "references/**",
   ]),
 ]);

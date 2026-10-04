@@ -56,3 +56,6 @@ next-env.d.ts
 
 # graphify — grafo local e regenerável
 graphify-out/
+
+# Referências visuais de terceiros (nunca versionar)
+references/

@@ -2,6 +2,9 @@
 
 **Status:** aceito
 **Data:** 2026-10-04
+**Emenda (2026-10-04, aprovada pelo humano):** a migration não usa `generate --custom`
+(o modo custom grava um snapshot sem a tabela). É gerada pelo `drizzle-kit generate` e
+editada à mão: função antes do `CREATE TABLE`, seed depois. A decisão não muda.
 
 ## Contexto
 
@@ -82,8 +85,9 @@ depende de resultado intermediário. Nenhum código assume `db.transaction()`.
   conformidade (FR-015) nega import das funções de escrita fora do módulo.
 - (−) Mudar a regra de normalização exige migration que recria a coluna gerada e o
   índice; alterar só o corpo da função não recalcula valores gravados.
-- (−) `drizzle-kit` não modela a função: a migration é SQL escrito à mão
-  (`generate --custom`) e o diff do kit precisa ser conferido.
+- (−) `drizzle-kit` não modela a função: a migration é gerada pelo `drizzle-kit generate`
+  e editada à mão (função antes do `CREATE TABLE`, seed depois), e o diff do kit precisa
+  ser conferido ("No schema changes" na geração seguinte).
 - (−) Caracteres que o NFD não decompõe (`ß`, `æ`, `ø`, `ł`) ficam distintos.
 - (−) Lock advisory e `db.batch` devem ser validados contra o proxy local e o Neon
   `dev` com concorrência real antes de produção (ADR-006).

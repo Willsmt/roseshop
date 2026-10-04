@@ -4,6 +4,7 @@ import type { AdminSession } from "@/lib/auth";
 
 import type { Db } from "./client";
 import { codigoSqlstate } from "./erros-pg";
+import { LOCK_REMOCAO_CATEGORIAS } from "./locks";
 import { categorias } from "./schema";
 
 // Camada SQL de categorias (contrato §4). Toda função recebe `db`; nada aqui conhece
@@ -22,8 +23,17 @@ export type ResultadoRenomear =
   | NomeRepetido
   | { tipo: "ausente" }
   | { tipo: "versao_diferente" };
+export type ResultadoRemover =
+  | { tipo: "removido" }
+  | { tipo: "ausente" }
+  | { tipo: "versao_diferente" }
+  | { tipo: "ultima" }
+  | { tipo: "tem_produtos"; quantidade: number };
 
 const VIOLACAO_DE_UNICIDADE = "23505";
+// restrict_violation: a FK `ON DELETE RESTRICT` de `produtos` recusa o DELETE (contrato §5).
+// `23503` (NO ACTION) não é tratado de propósito.
+const BLOQUEIO_POR_PRODUTOS = "23001";
 
 const colunas = {
   id: categorias.id,
@@ -100,4 +110,50 @@ export async function renomear(
   }
   // Nenhuma linha: a categoria sumiu ou outra pessoa já gravou outra versão.
   return (await obterPorId(db, id)) ? { tipo: "versao_diferente" } : { tipo: "ausente" };
+}
+
+// Único caminho de DELETE em `categorias` (FR-020). Um `count(*) > 1` isolado não basta:
+// duas remoções simultâneas leriam o mesmo snapshot. No batch (uma transação READ
+// COMMITTED) o lock serializa as remoções e o DELETE toma snapshot novo depois dele
+// (D3-B, ADR-008). A confirmação da remoção é da UI.
+export async function remover(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+): Promise<ResultadoRemover> {
+  try {
+    const [, linhas] = await db.batch([
+      db.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_REMOCAO_CATEGORIAS}::bigint)`),
+      db
+        .delete(categorias)
+        .where(
+          and(
+            eq(categorias.id, id),
+            eq(categorias.versao, versao),
+            sql`(SELECT count(*) FROM ${categorias}) > 1`,
+          ),
+        )
+        .returning({ id: categorias.id }),
+    ]);
+    if (linhas.length > 0) return { tipo: "removido" };
+  } catch (erro) {
+    if (codigoSqlstate(erro) !== BLOQUEIO_POR_PRODUTOS) throw erro;
+    return { tipo: "tem_produtos", quantidade: await contarProdutosDaCategoria(db, id) };
+  }
+  // Nenhuma linha: a leitura posterior só escolhe o resultado; quem garante o mínimo de 1
+  // é o batch acima.
+  const atual = await obterPorId(db, id);
+  if (!atual) return { tipo: "ausente" };
+  return atual.versao === versao ? { tipo: "ultima" } : { tipo: "versao_diferente" };
+}
+
+// SQL cru porque `produtos` ainda não está no schema: a 003 troca esta consulta pela
+// referência ao schema Drizzle de `produtos` (contrato §5). Só é chamada após `23001`, que
+// já implica a tabela; erro aqui propaga e vira `falha_geral` na tradução.
+export async function contarProdutosDaCategoria(db: Db, categoriaId: number): Promise<number> {
+  const r = await db.execute(
+    sql`SELECT count(*)::int AS n FROM produtos WHERE categoria_id = ${categoriaId}`,
+  );
+  return Number((r.rows[0] as { n: number }).n);
 }

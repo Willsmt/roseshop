@@ -1,4 +1,4 @@
-import type { ResultadoInserir, ResultadoRenomear } from "@/lib/db/categorias";
+import type { ResultadoInserir, ResultadoRemover, ResultadoRenomear } from "@/lib/db/categorias";
 
 import { type Motivo, type MotivoNome, mensagem } from "./mensagens";
 
@@ -14,12 +14,10 @@ export class CategoriaInvalidaError extends Error {
 /** Falha mostrada no painel (contrato §3): `campo` indica o campo do formulário a destacar. */
 export type Falha = { motivo: Motivo; mensagem: string; campo?: "nome" };
 
-// Recusas da camada db (contrato §4). `ultima` e `tem_produtos` são os resultados da
-// remoção, cuja função na camada db chega na SF4.
+// Recusas da camada db (contrato §4): todo resultado de escrita que não é sucesso.
 export type Recusa =
   | Exclude<ResultadoInserir | ResultadoRenomear, { tipo: "ok" }>
-  | { tipo: "ultima" }
-  | { tipo: "tem_produtos"; quantidade: number };
+  | Exclude<ResultadoRemover, { tipo: "removido" }>;
 
 export function falhaGeral(): Falha {
   return { motivo: "falha_geral", mensagem: mensagem("falha_geral") };

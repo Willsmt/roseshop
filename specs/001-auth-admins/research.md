@@ -190,6 +190,9 @@ Opções:
   `no-store`. O `pageshow` fecha essa brecha sem lógica de negócio no client.
 - **Teste** (C2): teste de componente que dispara `pageshow` com `persisted: true` e
   espera `location.reload()`; com `persisted: false`, não recarrega.
+- **Verificado (2026-10-04, `preview` local, humano)**: depois de "Sair", o "voltar" do
+  navegador não mostrou o painel (US4-3). O `curl -I` confirmou `Cache-Control: private,
+  no-store` em `/painel` e `/painel/entrar`, e a home pública manteve o próprio cache.
 
 ## R9. Retorno após login (FR-009)
 

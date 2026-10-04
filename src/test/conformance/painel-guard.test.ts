@@ -505,3 +505,73 @@ export async function OPTIONS() { return new Response(); }`,
     expect(v).toEqual(["src/middleware.js"]);
   });
 });
+
+// Verdadeiro se o arquivo importa (estático, re-export ou import() dinâmico com literal)
+// `@/lib/auth`, `@/lib/auth/*`, `next-auth` ou `next-auth/*`.
+function importaAuth(conteudo: string): boolean {
+  const sf = ts.createSourceFile("x.tsx", conteudo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const proibido = (spec: string) =>
+    spec === "@/lib/auth" ||
+    spec.startsWith("@/lib/auth/") ||
+    spec === "next-auth" ||
+    spec.startsWith("next-auth/");
+  let achou = false;
+  const visita = (n: ts.Node) => {
+    if (achou) return;
+    if (
+      (ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) &&
+      n.moduleSpecifier &&
+      ts.isStringLiteral(n.moduleSpecifier) &&
+      proibido(n.moduleSpecifier.text)
+    ) {
+      achou = true;
+    } else if (
+      ts.isCallExpression(n) &&
+      n.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      n.arguments.length > 0 &&
+      ts.isStringLiteralLike(n.arguments[0]) &&
+      proibido(n.arguments[0].text)
+    ) {
+      achou = true;
+    }
+    ts.forEachChild(n, visita);
+  };
+  visita(sf);
+  return achou;
+}
+
+describe("catálogo público continua aberto (US5-1, US5-3, FR-011)", () => {
+  it.each(["src/app/page.tsx", "src/app/layout.tsx"])(
+    "%s não importa nada de auth (US5-1, FR-011)",
+    (arquivo) => {
+      const conteudo = fs.readFileSync(path.join(process.cwd(), arquivo), "utf8");
+      expect(importaAuth(conteudo)).toBe(false);
+    },
+  );
+
+  it("/api/health continua nas exceções públicas (US5-3)", () => {
+    expect(EXCECOES_PUBLICAS).toContain("src/app/api/health/route.ts#GET");
+  });
+
+  describe("importaAuth (fixtures)", () => {
+    it.each([
+      ['import { auth } from "@/lib/auth";'],
+      ['import x from "@/lib/auth/guard";'],
+      ['import NextAuth from "next-auth";'],
+      ['import Google from "next-auth/providers/google";'],
+      ['export { auth } from "@/lib/auth";'],
+      ['async function f() { await import("@/lib/auth"); }'],
+    ])("true para %s", (codigo) => {
+      expect(importaAuth(codigo)).toBe(true);
+    });
+
+    it.each([
+      ['import { Button } from "@/components/ui/button";'],
+      ['import x from "@/lib/authx";'],
+      ['// import { auth } from "@/lib/auth";\nexport const a = 1;'],
+      ['/* "@/lib/auth" */ export const a = 1;'],
+    ])("false para %s", (codigo) => {
+      expect(importaAuth(codigo)).toBe(false);
+    });
+  });
+});

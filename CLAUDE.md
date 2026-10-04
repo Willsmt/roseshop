@@ -56,18 +56,19 @@ scripts/require-ci.mjs    # trava: deploy:production só com CI definido
 scripts/smoke-health.sh   # smoke pós-deploy: exige /api/health 200 em ~60s
 .nvmrc                    # Node 24 (local e CI)
 wrangler.jsonc            # 3 ambientes: local (topo), env.dev, env.production [protegido]
-src/app/                  # rotas (App Router) — hoje layout.tsx, page.tsx, globals.css (boilerplate) e api/health
+src/app/                  # rotas (App Router) — layout.tsx, page.tsx, globals.css (boilerplate), api/health, api/auth/[...nextauth]
   (public)/               # catálogo público + sacola          [planejado]
-  painel/                 # área das administradoras           [planejado]
-src/components/ui/        # componentes base — única fonte de primitivos [planejado]
+  painel/                 # área das administradoras: entrar/ (pública) e (protegido)/ (layout, page, bfcache-reload)
+src/components/ui/        # componentes base — única fonte de primitivos (hoje só button.tsx)
+src/test/conformance/     # teste que nega por padrão rota/action sem guard (painel-guard.test.ts)
 src/lib/db/               # Drizzle: client, health, schema (vazio), migrations/ [protegido]
 drizzle.config.ts         # config do drizzle-kit
-src/lib/auth/             # Auth.js + allowlist                 [planejado, protegido]
+src/lib/auth/             # Auth.js v5 + allowlist + guards; UI importa só de index.ts (barrel) [protegido]
 src/lib/r2/               # URLs pré-assinadas                  [planejado, protegido]
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: **Fase 0 concluída** — scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 002, 006 e 007) + testes Vitest (unitários + integração) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; runners fixados em `ubuntu-24.04`, migração para o Ubuntu 26 pendente em PR próprio) + produção no ar (`/api/health` = 200) + branch `main` protegido (relato do mantenedor); nenhuma feature em `specs/NNN-nome/` ainda. Próximo passo: features via Spec Kit.
+Estado atual: **Fase 0 concluída + feature 001 (autenticação das administradoras) implementada no branch `feature/001-auth-admins`** — scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 001, 002, 003, 004, 006 e 007) + testes Vitest (unitários + integração + conformidade do guard) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; runners fixados em `ubuntu-24.04`, migração para o Ubuntu 26 pendente em PR próprio) + produção no ar (`/api/health` = 200) + branch `main` protegido (relato do mantenedor) + login Google com allowlist `ADMIN_EMAILS`, sessão JWT e painel protegido sem middleware (`next-auth@5.0.0-beta.32`); catálogo, sacola, R2 e IA ainda não existem. Próximo passo: merge da feature 001 (humano) e próximas features via Spec Kit.
 
 ## Fluxo de feature (obrigatório)
 

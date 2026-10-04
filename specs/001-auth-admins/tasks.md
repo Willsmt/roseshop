@@ -283,7 +283,7 @@ aparelho, sem confirmação, e volta para a tela de entrada.
 - [x] T053 Rodar `npm run check`, `npm audit --omit=dev` e `npm run preview` e devolver o output real (junior)
 - [x] T054 Rodar `graphify update .` (tech-lead)
 - [x] T055 Propor ao humano a mensagem de commit em Conventional Commits, sem `Co-Authored-By`, com **justificativa no corpo para cada dependência nova** (`next-auth@5.0.0-beta.32` exata: ADR-003 e adendo; `zod`: constitution II/III.3; `server-only`: impedir vazamento de segredos para o bundle). O humano commita (tech-lead)
-- [ ] T056 Acionar o `doc-sync-onboarding` (rota nova, zona protegida, dependências, procedimento de emergência em `docs/operacao.md`); docs em commit próprio `docs(...)`, feito pelo humano (tech-lead)
+- [x] T056 Acionar o `doc-sync-onboarding` (rota nova, zona protegida, dependências, procedimento de emergência em `docs/operacao.md`); docs em commit próprio `docs(...)`, feito pelo humano (tech-lead)
 - [ ] T057 Abrir PR → deploy no dev online pelo CI → executar o quickstart completo no dev com o celular da dona, incluindo o passo 10 e o teste de emergência no dev. Merge só pelo humano (humano)
 
 ---

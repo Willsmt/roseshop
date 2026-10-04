@@ -1,3 +1,3 @@
-- [Divergências conhecidas](known_divergences.md) — ADR-006: env e CI resolvidos (produção após merge); resolvidas: .dev.vars.example, fetch x proxy, passWithNoTests; dívida: tipo NEON_FETCH_ENDPOINT.
+- [Divergências conhecidas](known_divergences.md) — ADR-006 resolvido; dívidas ativas: NEON_FETCH_ENDPOINT, formatador, definições de agentes (F01).
 - [Convenções de formatação dos docs](doc_conventions.md) — ordem de seções, tabelas, quando usar mermaid, onde registrar divergências.
-- [Feedback do humano sobre docs](feedback_docs_style.md) — priorizar troubleshooting operacional; não duplicar conteúdo entre docs.
+- [Feedback do humano sobre docs](feedback_docs_style.md) — priorizar troubleshooting operacional; não duplicar; limites de processo do tech-lead.

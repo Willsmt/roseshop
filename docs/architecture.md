@@ -1,15 +1,18 @@
 # Arquitetura
 
-> Estado: **Fase 0 — scaffold**. Este documento descreve apenas o que existe hoje
-> no repositório. Para o que está planejado (catálogo, sacola, auth, R2, IA,
-> banco), ver `.specify/memory/constitution.md` e os ADRs em `specs/adr/`.
+> Estado: **Fase 0 concluída + feature 001 (autenticação) implementada**. Este
+> documento descreve apenas o que existe hoje no repositório. Para o que está
+> planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
+> os ADRs em `specs/adr/`.
 
 ## Visão leiga
 
-O Roseshop ainda é só o esqueleto gerado pelo template oficial do OpenNext para
-Cloudflare (`create-next-app` + `@opennextjs/cloudflare`). Hoje, ao acessar o
-site, a única coisa que existe é a página inicial padrão do Next.js — nenhuma
-tela de catálogo, login ou painel foi construída ainda.
+O Roseshop ainda é, em grande parte, o esqueleto gerado pelo template oficial do
+OpenNext para Cloudflare (`create-next-app` + `@opennextjs/cloudflare`). A raiz
+do site continua sendo a página inicial padrão do Next.js; nenhuma tela de
+catálogo ou sacola foi construída. A única funcionalidade de produto é o
+**login das administradoras** em `/painel` (ver
+[F01-autenticacao.md](./features/F01-autenticacao.md)).
 
 O que já está de pé é a **esteira de build e deploy**: como o projeto, escrito
 em Next.js, vira um Worker rodando na Cloudflare.
@@ -30,9 +33,19 @@ em Next.js, vira um Worker rodando na Cloudflare.
 | Testes | Vitest `^5.0.3` + Testing Library + jsdom (ver [operacao.md, "Testes"](./operacao.md#testes-vitest)) |
 
 Banco: `drizzle-orm` `^0.45.3` e `@neondatabase/serverless` `^1.2.0` (runtime);
-`drizzle-kit` `^0.31.11` e `pg` `^8.23.1` (dev, só migrations). Não há ainda no `package.json`: Auth.js, SDK da OpenAI, nem nenhuma lib de upload
-para R2 — essas entram nas dependências quando as features correspondentes
-(ver `specs/`) forem implementadas.
+`drizzle-kit` `^0.31.11` e `pg` `^8.23.1` (dev, só migrations).
+
+Autenticação (feature 001), dependências de runtime:
+
+| Pacote | Versão | Observação |
+|---|---|---|
+| `next-auth` | `5.0.0-beta.32` (**exata**) | Auth.js v5, ainda beta (a tag `latest` do npm é a 4.x, descartada). Atualizar só em PR próprio, lendo o changelog e rodando `npm audit --omit=dev` (ADR-003, adendo; ADR-007). |
+| `server-only` | `0.0.1` (**exata**) | Faz o build falhar se um módulo de servidor for importado no cliente. |
+| `zod` | `^4.6.5` | Validação de e-mail da allowlist e de entradas da action de login. |
+
+Não há ainda no `package.json`: SDK da OpenAI nem nenhuma lib de upload para R2
+— essas entram nas dependências quando as features correspondentes (ver
+`specs/`) forem implementadas.
 
 ### Estrutura de código atual
 
@@ -42,6 +55,11 @@ src/app/
   page.tsx      # página inicial — ainda é o boilerplate do create-next-app
   globals.css   # estilos globais (Tailwind)
   api/health/route.ts   # GET /api/health (ver "Camada de banco")
+  api/auth/[...nextauth]/route.ts   # handlers do Auth.js (GET, POST)
+  painel/entrar/page.tsx            # tela de entrada (pública)
+  painel/(protegido)/               # layout (moldura + "Sair"), page (saudação), bfcache-reload
+src/components/ui/button.tsx   # Button (primary/secondary), primeiro componente base
+src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
@@ -50,7 +68,36 @@ src/lib/db/
 drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations)
 ```
 
-Nenhuma rota além da raiz e de `/api/health`, nenhum middleware.
+Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel` e `/api/auth/*`.
+**Nenhum middleware** (de propósito; ver a seção seguinte).
+
+### Autenticação e proteção do painel
+
+**Visão leiga**: só as administradoras entram em `/painel`, com a conta Google,
+e só se o e-mail estiver na lista `ADMIN_EMAILS`. Como o projeto não usa
+middleware, cada página e cada ação confere sozinha quem está pedindo, e um teste
+automático garante que ninguém esqueça essa conferência.
+
+**Aprofundamento técnico** (zona protegida: `src/lib/auth/`):
+
+- Auth.js v5 com Google, sessão **JWT em cookie, sem adapter e sem tabelas**.
+  Configuração criada **por request** (`NextAuth(() => createAuthConfig())`),
+  porque os secrets do Worker só existem em `process.env` durante o request.
+- **Sem `middleware.ts`/`proxy.ts`**: o `proxy.ts` do Next 16 roda só em Node e
+  o OpenNext o trata como experimental (ADR-003, adendo). Em vez disso:
+  `getAdminSession` no layout (nunca redireciona), `requireAdminPage` em cada
+  página, `requireAdminAction` em cada action e route handler. O teste
+  `src/test/conformance/painel-guard.test.ts` nega por padrão e mantém a lista
+  de exceções públicas por função.
+- `trustHost: true`, sem `AUTH_URL` fixo (host da requisição; justificativa no
+  adendo do ADR-003). Respostas de `/painel/:path*` saem com
+  `Cache-Control: private, no-store` (`next.config.ts`).
+- A allowlist é conferida no callback de login **e** a cada acesso
+  (`getAdminSession`), então remover um e-mail bloqueia no próximo request.
+
+Rotas, módulos, fluxo e pegadinhas em
+[features/F01-autenticacao.md](./features/F01-autenticacao.md). Variáveis e
+procedimento de emergência em [operacao.md](./operacao.md#administradoras-e-emergência-de-acesso).
 
 ### Camada de banco e health check
 
@@ -207,8 +254,8 @@ O repositório adotou o Spec Kit (v1.0.6, integração `claude`):
 | `.specify/scripts/bash/` | Scripts usados pelas skills (criar feature, pré-requisitos, setup de plan/tasks). |
 | `.specify/workflows/`, `.specify/*.json` | Workflow e estado/manifestos da integração. |
 | `.claude/skills/speckit-*` | Skills `/speckit-specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, `converge`, `checklist`, `constitution`, `taskstoissues`. |
-| `specs/NNN-nome/` | Uma pasta por feature (`spec.md`, `plan.md`, `tasks.md`). Hoje nenhuma existe. |
-| `specs/adr/` | ADRs: hoje `002-neon-drizzle.md` e `006-ambientes-dev-producao.md`. |
+| `specs/NNN-nome/` | Uma pasta por feature (`spec.md`, `plan.md`, `tasks.md`, entre outros). Hoje existe `001-auth-admins/`. |
+| `specs/adr/` | ADRs: `001`, `002`, `003`, `004`, `006` e `007` (ver a pasta). |
 
 O `plan.md` de cada feature passa pelo Constitution Check. A ordem de uso está
 no `CLAUDE.md`, seção "Spec Kit". Mapeamento da numeração antiga da
@@ -217,6 +264,22 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 
 ### Dívidas técnicas
 
+- **Sem formatador de código** (decisão do humano, 2026-10-03): o repositório
+  mistura tabs (`src/app/layout.tsx`, `src/app/page.tsx`,
+  `src/components/ui/button.tsx`, `src/app/painel/(protegido)/page.tsx`,
+  `next.config.ts`) e 2 espaços (`src/lib/`, demais arquivos do painel), sem
+  formatador configurado. Adotar um em PR próprio, depois da feature 001.
+- **Definições dos agentes** (`.claude/agents/`) a ajustar (decisão do humano,
+  2026-10-04, após violações de processo na feature 001): nenhum agente executa
+  pacote via `npx` que não seja dependência do projeto; nenhum agente executa
+  comando fora do briefing; as verificações do `junior` nunca são finais (o
+  tech-lead as reexecuta antes de reportar ao humano). Ver
+  `specs/001-auth-admins/tasks.md`, "Dívidas registradas".
+- **Cobertura do guard depende do teste de conformidade**: sem filtro central,
+  um novo padrão de arquivo que o teste não conheça fica desprotegido sem
+  alerta; estenda o teste ao introduzi-lo (ADR-003, adendo).
+- **`next-auth` em beta** (`5.0.0-beta.32`, versão exata): atualização manual e
+  deliberada.
 - **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o
   layout raiz declara `lang="en"` (herança do `create-next-app`). Afeta
   leitores de tela e SEO. Também permanecem `title`/`description` genéricos
@@ -224,8 +287,7 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, autenticação (Auth.js + allowlist `ADMIN_EMAILS`),
-upload de imagens via R2 (URL pré-assinada) e integração de IA (OpenAI) são
+Catálogo público, sacola, upload de imagens via R2 (URL pré-assinada) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

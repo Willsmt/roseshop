@@ -5,7 +5,8 @@
 > publicados; a produção está no ar desde o primeiro deploy pelo CI). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
 > exercitada só pela rota `/api/health`. O schema está vazio de propósito e
-> ainda não há migrations. R2, auth e IA não estão configurados.
+> ainda não há migrations. O login das administradoras (Auth.js + Google) está
+> implementado (feature 001); R2 e IA não estão configurados.
 
 ## Visão leiga
 
@@ -187,8 +188,13 @@ Há dois tipos de teste, cada um com sua config:
 | Unitário | `src/**/*.test.{ts,tsx}` | `vitest.config.mts` + `vitest.setup.ts` | `npm test`; entra no `npm run check` e no `pre-push` | Não precisa |
 | Integração | `src/**/*.int.test.{ts,tsx}` | `vitest.int.config.mts` + `vitest.int.setup.ts` | `npm run test:int`, manual; **fora** do `pre-push` | Exige `npm run db:up`; o setup falha se `DATABASE_URL` faltar (lê `.dev.vars` se existir), `testTimeout` de 15 s |
 
-Hoje existem `src/lib/db/health.test.ts` (unitário) e
-`src/lib/db/client.int.test.ts` (integração, via proxy local). Configuração
+Hoje existem testes em `src/lib/db/` (`health.test.ts` unitário e
+`client.int.test.ts` de integração, via proxy local), em `src/lib/auth/`, nas
+telas do painel e em `src/components/ui/`, além de dois testes transversais:
+`src/test/conformance/painel-guard.test.ts` (nega por padrão rotas/actions sem
+guard; ver [F01](./features/F01-autenticacao.md#teste-de-conformidade-nega-por-padrão))
+e `src/next-config.test.ts` (header `no-store` em `/painel`). Em
+`vitest.setup.ts`, `server-only` é trocado por um mock vazio. Configuração
 do tipo unitário (`vitest.config.mts`):
 
 | Aspecto | Configuração | Observação |
@@ -250,6 +256,13 @@ depende dele.
 
 ## Auditoria de dependências
 
+**Dependências de autenticação com política própria** (feature 001):
+`next-auth@5.0.0-beta.32` e `server-only@0.0.1` ficam em **versão exata** (sem
+`^`) no `package.json`; `zod` está em `^4.6.5`. O `next-auth` v5 ainda é beta
+(a tag `latest` do npm é a 4.x). Atualizá-lo é decisão deliberada: só em PR
+próprio, depois de ler o changelog e rodar `npm audit --omit=dev` (ADR-003,
+adendo; ADR-007).
+
 Política formalizada no [ADR-007](../specs/adr/007-auditoria-de-dependencias.md)
 e aplicada pelo job `security` do CI (ver "CI"). Resumo:
 
@@ -282,16 +295,15 @@ local").
 | `NEXTJS_ENV` | Vem do template do OpenNext. O adaptador a lê no `preview` para escolher qual arquivo `.env.*` do Next carregar (exemplo: `development`). | Adaptador OpenNext, no `preview`; **não** é usada pelo código de `src/`. | Var de configuração local (não sensível) |
 | `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | `src/lib/db/client.ts` (`createDb`, via `/api/health`), `drizzle.config.ts` e `vitest.int.setup.ts`. | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
 | `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | `src/lib/db/client.ts` (`neonConfig.fetchEndpoint`). Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
-
-| `AUTH_SECRET` | Segredo de assinatura das sessões do Auth.js. **Gerado** (`openssl rand -base64 32`); não vem do Google. **Diferente em cada ambiente** (local, dev, produção). | Nenhum consumidor no código ainda (feature 001, Auth.js). | Secret em dev online e produção |
-| `AUTH_GOOGLE_ID` | Client ID do OAuth do Google (termina em `.apps.googleusercontent.com`). | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção |
-| `AUTH_GOOGLE_SECRET` | Client Secret do OAuth do Google (começa com `GOCSPX-`). | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção |
-| `ADMIN_EMAILS` | Allowlist de e-mails das administradoras, separados por vírgula, sem espaço. | Nenhum consumidor ainda (feature 001). | Secret em dev online e produção (contém e-mails pessoais) |
+| `AUTH_SECRET` | Segredo de assinatura das sessões do Auth.js. **Gerado** (`openssl rand -base64 32`); não vem do Google. **Diferente em cada ambiente** (local, dev, produção). | Lido pelo próprio Auth.js (`next-auth`) de `process.env`; nenhum arquivo de `src/` o referencia. Trocar o valor derruba todas as sessões do ambiente. | Secret em dev online e produção |
+| `AUTH_GOOGLE_ID` | Client ID do OAuth do Google (termina em `.apps.googleusercontent.com`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
+| `AUTH_GOOGLE_SECRET` | Client Secret do OAuth do Google (começa com `GOCSPX-`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
+| `ADMIN_EMAILS` | Allowlist de e-mails das administradoras, separados por vírgula, sem espaço. Comparação sem diferenciar maiúsculas; entradas inválidas são ignoradas. | `src/lib/auth/config.ts` (callback `signIn`) e `src/lib/auth/guard.ts` (`getAdminSession`, a cada acesso). | Secret em dev online e produção (contém e-mails pessoais) |
 | `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | Nenhum consumidor ainda (feature 005, IA). | Secret em dev online e produção |
 
 As cinco últimas estão declaradas em `.dev.vars.example` e tipadas em
-`cloudflare-env.d.ts` (confirmado), mas **nenhum arquivo de `src/` as
-referencia ainda** (confirmado por grep). Chaves de R2 não são variáveis: R2
+`cloudflare-env.d.ts`. As quatro de auth têm consumidor (coluna "Onde é usada");
+`OPENAI_API_KEY` **ainda não é referenciada** em `src/`. Chaves de R2 não são variáveis: R2
 é binding (ver "Bindings").
 
 ### Google OAuth (informação do mantenedor)
@@ -309,6 +321,66 @@ limite de uso configurado nos projetos. Há uma lista curta de modelos baratos
 com entrada de imagem, a reduzir para um na feature 005. A chave de produção
 foi criada e cadastrada como secret de runtime de produção (relato do
 mantenedor, 2026-10-03).
+
+## Administradoras e emergência de acesso
+
+### Visão leiga
+
+Quem pode entrar no painel é decidido por duas coisas: a conta precisa estar
+liberada no Google (enquanto o app está em modo de teste) **e** o e-mail precisa
+estar na lista `ADMIN_EMAILS` de cada ambiente. Em caso de suspeita de acesso
+indevido, existe um "botão de pânico": trocar o `AUTH_SECRET`, que desconecta
+todo mundo.
+
+### Incluir ou remover administradora
+
+1. **Incluir**: no Google Cloud (projeto `roseshop`, app em modo **Testing**),
+   adicione o e-mail como *test user*; depois acrescente-o em `ADMIN_EMAILS` do
+   ambiente (secret na Cloudflare, `--env dev` ou `--env production`; local:
+   `.dev.vars`). Reenvie a lista inteira, separada por vírgula, sem espaço. Use
+   o procedimento por pipe de "Cadastrar um secret"; não imprima o valor.
+2. **Remover**: tire o e-mail de `ADMIN_EMAILS` (e, se quiser, dos *test users*).
+   **Vale no próximo acesso**: `getAdminSession` reconfere a lista a cada
+   página/ação, mesmo com o cookie ainda válido. Não precisa deploy.
+3. Em dev local, reinicie o `npm run preview` depois de editar o `.dev.vars`
+   (ver Troubleshooting).
+
+### Emergência: derrubar todas as sessões
+
+A sessão é um cookie JWT assinado com `AUTH_SECRET`, sem registro no servidor.
+Trocar o secret invalida **todas as sessões daquele ambiente** no próximo
+acesso:
+
+```bash
+openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET --env <amb>
+```
+
+(`<amb>` = `dev` ou `production`.) Depois, **revise o `ADMIN_EMAILS`** para
+confirmar que só há administradoras legítimas. As administradoras precisarão
+entrar de novo. Cada ambiente tem o seu `AUTH_SECRET`; trocar um não afeta os
+outros. "Sair" na tela encerra apenas o aparelho de quem clicou.
+
+### Diagnóstico de login
+
+Os logs do callback de login contêm só códigos de evento, nunca e-mail ou nome.
+
+| O que aparece | Significado |
+|---|---|
+| `auth.signin.recusado` seguido de `[auth][error] AccessDenied` | Conta fora da lista (ou e-mail não verificado). A tela mostra o aviso de recusa. Normal. |
+| `auth.allowlist.vazia` | `ADMIN_EMAILS` ausente, vazia ou sem nenhum e-mail válido: ninguém consegue entrar. Verifique o secret do ambiente. |
+| `[auth][error] CallbackRouteError` com causa `response parameter "iss" (issuer) missing`, e redirecionamento para `/painel/entrar?error=Configuration` | **Ruído esperado** quando a pessoa **cancela** na tela do Google: o Google volta sem o parâmetro `iss` e o Auth.js falha antes de reconhecer o erro do provedor. Não é falha de configuração; a tela mostra o aviso genérico de falha. |
+
+Uma falha real de configuração (ex.: credencial do Google errada) também chega
+como `error=Configuration`, com a mesma mensagem na tela: diferencie pelo log
+(causa do erro) e confira `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`. Origem dessa
+verificação: `specs/001-auth-admins/research.md`, R6 (T032).
+
+**Ver `console.warn` e query strings no preview local**: o log do `wrangler`
+não mostra esses registros. O `preview` expõe uma consulta de observabilidade
+local, `POST /cdn-cgi/local/explorer/api/local/observability/query`, com SQL
+**somente leitura** sobre os logs e spans capturados. Foi o único jeito de ver
+os `console.warn` do callback e as query strings das chamadas (corpo e formato
+da consulta: ver a documentação do wrangler; não estão descritos no repositório).
 
 ## Deploy
 
@@ -556,6 +628,18 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   `next dev` roda em Node, `preview` roda em workerd (runtime real da
   Cloudflare). Qualquer API Node-only ou binding ausente só aparece no
   `preview`. Valide sempre no `preview` antes de considerar algo pronto.
+- **Mudei o `.dev.vars` (ex.: `ADMIN_EMAILS`) e nada mudou no preview**: o
+  `wrangler dev` lê o `.dev.vars` **uma vez, ao subir**. Pare e rode de novo o
+  `npm run preview` (observado na T039 da feature 001).
+- **Dois `npm run preview` ao mesmo tempo (porta 8787 e 8788)**: dois previews no
+  mesmo repositório disputam as pastas de build (`.next` e o `.open-next` gerado
+  pelo `opennextjs-cloudflare build`). **Observado** (relato do mantenedor): um
+  segundo `npm run preview` subiu na porta 8788 e, depois do build dele, o
+  preview que já rodava na 8787 deixou de existir. A causa exata **não foi
+  confirmada por inspeção**. Recomendação: rodar **um preview por vez** e parar o
+  anterior antes de subir outro.
+- **Login cancelado no Google gera erro no log**: esperado, ver "Diagnóstico de
+  login".
 - **Bindings não aparecem nos tipos (`cloudflare-env.d.ts`)**: rodar
   `npm run cf-typegen` depois de qualquer mudança em `wrangler.jsonc`.
 - **Secret com valor trocado ou com espaço inicial** (login Google falha,
@@ -564,8 +648,10 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   (ver "Cadastrar um secret"). `wrangler secret list` mostra só nomes, não
   confere valores.
 - **`.dev.vars` ausente ou incompleto**: compare as chaves com
-  `.dev.vars.example` (tabela em "Variáveis de ambiente"). O `/api/health` é o
-  único consumidor: sem `DATABASE_URL` ele responde 503 `{db: "error"}` (não lança).
+  `.dev.vars.example` (tabela em "Variáveis de ambiente"). Sem `DATABASE_URL`, o
+  `/api/health` responde 503 `{db: "error"}` (não lança); sem as chaves de auth
+  (`AUTH_SECRET`, `AUTH_GOOGLE_*`, `ADMIN_EMAILS`) o login em `/painel` não
+  funciona (ver "Diagnóstico de login").
 - **`npm run db:up` falha com "port is already allocated"**: algo no host usa
   5440 ou 4444. Libere a porta; o compose não a parametriza.
 - **`db:up` falha por Docker indisponível**: confirme que o Docker responde no

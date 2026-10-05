@@ -47,6 +47,42 @@ Avise o Willians. As administradoras têm todas o mesmo poder.
 
 ## Para quem mantém o sistema
 
+### Categorias do catálogo (feature 002)
+
+As administradoras gerenciam a lista de categorias no painel, em `/painel/categorias`.
+Operações: listar, criar, renomear e remover (só administradoras logadas).
+
+#### Categorias iniciais
+
+No primeiro deploy de cada ambiente, o banco recebe automaticamente cinco categorias:
+Bolsas, Guarda-chuvas, Tupperware, Panos de prato, Meias. A lista é criada uma única
+vez; publicações futuras não recriam nem sobrescrevem categorias que as administradoras
+alteraram (criadas, renomeadas ou removidas).
+
+#### Fluxo local de banco
+
+Para trabalhar com testes de integração:
+
+```bash
+npm run db:up          # sobe o Postgres 18 + proxy do Neon em Docker
+npm run db:migrate     # aplica migrations no banco local
+npm run test:int       # roda testes de integração (inclui probe do batch)
+```
+
+Se uma execução for interrompida antes do fim (Ctrl+C, timeout), a tabela de produtos
+de teste (`produtos`) pode sobrar no banco. Para recuperar:
+
+```bash
+npm run db:reset       # DESTRUTIVO: apaga dados e reinicia o banco local
+npm run db:migrate     # reaplica migrations e seed
+```
+
+#### Sem variáveis nem secrets novos
+
+A feature 002 não adiciona variáveis de ambiente nem secrets: o probe de transação
+no Neon dev (CI) reutiliza `DATABASE_URL` do environment `dev`, o mesmo que a aplicação
+e as migrations já usam.
+
 ### Dependências novas da feature 001
 
 - `next-auth@5.0.0-beta.32` (versão exata): Auth.js v5 com estratégia JWT; não usar `^` nem `~`; atualizar só em PR próprio, depois de ler o changelog e rodar `npm audit --omit=dev` (ADR-003 e ADR-007)

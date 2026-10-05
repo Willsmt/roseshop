@@ -17,7 +17,12 @@ verifique se ainda existem e, se resolvidas, remova a nota dos docs e daqui.
    `docs/architecture.md`): sem formatador (tabs x 2 espaços); definições dos
    agentes a ajustar (sem `npx` fora do projeto, sem fora do briefing, tech-lead
    reexecuta verificações do junior). Remover quando resolvidas em PR próprio.
-5. Feature 001: `docs/features/F01-autenticacao.md` existe; `docs/database.md`
-   continua inexistente (schema vazio, sessão JWT sem tabelas).
+5. Feature 001: `docs/features/F01-autenticacao.md`. Feature 002 (sync de 2026-10-04):
+   `docs/database.md` e `docs/features/F02-categorias.md` criados.
+6. **Dívidas da 002 registradas** (em `docs/architecture.md` e `docs/database.md`): FK da 003
+   precisa de `ON DELETE RESTRICT` (só `23001` é tratado); "FK RESTRICT => 23001" provado só no
+   proxy local, não no Neon dev; `contarProdutosDaCategoria` usa SQL cru até a 003.
+7. Decisão N1 (docs coerentes): app, migration e probe usam o mesmo `DATABASE_URL` direto do Neon
+   dev, sem pooler. Nunca reintroduzir "pooled" nos docs.
 
 **Como aplicar**: ler antes de escrever o resumo final.

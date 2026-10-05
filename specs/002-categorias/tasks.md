@@ -54,7 +54,7 @@ determinística de que `db.batch` roda numa única transação no proxy local (p
 ### Implementação
 
 - [x] T007 [tech-lead] Em `vitest.int.config.mts` adicionar `fileParallelism: false` em `test` (arquivos que fazem `TRUNCATE` em `categorias` não podem rodar em paralelo).
-- [x] T008 [tech-lead] Em `src/lib/db/schema.ts` declarar `categorias`: `id integer generated always as identity` PK; `nome text NOT NULL`; **`chave text NOT NULL` com `.generatedAlwaysAs(sql\`categoria_chave(nome)\`)` (coluna `STORED`) e `UNIQUE`**; `versao integer NOT NULL default 1`; `criado_em`/`atualizado_em timestamptz NOT NULL default now()`; os 3 `CHECK` exatamente como em data-model.md (`char_length(nome) BETWEEN 2 AND 40`, `nome = btrim(nome)`, `nome !~ '\s{2,}'`).
+- [x] T008 [tech-lead] Em `src/lib/db/schema.ts` declarar `categorias`: `id integer generated always as identity` PK; `nome text NOT NULL`; **`chave text NOT NULL` com `.generatedAlwaysAs(sql\`categoria_chave(nome)\`)`(coluna`STORED`) e `UNIQUE`**; `versao integer NOT NULL default 1`; `criado_em`/`atualizado_em timestamptz NOT NULL default now()`; os 3 `CHECK` exatamente como em data-model.md (`char_length(nome) BETWEEN 2 AND 40`, `nome = btrim(nome)`, `nome !~ '\s{2,}'`).
 - [x] T009 [tech-lead] Gerar a migration com `npm run db:generate` (**geração normal, sem `--custom`**: o `--custom` grava um snapshot copiado do anterior, sem a tabela, e a próxima geração recriaria `categorias`). O kit gera `src/lib/db/migrations/0000_*.sql` com `CREATE TABLE`, coluna gerada, `UNIQUE` e `CHECK`s, e o snapshot em `migrations/meta/` já contém a tabela. Editar o SQL à mão: (1) **no topo**, `CREATE FUNCTION categoria_chave(text) RETURNS text LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE` com `lower` → `normalize(…, NFD)` → remove `U+0300–U+036F` → hífen vira espaço → `\s+` vira um espaço → `btrim` (somente built-ins), seguido de `--> statement-breakpoint`; (2) o `CREATE TABLE` gerado, intacto; conferir que saiu `GENERATED ALWAYS AS (categoria_chave(nome)) STORED`; (3) **no fim**, após `--> statement-breakpoint`, o bloco de seed entre `-- seed:categorias:start` / `-- seed:categorias:end` com `INSERT` de Bolsas, Guarda-chuvas, Tupperware, Panos de prato, Meias (grafia da spec). O migrator divide o arquivo só pelo marcador `--> statement-breakpoint`, então o corpo da função não é cortado.
 - [x] T010 [tech-lead] **Conferir o diff do drizzle-kit**: depois da edição, rodar `npx drizzle-kit generate` e exigir "No schema changes" (função e seed não entram no snapshot; coluna gerada e checks já estão nele). Opcional: `npx drizzle-kit check`. Registrar o resultado no PR.
 - [x] T011 [tech-lead] Criar `src/lib/db/locks.ts`: registro único de chaves de lock advisory, com `LOCK_PROBE_BATCH` (uso exclusivo do probe T005), comentário do uso de cada chave e a regra de nunca reutilizar um número.
@@ -107,6 +107,7 @@ tradução em `erros.ts` e Server Actions `criarCategoria`/`renomearCategoria`
 (FR-005–FR-009, FR-016, FR-017, FR-019). Depende de SF2.
 
 **Decisões do humano (2026-10-04, abertura da SF3)**:
+
 1. **Nome com letra ou número** (spec, Clarifications "implementação da SF3", e FR-008): após
    normalizar, o nome precisa ter ao menos um `\p{L}` ou `\p{N}` ("--"/"- -" gerariam chave vazia
    e colidiriam no `UNIQUE`). Motivo novo `nome_sem_letra`, mensagem "O nome precisa ter pelo
@@ -158,6 +159,7 @@ contagem real (H3-A) e mínimo de 1 categoria sob concorrência via `db.batch` +
 probe T005 verde (T012).
 
 **Decisões do humano (2026-10-04, abertura da SF4)**:
+
 1. **Sem log em `traduzirExcecao`** (recusado): a tradução de exceção continua sem efeito
    colateral; nenhum dado do erro sai da função.
 2. **Forma do erro no `db.batch` (opção A)**: observado na SF4 que o erro do `db.batch` no
@@ -201,12 +203,12 @@ probe T005 verde (T012).
 
 **Objetivo**: quatro telas no celular, uma tarefa por tela (constitution V, FR-018):
 
-| Rota | Tarefa |
-|------|--------|
-| `/painel/categorias` | lista; botão "Nova categoria"; em cada linha, "Renomear" e "Remover" |
-| `/painel/categorias/nova` | formulário de criação |
-| `/painel/categorias/[id]/renomear` | formulário de renomeação (nome atual preenchido; `versao` oculta) |
-| `/painel/categorias/[id]/remover` | confirmação com texto claro; "Remover" e "Cancelar" |
+| Rota                               | Tarefa                                                               |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `/painel/categorias`               | lista; botão "Nova categoria"; em cada linha, "Renomear" e "Remover" |
+| `/painel/categorias/nova`          | formulário de criação                                                |
+| `/painel/categorias/[id]/renomear` | formulário de renomeação (nome atual preenchido; `versao` oculta)    |
+| `/painel/categorias/[id]/remover`  | confirmação com texto claro; "Remover" e "Cancelar"                  |
 
 `ui-dev` só consome o contrato existente (actions, barrel, `@/lib/categorias/painel`,
 `src/components/ui/`); não importa Drizzle nem toca `src/lib/`. Se faltar campo ou action,
@@ -214,21 +216,27 @@ para e reporta ao tech-lead. Depende de SF4.
 
 ### Testes primeiro (Red)
 
-- [ ] T050 [test-writer] Estender `src/test/conformance/painel-guard.test.ts` (ou novo arquivo irmão) para exigir `requireAdminPage(<rota>)` em cada uma das quatro páginas de `src/app/painel/(protegido)/categorias/**/page.tsx` e `requireAdminAction()` como **primeiro** statement de cada action de `src/lib/categorias/actions.ts` (nega por padrão; FR-016, SC-004). Validação do argumento por **prefixo da rota**: string literal igual à rota estática (`"/painel/categorias"`, `"/painel/categorias/nova"`); nas rotas dinâmicas, template literal cujo trecho estático inicial é `/painel/categorias/` e cujo trecho final é `/renomear` ou `/remover`, conforme a pasta da página.
-- [ ] T051 [P] [test-writer] Testes de componente **obrigatórios**, cada arquivo começando com `// @vitest-environment jsdom` (ambiente já usado em `src/app/painel/(protegido)/*.test.tsx`), em `src/app/painel/(protegido)/categorias/`: lista renderiza uma linha por categoria na ordem recebida, com links "Renomear"/"Remover" e "Nova categoria" (US1-1/2); formulários de criar e renomear mostram a `mensagem` da action junto ao campo e **preservam o texto digitado** (US2-8, US3-4/7, FR-017); tela de remoção exibe o nome e o aviso de que não pode ser desfeita, "Cancelar" não chama a action e "Remover" chama com `{ id, versao }` (US4-1/2, FR-010); mensagem `tem_produtos`/`ultima` exibida junto à ação (US4-4/5); botões e campos com classes de alvo ≥ 48px e texto ≥ 16px (FR-018). Sem cláusula de escape: critério sem teste bloqueia a SF5 (constitution I).
-- [ ] T052 [test-writer] Confirmar Red de T050 e T051.
+- [x] T050 [test-writer] Estender `src/test/conformance/painel-guard.test.ts` (ou novo arquivo irmão) para exigir `requireAdminPage(<rota>)` em cada uma das quatro páginas de `src/app/painel/(protegido)/categorias/**/page.tsx` e `requireAdminAction()` como **primeiro** statement de cada action de `src/lib/categorias/actions.ts` (nega por padrão; FR-016, SC-004). Validação do argumento por **prefixo da rota**: string literal igual à rota estática (`"/painel/categorias"`, `"/painel/categorias/nova"`); nas rotas dinâmicas, template literal cujo trecho estático inicial é `/painel/categorias/` e cujo trecho final é `/renomear` ou `/remover`, conforme a pasta da página.
+- [x] T051 [P] [test-writer] Testes de componente **obrigatórios**, cada arquivo começando com `// @vitest-environment jsdom` (ambiente já usado em `src/app/painel/(protegido)/*.test.tsx`), em `src/app/painel/(protegido)/categorias/`: lista renderiza uma linha por categoria na ordem recebida, com links "Renomear"/"Remover" e "Nova categoria" (US1-1/2); formulários de criar e renomear mostram a `mensagem` da action junto ao campo e **preservam o texto digitado** (US2-8, US3-4/7, FR-017); tela de remoção exibe o nome e o aviso de que não pode ser desfeita, "Cancelar" não chama a action e "Remover" chama com `{ id, versao }` (US4-1/2, FR-010); mensagem `tem_produtos`/`ultima` exibida junto à ação (US4-4/5); botões e campos com classes de alvo ≥ 48px e texto ≥ 16px (FR-018). Sem cláusula de escape: critério sem teste bloqueia a SF5 (constitution I).
+- [x] T052 [test-writer] Confirmar Red de T050 e T051.
 
 ### Implementação
 
-- [ ] T053 [ui-dev] Criar `src/app/painel/(protegido)/categorias/page.tsx` (Server Component; `requireAdminPage("/painel/categorias")`; lê `listarCategoriasDoPainel()`; uma linha por categoria com links para renomear/remover; botão "Nova categoria"; texto ≥ 16px, alvos ≥ 48px).
-- [ ] T054 [ui-dev] Criar `src/app/painel/(protegido)/categorias/nova/page.tsx` (`requireAdminPage("/painel/categorias/nova")`) + formulário de cliente mínimo: chama `criarCategoria`; erro exibido com `mensagem` junto ao campo, texto preservado; sucesso volta para a lista.
-- [ ] T055 [ui-dev] Criar `src/app/painel/(protegido)/categorias/[id]/renomear/page.tsx` + formulário: `requireAdminPage` com a rota da página (`` `/painel/categorias/${id}/renomear` ``); `obterCategoriaDoPainel(id)` com o `[id]` da URL em string (`null` ⇒ mensagem `nao_existe`, "Esta categoria não existe mais. Atualize a lista." com link para a lista); chama `renomearCategoria({ id, versao, nome })`; erro junto ao campo, texto preservado; sucesso volta para a lista.
-- [ ] T056 [ui-dev] Criar `src/app/painel/(protegido)/categorias/[id]/remover/page.tsx` + componente de confirmação, alinhado a T055: `requireAdminPage` com a rota da página (`` `/painel/categorias/${id}/remover` ``); `obterCategoriaDoPainel(id)` com o `[id]` da URL em string para obter `nome` e `versao` (`null` ⇒ mensagem `nao_existe`, "Esta categoria não existe mais. Atualize a lista.", com link para a lista, sem botão "Remover"); chama `removerCategoria({ id, versao })`; texto claro com o nome e "não pode ser desfeita"; botões "Remover" e "Cancelar" ≥ 48px usando `src/components/ui/button.tsx`; "Cancelar" volta à lista sem chamar a action; recusa exibida junto à ação; sucesso volta para a lista.
-- [ ] T057 [ui-dev] Adicionar link/entrada "Categorias" no layout/página do painel existente (`src/app/painel/(protegido)/`), sem alterar guards nem `src/lib/`; conferir que sem sessão todas as rotas levam a `/painel/entrar` (US1-3), sem middleware.
+- [x] T053 [ui-dev] Criar `src/app/painel/(protegido)/categorias/page.tsx` (Server Component; `requireAdminPage("/painel/categorias")`; lê `listarCategoriasDoPainel()`; uma linha por categoria com links para renomear/remover; botão "Nova categoria"; texto ≥ 16px, alvos ≥ 48px).
+- [x] T054 [ui-dev] Criar `src/app/painel/(protegido)/categorias/nova/page.tsx` (`requireAdminPage("/painel/categorias/nova")`) + formulário de cliente mínimo: chama `criarCategoria`; erro exibido com `mensagem` junto ao campo, texto preservado; sucesso volta para a lista.
+- [x] T055 [ui-dev] Criar `src/app/painel/(protegido)/categorias/[id]/renomear/page.tsx` + formulário: `requireAdminPage` com a rota da página (`` `/painel/categorias/${id}/renomear` ``); `obterCategoriaDoPainel(id)` com o `[id]` da URL em string (`null` ⇒ mensagem `nao_existe`, "Esta categoria não existe mais. Atualize a lista." com link para a lista); chama `renomearCategoria({ id, versao, nome })`; erro junto ao campo, texto preservado; sucesso volta para a lista.
+- [x] T056 [ui-dev] Criar `src/app/painel/(protegido)/categorias/[id]/remover/page.tsx` + componente de confirmação, alinhado a T055: `requireAdminPage` com a rota da página (`` `/painel/categorias/${id}/remover` ``); `obterCategoriaDoPainel(id)` com o `[id]` da URL em string para obter `nome` e `versao` (`null` ⇒ mensagem `nao_existe`, "Esta categoria não existe mais. Atualize a lista.", com link para a lista, sem botão "Remover"); chama `removerCategoria({ id, versao })`; texto claro com o nome e "não pode ser desfeita"; botões "Remover" e "Cancelar" ≥ 48px usando `src/components/ui/button.tsx`; "Cancelar" volta à lista sem chamar a action; recusa exibida junto à ação; sucesso volta para a lista.
+- [x] T057 [ui-dev] Adicionar link/entrada "Categorias" no layout/página do painel existente (`src/app/painel/(protegido)/`), sem alterar guards nem `src/lib/`; conferir que sem sessão todas as rotas levam a `/painel/entrar` (US1-3), sem middleware.
+
+- [x] T070 [test-writer → ui-dev] **Caminhos de volta** (correção antes do commit da SF5): a lista
+      `/painel/categorias` ganha o link "Voltar ao painel" → `/painel`; `nova` e `[id]/renomear`
+      mantêm "Cancelar" → `/painel/categorias` sem chamar action (sem duplicar); `[id]/remover`
+      confirma "Cancelar" → lista; estado inexistente confirma "Voltar para a lista". Alvos ≥ 48px,
+      texto ≥ 16px. Red (asserção por tela em jsdom) antes do Green; ui-dev não altera testes nem `src/lib/`.
 
 ### Fechamento SF5
 
-- [ ] T058 [junior] `npm run check` + `npm run test:int`; e `npm run preview` para os cenários 1–5 do quickstart no workerd (listar o que foi exercitado).
+- [x] T058 [junior] `npm run check` + `npm run test:int`; e `npm run preview` para os cenários 1–5 do quickstart no workerd (listar o que foi exercitado).
 
 **Commit sugerido (SF5)**: `feat(painel): adiciona telas de categorias para listar, criar, renomear e remover`
 
@@ -288,54 +296,54 @@ e `docs(readme): ...` (T066) em commit próprio.
 
 ## Cobertura (rastreabilidade)
 
-| Requisito | Teste | Implementação |
-|-----------|-------|---------------|
-| FR-001 | T018 | T021, T022 |
-| FR-002 | T003 | T009, T012 |
-| FR-003 | T003 | T009 |
-| FR-004 | T050, T051 | T039, T048, T053–T056 |
-| FR-005 | T002, T031, T032 | T008, T009, T038 |
-| FR-006 | T031 | T038 |
-| FR-007 | T026 | T034 |
-| FR-008 | T026, T002 | T034, T008 |
-| FR-009 | T016, T031 | T038 |
-| FR-010 | T051 | T056 |
-| FR-011 | T042, T068 | T069, T046, T047, T048 |
-| FR-012 | T004, T016, T017 | T021 |
-| FR-013 | — (contrato com a 003) | T067 (checklist) |
-| FR-014 | T016, T018 | T022 |
-| FR-015 | T018 | T024 |
-| FR-016 | T030, T044, T050 | T039, T048, T053–T056 |
-| FR-017 | T027, T028, T051 | T035, T037, T059 |
-| FR-018 | T051 | T053–T056 |
-| FR-019 | T017, T031, T032, T043 | T038, T046 |
-| FR-020 | T041, T043 (+ probe T005) | T046 |
-| SC-001 | T003 | T009, T012, T013 (+ T062 no dev) |
-| SC-002 | verificação manual T063 | T053–T056 |
-| SC-003 | T031, T032 | T038 |
-| SC-004 | T030, T044, T050 | T039, T048, T053–T056 |
-| SC-005 | T027 + revisão T059 | T035 |
-| SC-006 | T016, T018 | T022, T024 |
-| SC-007 | validação adiada (anotada no PR, T063) | — |
-| SC-008 | T003 | T009 (+ T063) |
-| SC-009 | T041, T042, T043, T044, T068 | T069, T046, T047, T048 |
-| SC-010 | T026, T004 | T034, T021 |
+| Requisito | Teste                                  | Implementação                    |
+| --------- | -------------------------------------- | -------------------------------- |
+| FR-001    | T018                                   | T021, T022                       |
+| FR-002    | T003                                   | T009, T012                       |
+| FR-003    | T003                                   | T009                             |
+| FR-004    | T050, T051                             | T039, T048, T053–T056            |
+| FR-005    | T002, T031, T032                       | T008, T009, T038                 |
+| FR-006    | T031                                   | T038                             |
+| FR-007    | T026                                   | T034                             |
+| FR-008    | T026, T002                             | T034, T008                       |
+| FR-009    | T016, T031                             | T038                             |
+| FR-010    | T051                                   | T056                             |
+| FR-011    | T042, T068                             | T069, T046, T047, T048           |
+| FR-012    | T004, T016, T017                       | T021                             |
+| FR-013    | — (contrato com a 003)                 | T067 (checklist)                 |
+| FR-014    | T016, T018                             | T022                             |
+| FR-015    | T018                                   | T024                             |
+| FR-016    | T030, T044, T050                       | T039, T048, T053–T056            |
+| FR-017    | T027, T028, T051                       | T035, T037, T059                 |
+| FR-018    | T051                                   | T053–T056                        |
+| FR-019    | T017, T031, T032, T043                 | T038, T046                       |
+| FR-020    | T041, T043 (+ probe T005)              | T046                             |
+| SC-001    | T003                                   | T009, T012, T013 (+ T062 no dev) |
+| SC-002    | verificação manual T063                | T053–T056                        |
+| SC-003    | T031, T032                             | T038                             |
+| SC-004    | T030, T044, T050                       | T039, T048, T053–T056            |
+| SC-005    | T027 + revisão T059                    | T035                             |
+| SC-006    | T016, T018                             | T022, T024                       |
+| SC-007    | validação adiada (anotada no PR, T063) | —                                |
+| SC-008    | T003                                   | T009 (+ T063)                    |
+| SC-009    | T041, T042, T043, T044, T068           | T069, T046, T047, T048           |
+| SC-010    | T026, T004                             | T034, T021                       |
 
-| Item operacional | Tasks |
-|------------------|-------|
-| `fileParallelism: false` no vitest de integração | T007 |
-| Fixture `produtos` como tabela comum, descartada só por quem a criou | T001, T042 |
-| Teste de seed lendo o bloco da migration e migrate repetido | T003 (+ T009 marcadores) |
-| `generatedAlwaysAs` no `schema.ts` | T008 |
-| Migration gerada normal + edição à mão; conferência do diff | T009, T010 |
-| `db:migrate` antes do `test:int`, local e no `checks.yml` | T012, T013, T014 |
-| Registro de chaves de lock | T011, T046 |
-| Probe determinístico do batch (local e Neon dev via CI) | T005, T012, T062 |
-| Concorrência real em loop | T032, T043, T061 |
-| Conformidade FR-015 | T018, T024, T050 |
-| Revisão pt-BR (FR-017) | T059, T060 |
-| README (constitution VI) | T066 |
-| Fechamento doc-sync | T065 |
+| Item operacional                                                     | Tasks                    |
+| -------------------------------------------------------------------- | ------------------------ |
+| `fileParallelism: false` no vitest de integração                     | T007                     |
+| Fixture `produtos` como tabela comum, descartada só por quem a criou | T001, T042               |
+| Teste de seed lendo o bloco da migration e migrate repetido          | T003 (+ T009 marcadores) |
+| `generatedAlwaysAs` no `schema.ts`                                   | T008                     |
+| Migration gerada normal + edição à mão; conferência do diff          | T009, T010               |
+| `db:migrate` antes do `test:int`, local e no `checks.yml`            | T012, T013, T014         |
+| Registro de chaves de lock                                           | T011, T046               |
+| Probe determinístico do batch (local e Neon dev via CI)              | T005, T012, T062         |
+| Concorrência real em loop                                            | T032, T043, T061         |
+| Conformidade FR-015                                                  | T018, T024, T050         |
+| Revisão pt-BR (FR-017)                                               | T059, T060               |
+| README (constitution VI)                                             | T066                     |
+| Fechamento doc-sync                                                  | T065                     |
 
 ## Estratégia
 

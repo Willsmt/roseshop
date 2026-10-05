@@ -13,6 +13,13 @@ vi.mock("@/lib/auth", async () => {
     entrarComGoogle: vi.fn(),
   };
 });
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
@@ -63,5 +70,14 @@ describe("/painel (US1-1, US3-1)", () => {
     for (const el of container.querySelectorAll("[class]")) {
       expect(el.getAttribute("class")).not.toMatch(SMALL);
     }
+  });
+
+  it("tem link 'Categorias' para /painel/categorias (US1)", async () => {
+    requireMock.mockResolvedValue({ email: "ana@x.com", name: "Ana" });
+    render(await PainelPage());
+    expect(screen.getByRole("link", { name: "Categorias" })).toHaveAttribute(
+      "href",
+      "/painel/categorias",
+    );
   });
 });

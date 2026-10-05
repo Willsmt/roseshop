@@ -23,17 +23,19 @@ npm run lint         # eslint (flat config nativa do Next 16)
 npm run cf-typegen   # regenera cloudflare-env.d.ts após mudar bindings
 npm run typecheck    # tsc --noEmit
 npm test             # vitest run: só unitários (*.test.ts), sem banco
-npm run test:int     # integração (*.int.test.ts); exige db:up; fora do pre-push
+npm run test:int     # integração (*.int.test.ts); exige db:up + db:migrate; roda arquivos em série; fora do pre-push
 npm run test:watch   # vitest em modo watch
 npm run check        # lint + typecheck + test (gate de "pronto")
 npm run db:up        # sobe Postgres 18 + proxy HTTP do Neon (Docker, portas 5440/4444)
 npm run db:down      # para os containers (preserva dados)
-npm run db:reset     # DESTRUTIVO: apaga os dados do banco local e recria
+npm run db:reset     # DESTRUTIVO: apaga os dados do banco local e recria (rode db:migrate depois; recupera fixture sobrada do test:int)
 npm run db:psql      # shell psql no banco local
 npm run deploy:dev   # build OpenNext + deploy do worker roseshop-dev (manual)
 npm run deploy:production  # só roda no CI (scripts/require-ci.mjs); publica roseshop
 npm run db:generate  # drizzle-kit generate (migration SQL em src/lib/db/migrations)
 npm run db:migrate   # drizzle-kit migrate (TCP direto no DATABASE_URL)
+# fluxo local: db:up -> db:migrate -> test:int
+# probe do batch no Neon dev: só no CI (pull-request.yml, vitest.probe.config.mts)
 # hooks (husky) instalados pelo `prepare` no npm install; exigem gitleaks no PATH
 ```
 
@@ -58,17 +60,20 @@ scripts/smoke-health.sh   # smoke pós-deploy: exige /api/health 200 em ~60s
 wrangler.jsonc            # 3 ambientes: local (topo), env.dev, env.production [protegido]
 src/app/                  # rotas (App Router) — layout.tsx, page.tsx, globals.css (boilerplate), api/health, api/auth/[...nextauth]
   (public)/               # catálogo público + sacola          [planejado]
-  painel/                 # área das administradoras: entrar/ (pública) e (protegido)/ (layout, page, bfcache-reload)
+  painel/                 # área das administradoras: entrar/ (pública) e (protegido)/ (layout, page, bfcache-reload, categorias/ com lista, nova, [id]/renomear, [id]/remover)
 src/components/ui/        # componentes base — única fonte de primitivos (hoje só button.tsx)
-src/test/conformance/     # teste que nega por padrão rota/action sem guard (painel-guard.test.ts)
-src/lib/db/               # Drizzle: client, health, schema (vazio), migrations/ [protegido]
+src/test/conformance/     # testes que negam por padrão: guard (painel-guard, categorias-guard) e acesso a categorias (categorias-acesso)
+src/lib/db/               # Drizzle: client, health, schema (categorias), categorias.ts (SQL), contexto.ts, locks.ts, erros-pg.ts, migrations/ (0000) [protegido]
+src/lib/categorias/       # categorias: index.ts (barrel só leitura), painel.ts, actions.ts, nome/erros/mensagens
+src/test/db/              # fixtures de integração (categorias-fixtures.ts)
+vitest.probe.config.mts   # só o probe do db.batch (CI do PR, Neon dev)
 drizzle.config.ts         # config do drizzle-kit
 src/lib/auth/             # Auth.js v5 + allowlist + guards; UI importa só de index.ts (barrel) [protegido]
 src/lib/r2/               # URLs pré-assinadas                  [planejado, protegido]
 src/lib/ai/               # integração OpenAI                   [planejado, protegido]
 ```
 
-Estado atual: **Fase 0 concluída + feature 001 (autenticação das administradoras) implementada no branch `feature/001-auth-admins`** — scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 001, 002, 003, 004, 006 e 007) + testes Vitest (unitários + integração + conformidade do guard) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (schema vazio, sem migrations ainda) + `wrangler.jsonc` com ambientes local/dev/production + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; runners fixados em `ubuntu-24.04`, migração para o Ubuntu 26 pendente em PR próprio) + produção no ar (`/api/health` = 200) + branch `main` protegido (relato do mantenedor) + login Google com allowlist `ADMIN_EMAILS`, sessão JWT e painel protegido sem middleware (`next-auth@5.0.0-beta.32`); catálogo, sacola, R2 e IA ainda não existem. Próximo passo: merge da feature 001 (humano) e próximas features via Spec Kit.
+Estado atual: **Fase 0 concluída + feature 001 (autenticação das administradoras) + feature 002 (categorias) implementada no branch `feature/002-categorias`** — scaffold do OpenNext + Spec Kit adotado (constitution v1.0.0, ADRs 001, 002, 003, 004, 006, 007 e 008) + testes Vitest (unitários + integração + conformidade do guard) + hooks de git (husky, gitleaks, commitlint) + stack local de banco em Docker (`db:*`) + Drizzle/driver HTTP do Neon com `/api/health` (tabela `categorias` e migration `0000` com seed; ADR-008: sem transação interativa, `db.batch` + lock advisory) + `wrangler.jsonc` com ambientes local/dev/production + CI no GitHub Actions (checks, deploy dev por PR, deploy produção no push para main; runners fixados em `ubuntu-24.04`, migração para o Ubuntu 26 pendente em PR próprio) + produção no ar (`/api/health` = 200) + branch `main` protegido (relato do mantenedor) + login Google com allowlist `ADMIN_EMAILS`, sessão JWT e painel protegido sem middleware (`next-auth@5.0.0-beta.32`); CRUD de categorias no painel (`/painel/categorias`) com probe do `db.batch` no Neon dev pelo CI; catálogo, produtos, sacola, R2 e IA ainda não existem. Próximo passo: merge da feature 002 (humano) e feature 003 (produtos; a FK `categoria_id` precisa de `ON DELETE RESTRICT`) via Spec Kit.
 
 ## Fluxo de feature (obrigatório)
 

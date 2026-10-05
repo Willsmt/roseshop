@@ -1,8 +1,8 @@
 # Arquitetura
 
-> Estado: **Fase 0 concluída + feature 001 (autenticação) implementada**. Este
-> documento descreve apenas o que existe hoje no repositório. Para o que está
-> planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
+> Estado: **Fase 0 concluída + feature 001 (autenticação) e feature 002
+> (categorias) implementadas**. Este documento descreve apenas o que existe hoje
+> no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
 ## Visão leiga
@@ -10,9 +10,11 @@
 O Roseshop ainda é, em grande parte, o esqueleto gerado pelo template oficial do
 OpenNext para Cloudflare (`create-next-app` + `@opennextjs/cloudflare`). A raiz
 do site continua sendo a página inicial padrão do Next.js; nenhuma tela de
-catálogo ou sacola foi construída. A única funcionalidade de produto é o
+catálogo ou sacola foi construída. As funcionalidades de produto são o
 **login das administradoras** em `/painel` (ver
-[F01-autenticacao.md](./features/F01-autenticacao.md)).
+[F01-autenticacao.md](./features/F01-autenticacao.md)) e o **cadastro de
+categorias** no painel (ver [F02-categorias.md](./features/F02-categorias.md)).
+É o primeiro uso real do banco: [database.md](./database.md).
 
 O que já está de pé é a **esteira de build e deploy**: como o projeto, escrito
 em Next.js, vira um Worker rodando na Cloudflare.
@@ -57,18 +59,25 @@ src/app/
   api/health/route.ts   # GET /api/health (ver "Camada de banco")
   api/auth/[...nextauth]/route.ts   # handlers do Auth.js (GET, POST)
   painel/entrar/page.tsx            # tela de entrada (pública)
-  painel/(protegido)/               # layout (moldura + "Sair"), page (saudação), bfcache-reload
+  painel/(protegido)/               # layout (moldura + "Sair"), page (saudação + link Categorias), bfcache-reload
+  painel/(protegido)/categorias/    # lista, nova/, [id]/renomear/, [id]/remover/ (F02)
 src/components/ui/button.tsx   # Button (primary/secondary), primeiro componente base
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
+src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
-  schema.ts     # schema Drizzle — vazio de propósito (Fase 0.4)
+  schema.ts     # schema Drizzle (tabela categorias)
+  categorias.ts # camada SQL de categorias; contexto.ts, locks.ts, erros-pg.ts
+  migrations/   # 0000 (função categoria_chave + tabela + seed) e meta/
   *.test.ts / *.int.test.ts   # testes unitário e de integração
+src/test/       # conformance/ (testes de guard e de acesso) e db/ (fixtures de integração)
 drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations)
+vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts   # unitário, integração, probe do CI
 ```
 
-Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel` e `/api/auth/*`.
+Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
+quatro de `/painel/categorias` (lista, `nova`, `[id]/renomear`, `[id]/remover`).
 **Nenhum middleware** (de propósito; ver a seção seguinte).
 
 ### Autenticação e proteção do painel
@@ -130,8 +139,29 @@ sequenceDiagram
 
 Migrations: `drizzle-kit` (`drizzle.config.ts`) usa o driver `pg` por **TCP
 direto** (não o proxy HTTP), conforme ADR-002, e escreve em
-`src/lib/db/migrations/` (ainda não existe: schema vazio, nada gerado).
-Validado no workerd: `npm run preview` -> `/api/health` 200 `{db: ok}`.
+`src/lib/db/migrations/` (hoje só a `0000`, da feature 002; schema e tabelas em
+[database.md](./database.md)). Validado no workerd: `npm run preview` ->
+`/api/health` 200 `{db: ok}`.
+
+**Sem transação interativa (ADR-008)**: o driver `neon-http` não suporta
+`db.transaction()`. O que precisa de atomicidade usa `db.batch([...])` (uma
+transação `READ COMMITTED`) com lock advisory (`pg_advisory_xact_lock`), cujas
+chaves ficam em `src/lib/db/locks.ts`; invariantes que o banco consegue
+expressar vão para constraints, colunas geradas e FKs. Nenhum código pode
+assumir `db.transaction()`. Exemplo real: a remoção de categorias
+([F02](./features/F02-categorias.md#fluxo-de-remoção-o-ponto-mais-delicado)).
+
+**Acesso por contexto**: `src/lib/db/contexto.ts` (`dbDoContexto`) é a porta
+que obtém o `db` a partir das bindings do Worker (`getCloudflareContext`)
+para o módulo de categorias; `/api/health` continua montando o `db` por conta
+própria.
+
+**Connection string única (decisão N1 da feature 002)**: app (Worker dev), migration
+e probe de CI usam o **mesmo** `DATABASE_URL` direto do Neon dev, sem pooler. O
+`DATABASE_URL` do app vive como secret na Cloudflare; o do CI, como secret do
+GitHub Environment `dev`; ambos com o mesmo valor (ver
+[operacao.md, "CI"](./operacao.md#ci)). Se o app passar a usar a string com pooler,
+o probe do `db.batch` precisa ser repetido antes de chegar à produção (ADR-008).
 
 Pegadinhas e dívidas:
 
@@ -194,7 +224,8 @@ isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
 o Drizzle está configurado (`src/lib/db/`, `drizzle.config.ts`) e a conexão é
 validada por `/api/health` (`src/app/api/health/route.ts`) e pelo teste de
 integração `src/lib/db/client.int.test.ts` (`npm run test:int`, exige `db:up`).
-O schema segue vazio, sem migrations.
+O schema agora tem a tabela `categorias` (migration `0000`; ver
+[database.md](./database.md)).
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|
@@ -214,8 +245,9 @@ Pontos-chave:
   endpoint vem de variável de ambiente (`NEON_FETCH_ENDPOINT`, só no local),
   sem ramificação no código. Migrations (Drizzle + `drizzle-kit`) são SQL versionado, aplicado
   local → dev → produção, usando conexão direta (não o proxy).
-- **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes) → migration no Neon
-  `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
+- **Entrega (ADR-006)**: PR → CI (lint, typecheck, testes, integração com
+  `db:migrate` no Postgres do job) → migration no Neon `dev` → probe do
+  `db.batch` no Neon `dev` → deploy em `roseshop-dev`; merge em `main` (humano) → migration no
   Neon `production` → deploy em `roseshop`. Segredos de deploy em GitHub
   Environments; segredos de runtime só na Cloudflare. Implementado em
   `.github/workflows/` (ver [operacao.md, "CI"](./operacao.md#ci)).
@@ -254,8 +286,8 @@ O repositório adotou o Spec Kit (v1.0.6, integração `claude`):
 | `.specify/scripts/bash/` | Scripts usados pelas skills (criar feature, pré-requisitos, setup de plan/tasks). |
 | `.specify/workflows/`, `.specify/*.json` | Workflow e estado/manifestos da integração. |
 | `.claude/skills/speckit-*` | Skills `/speckit-specify`, `clarify`, `plan`, `tasks`, `analyze`, `implement`, `converge`, `checklist`, `constitution`, `taskstoissues`. |
-| `specs/NNN-nome/` | Uma pasta por feature (`spec.md`, `plan.md`, `tasks.md`, entre outros). Hoje existe `001-auth-admins/`. |
-| `specs/adr/` | ADRs: `001`, `002`, `003`, `004`, `006` e `007` (ver a pasta). |
+| `specs/NNN-nome/` | Uma pasta por feature (`spec.md`, `plan.md`, `tasks.md`, entre outros). Hoje existem `001-auth-admins/` e `002-categorias/`. |
+| `specs/adr/` | ADRs: `001`, `002`, `003`, `004`, `006`, `007` e `008` (integridade de dados com neon-http; ver a pasta). |
 
 O `plan.md` de cada feature passa pelo Constitution Check. A ordem de uso está
 no `CLAUDE.md`, seção "Spec Kit". Mapeamento da numeração antiga da
@@ -278,6 +310,13 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 - **Cobertura do guard depende do teste de conformidade**: sem filtro central,
   um novo padrão de arquivo que o teste não conheça fica desprotegido sem
   alerta; estenda o teste ao introduzi-lo (ADR-003, adendo).
+- **FK de produtos (feature 003)**: `produtos.categoria_id → categorias.id`
+  precisa de `ON DELETE RESTRICT` explícito; a remoção só trata o SQLSTATE
+  `23001` (o padrão `NO ACTION` gera `23503`). Ver
+  [database.md](./database.md#aviso-para-a-feature-003-fk-de-produtos).
+- **Lacuna de validação no Neon dev**: o probe de CI prova só a forma do erro
+  do `db.batch` com `23001` via `RAISE`, sem tabela; "FK RESTRICT ⇒ `23001`" foi
+  provado apenas no proxy local. A 003 deve cobrir no Neon dev via CI.
 - **`next-auth` em beta** (`5.0.0-beta.32`, versão exata): atualização manual e
   deliberada.
 - **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o

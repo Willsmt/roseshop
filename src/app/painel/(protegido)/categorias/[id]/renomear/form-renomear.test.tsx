@@ -58,14 +58,14 @@ describe("FormRenomear (US3)", () => {
     renomearMock.mockResolvedValue({
       ok: false,
       motivo: "nome_repetido",
-      mensagem: "Já existe uma categoria chamada Anéis.",
+      mensagem: "Já existe uma categoria chamada Anéis. Escolha outro nome.",
       campo: "nome",
     });
     montar();
     fireEvent.change(campo(), { target: { value: "Anéis" } });
     salvar();
     const alerta = await screen.findByRole("alert");
-    expect(alerta).toHaveTextContent("Já existe uma categoria chamada Anéis.");
+    expect(alerta).toHaveTextContent("Já existe uma categoria chamada Anéis. Escolha outro nome.");
     expect(alerta).toHaveAttribute("id", "nome-erro");
     expect(campo()).toHaveAttribute("aria-invalid", "true");
     expect(campo()).toHaveAttribute("aria-describedby", "nome-erro");

@@ -14,13 +14,13 @@ describe("mensagem (FR-017, contrato §3)", () => {
       "Esta categoria foi alterada por outra pessoa. Atualize a lista e tente de novo.",
     ],
     ["ultima", "A loja precisa ter pelo menos uma categoria. Crie outra antes de remover esta."],
-    ["falha_geral", "Não foi possível salvar agora. Tente de novo em instantes."],
+    ["falha_geral", "Não foi possível concluir agora. Tente de novo em instantes."],
   ] as [Motivo, string][])("%s tem o texto exato", (motivo, texto) => {
     expect(mensagem(motivo)).toBe(texto);
   });
 
   it("nome_repetido cita o nome existente", () => {
-    expect(mensagem("nome_repetido", { nome: "Bolsas" })).toBe("Já existe uma categoria chamada Bolsas.");
+    expect(mensagem("nome_repetido", { nome: "Bolsas" })).toBe("Já existe uma categoria chamada Bolsas. Escolha outro nome.");
   });
 
   it("tem_produtos no plural", () => {

@@ -85,7 +85,7 @@ describe("ConfirmarRemocao (US4)", () => {
     montar();
     remover();
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível salvar agora. Tente de novo em instantes.",
+      "Não foi possível concluir agora. Tente de novo em instantes.",
     );
     expect(push).not.toHaveBeenCalled();
   });

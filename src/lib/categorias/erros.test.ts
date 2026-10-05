@@ -14,7 +14,7 @@ describe("traduzirResultado (contrato §4)", () => {
     const f = traduzirResultado({ tipo: "nome_repetido", nomeExistente: "Bolsas" });
     expect(f).toEqual({
       motivo: "nome_repetido",
-      mensagem: "Já existe uma categoria chamada Bolsas.",
+      mensagem: "Já existe uma categoria chamada Bolsas. Escolha outro nome.",
       campo: "nome",
     });
   });

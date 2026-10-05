@@ -31,3 +31,9 @@ manter consistência nas próximas syncs incrementais:
 **Como aplicar**: seguir este padrão ao editar ou criar novos docs; só
 divergir se o humano pedir explicitamente uma estrutura diferente (e aí
 atualizar esta memória).
+
+Sync da feature 002 (2026-10-04): `docs/database.md` segue o padrão (estado em blockquote →
+`## Visão leiga` → `## Aprofundamento técnico`, erDiagram só com o que existe; tabelas futuras
+marcadas como "planejado"). Doc de feature usa tabela rota→arquivo e tabela arquivo→papel, e
+`graph TD` das camadas. `README.md` e `specs/` aparecem modificados no working tree por outros
+agentes: não tocar nem atribuir a esta sync.

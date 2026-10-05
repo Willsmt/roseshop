@@ -47,6 +47,13 @@ jobs:
           else
             echo "Nenhuma migration ainda."
           fi
+      # Probe do ADR-008 (T062): só batch-transacao.int.test.ts, sem tabelas.
+      # Falha bloqueia o deploy dev: parar e reabrir o ADR-008.
+      - name: Probe de transação do batch (Neon dev)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PROBE_SLEEP_S: "5"
+        run: npx vitest run --config vitest.probe.config.mts
       - name: Deploy (roseshop-dev)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -1,11 +1,17 @@
+import { NeonDbError } from "@neondatabase/serverless";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { createDb } from "@/lib/db/client";
+import { codigoSqlstate } from "@/lib/db/erros-pg";
 import { LOCK_PROBE_BATCH } from "@/lib/db/locks";
 
 // Feature 002, T005 (D3-B, ADR-008): prova determinística de que db.batch roda numa
 // única transação. NÃO toca em tabelas; reutilizado contra o Neon dev no CI (T062).
+// O caso (d) prova o Fato 1 (forma do erro no db.batch: NeonDbError sem embrulho, sem
+// `cause`, código em `error.code`) com o SQLSTATE 23001 sem usar tabela. O Fato 2
+// (FK ON DELETE RESTRICT => 23001) segue provado só localmente (categorias.remocao /
+// produtos-fixture), porque exige tabela.
 const db = createDb({
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   NEON_FETCH_ENDPOINT: process.env.NEON_FETCH_ENDPOINT,
@@ -93,5 +99,24 @@ describe("db.batch roda numa única transação (D3-B, ADR-008)", () => {
       db.execute(sql`SELECT txid_current()::text`),
     ]);
     expect(celula(iso)).toBe("read committed");
+  });
+
+  it("(d) erro dentro do db.batch chega como NeonDbError sem cause, com code 23001", { timeout: TIMEOUT_MS }, async () => {
+    let erro: unknown;
+    let rejeitou = false;
+    try {
+      await db.batch([
+        db.execute(sql`SELECT 1`),
+        db.execute(sql.raw("DO $$ BEGIN RAISE EXCEPTION 'probe 23001' USING ERRCODE = 'restrict_violation'; END $$")),
+      ]);
+    } catch (e) {
+      rejeitou = true;
+      erro = e;
+    }
+    expect(rejeitou, "o batch deveria rejeitar").toBe(true);
+    expect(erro).toBeInstanceOf(NeonDbError);
+    expect((erro as NeonDbError).code).toBe("23001");
+    expect((erro as { cause?: unknown }).cause).toBeUndefined();
+    expect(codigoSqlstate(erro)).toBe("23001");
   });
 });

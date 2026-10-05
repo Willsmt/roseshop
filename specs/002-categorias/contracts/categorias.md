@@ -135,4 +135,10 @@ O texto do banco nunca chega ao usuário.
   3. Remover `criarFixtureProdutos`/`descartarFixtureProdutos` do helper (a criação da
      fixture falharia com a tabela real, de propósito) e passar o teste de bloqueio por
      produtos a usar a tabela real.
+  4. **Obrigatório**: teste de integração da FK `produtos.categoria_id → categorias.id ON
+     DELETE RESTRICT` gerando `23001` no Neon dev via CI. Na 002 o probe do Neon dev prova
+     só a forma do erro no `db.batch` com `23001` via `RAISE`, sem tabela; o Fato 2 do
+     ADR-008 (FK `RESTRICT` ⇒ `23001`) foi provado apenas no proxy local, porque exige
+     `produtos`. O passo no CI segue sem `TRUNCATE`/escrita fora do que a 003 definir, na
+     linha do `vitest.probe.config.mts`.
 - Nenhuma categoria criada, renomeada ou removida fora das actions da 002.

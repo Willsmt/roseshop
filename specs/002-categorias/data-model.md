@@ -50,6 +50,6 @@ que recria coluna e índice.
 
 | Operação | Pré-condições (no banco) | Efeito | Recusas |
 |----------|--------------------------|--------|---------|
-| Criar | `chave` (gerada) inédita | nova linha, `versao = 1` | `23505` ⇒ "Já existe uma categoria chamada X." |
+| Criar | `chave` (gerada) inédita | nova linha, `versao = 1` | `23505` ⇒ "Já existe uma categoria chamada X. Escolha outro nome." |
 | Renomear | linha existe com a `versao` informada; nova `chave` inédita **ou** é a da própria linha | `nome`, `chave` novos, `versao + 1` | duplicado; 0 linhas ⇒ "alterada por outra pessoa" / "não existe mais" |
 | Remover | linha existe com a `versao`; sem produtos (FK); restar ≥ 1 categoria (batch com lock, D3-B) | linha apagada | 0 linhas; `23001` ⇒ "tem N produtos"; última ⇒ "precisa ter pelo menos uma" |

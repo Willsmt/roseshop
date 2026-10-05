@@ -4,9 +4,10 @@
 > existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados e
 > publicados; a produção está no ar desde o primeiro deploy pelo CI). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
-> exercitada só pela rota `/api/health`. O schema está vazio de propósito e
-> ainda não há migrations. O login das administradoras (Auth.js + Google) está
-> implementado (feature 001); R2 e IA não estão configurados.
+> exercitada pela rota `/api/health` e pelas categorias do painel (feature 002:
+> tabela `categorias` e migration `0000`). O login das administradoras
+> (Auth.js + Google) está implementado (feature 001); R2 e IA não estão
+> configurados.
 
 ## Visão leiga
 
@@ -29,7 +30,7 @@ da Cloudflare e, futuramente, publicar.
 | `npm run cf-typegen` | `wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts` — regenera os tipos TypeScript dos bindings declarados em `wrangler.jsonc`. Rodar sempre após alterar bindings. |
 | `npm run typecheck` | `tsc --noEmit` — checagem de tipos de todo o projeto (`tsconfig.json`, modo `strict`). |
 | `npm test` | `vitest run` — roda os testes **unitários** (`*.test.ts`, sem banco) uma vez (modo CI). Exclui `*.int.test.ts`. Sem `passWithNoTests`: suíte vazia agora falha. |
-| `npm run test:int` | `vitest run --config vitest.int.config.mts` — roda os testes de **integração** (`*.int.test.ts`), que exigem `npm run db:up` e `DATABASE_URL` no `.dev.vars`. Não faz parte do `check` nem do `pre-push`. |
+| `npm run test:int` | `vitest run --config vitest.int.config.mts` — roda os testes de **integração** (`*.int.test.ts`), que exigem `npm run db:up`, **migrations aplicadas** (`npm run db:migrate`) e `DATABASE_URL` no `.dev.vars`. Não faz parte do `check` nem do `pre-push`. |
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
@@ -38,13 +39,22 @@ da Cloudflare e, futuramente, publicar.
 | `npm run db:reset` | `docker compose down -v && docker compose up -d --wait` — **DESTRUTIVO: apaga o volume `pgdata` e todos os dados do banco local**, e sobe um banco vazio. Só afeta o local. |
 | `npm run db:psql` | `docker compose exec postgres psql -U roseshop -d roseshop` — shell SQL no container (requer `db:up` antes). |
 
-| `npm run db:generate` | `drizzle-kit generate` — gera migration SQL em `src/lib/db/migrations/` a partir de `src/lib/db/schema.ts`. Com o schema vazio, não há o que gerar (o diretório ainda não existe). |
+| `npm run db:generate` | `drizzle-kit generate` — gera migration SQL em `src/lib/db/migrations/` a partir de `src/lib/db/schema.ts`. A `0000` foi gerada assim e editada à mão (função `categoria_chave` e seed; ver [database.md](./database.md#migration-0000-e-seed)); depois de editar, rode de novo e confira "No schema changes". |
 | `npm run db:migrate` | `drizzle-kit migrate` — aplica as migrations no banco de `DATABASE_URL`, por conexão TCP direta (não passa pelo proxy HTTP). |
 
 `drizzle.config.ts` lê `DATABASE_URL` do ambiente e, se ausente, carrega o
 `.dev.vars` (`process.loadEnvFile`); sem a variável, falha com erro explícito.
 Em CI/dev online/produção a variável vem do ambiente e deve ser a connection
-string **direta** do Neon, não a pooled (ADR-002).
+string **direta** do Neon, sem pooler (ADR-002; decisão N1 da feature 002:
+app, migration e probe usam o mesmo `DATABASE_URL` direto, ver "CI").
+
+**Fluxo local típico** (banco novo ou recém-resetado):
+
+```bash
+npm run db:up        # sobe Postgres 18 + proxy HTTP do Neon
+npm run db:migrate   # aplica a 0000 (tabela categorias + seed) no banco local
+npm run test:int     # integração (exige as migrations aplicadas)
+```
 
 ## Banco local (Docker)
 
@@ -188,12 +198,17 @@ Há dois tipos de teste, cada um com sua config:
 | Unitário | `src/**/*.test.{ts,tsx}` | `vitest.config.mts` + `vitest.setup.ts` | `npm test`; entra no `npm run check` e no `pre-push` | Não precisa |
 | Integração | `src/**/*.int.test.{ts,tsx}` | `vitest.int.config.mts` + `vitest.int.setup.ts` | `npm run test:int`, manual; **fora** do `pre-push` | Exige `npm run db:up`; o setup falha se `DATABASE_URL` faltar (lê `.dev.vars` se existir), `testTimeout` de 15 s |
 
-Hoje existem testes em `src/lib/db/` (`health.test.ts` unitário e
-`client.int.test.ts` de integração, via proxy local), em `src/lib/auth/`, nas
-telas do painel e em `src/components/ui/`, além de dois testes transversais:
+Hoje existem testes em `src/lib/db/` (`health.test.ts`, `erros-pg.test.ts`
+unitários; `client.int.test.ts`, `batch-transacao.int.test.ts` e os
+`categorias.*.int.test.ts` de integração, via proxy local), em
+`src/lib/categorias/`, em `src/lib/auth/`, nas telas do painel e em
+`src/components/ui/`, além de testes transversais:
 `src/test/conformance/painel-guard.test.ts` (nega por padrão rotas/actions sem
-guard; ver [F01](./features/F01-autenticacao.md#teste-de-conformidade-nega-por-padrão))
-e `src/next-config.test.ts` (header `no-store` em `/painel`). Em
+guard; ver [F01](./features/F01-autenticacao.md#teste-de-conformidade-nega-por-padrão)),
+`categorias-guard.test.ts` e `categorias-acesso.test.ts` (guard nas telas e
+actions de categorias e fronteira de imports; ver
+[F02](./features/F02-categorias.md#camadas-e-fronteira-de-acesso)) e
+`src/next-config.test.ts` (header `no-store` em `/painel`). Em
 `vitest.setup.ts`, `server-only` é trocado por um mock vazio. Configuração
 do tipo unitário (`vitest.config.mts`):
 
@@ -205,6 +220,24 @@ do tipo unitário (`vitest.config.mts`):
 | Alias `@/*` | resolvido nativamente pelo Vite (`resolve.tsconfigPaths: true`) | Lê os `paths` do `tsconfig.json`; substitui o plugin `vite-tsconfig-paths`, removido do projeto. |
 | Arquivos de teste | `src/**/*.test.{ts,tsx}`, exceto `*.int.test.*` | Testes fora de `src/` não são descobertos; os de integração têm config própria. |
 | Setup | `vitest.setup.ts` importa `@testing-library/jest-dom/vitest` | Matchers como `toBeInTheDocument` ficam disponíveis. |
+
+#### Integração: pegadinhas (feature 002)
+
+- **`fileParallelism: false`** em `vitest.int.config.mts`: vários arquivos fazem
+  `TRUNCATE categorias`, então os arquivos de integração rodam em série.
+- `vitest.int.setup.ts` também troca `server-only` por um mock vazio.
+- Infra em `src/test/db/categorias-fixtures.ts`: `resetCategorias` refaz o seed
+  lendo o bloco entre os marcadores da migration `0000`; a fixture
+  `criarFixtureProdutos` cria uma tabela `produtos` provisória.
+- **Fixture sobrada**: se uma execução for interrompida (Ctrl+C, timeout) antes
+  do `afterAll`, a tabela `produtos` fica no banco local e quebra a próxima
+  `criarFixtureProdutos` ("já existe") e o `TRUNCATE` (FK). Recuperação:
+  `npm run db:reset` (**destrutivo, só local**) e depois `npm run db:migrate`.
+- **Probe do batch**: `vitest.probe.config.mts` roda **somente**
+  `src/lib/db/batch-transacao.int.test.ts` (include literal, para nenhum teste
+  com `TRUNCATE` tocar o Neon dev). Usado pelo CI do PR; não adicione reset nem
+  escrita de banco no setup dessa config. `PROBE_SLEEP_S` (padrão 2 s; o CI usa 5)
+  controla o `pg_sleep` do cenário de lock.
 
 Os testes rodam em Node/jsdom, **não em workerd**: não substituem a validação
 no `preview` para bindings, R2, auth e IA.
@@ -293,7 +326,7 @@ local").
 | Variável | Propósito | Onde é usada | Tipo |
 |---|---|---|---|
 | `NEXTJS_ENV` | Vem do template do OpenNext. O adaptador a lê no `preview` para escolher qual arquivo `.env.*` do Next carregar (exemplo: `development`). | Adaptador OpenNext, no `preview`; **não** é usada pelo código de `src/`. | Var de configuração local (não sensível) |
-| `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`. A mesma string serve ao driver (via proxy) e às migrations (conexão direta). | `src/lib/db/client.ts` (`createDb`, via `/api/health`), `drizzle.config.ts` e `vitest.int.setup.ts`. | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
+| `DATABASE_URL` | Connection string do Postgres. Local: `localhost:5440`; a mesma string serve ao driver (via proxy) e às migrations (conexão direta). No Neon dev, a **mesma string direta, sem pooler**, é usada pelo app (secret da Cloudflare), pela migration e pelo probe (secret do GitHub Environment `dev`), decisão N1. | `src/lib/db/client.ts` (`createDb`, via `/api/health` e `src/lib/db/contexto.ts`), `drizzle.config.ts`, `vitest.int.setup.ts` e o passo do probe em `.github/workflows/pull-request.yml`. | Secret em dev online e produção (`wrangler secret --env dev` / `--env production`), conforme ADR-006 (segredos de runtime do app ficam somente na Cloudflare); no local, valor não sensível |
 | `NEON_FETCH_ENDPOINT` | Endpoint do proxy HTTP local do Neon (`.../sql`). | `src/lib/db/client.ts` (`neonConfig.fetchEndpoint`). Definir **somente no local**; **ausente** em dev online e produção (o driver usa o endpoint padrão do Neon). | Var pública, só local |
 | `AUTH_SECRET` | Segredo de assinatura das sessões do Auth.js. **Gerado** (`openssl rand -base64 32`); não vem do Google. **Diferente em cada ambiente** (local, dev, produção). | Lido pelo próprio Auth.js (`next-auth`) de `process.env`; nenhum arquivo de `src/` o referencia. Trocar o valor derruba todas as sessões do ambiente. | Secret em dev online e produção |
 | `AUTH_GOOGLE_ID` | Client ID do OAuth do Google (termina em `.apps.googleusercontent.com`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
@@ -507,14 +540,28 @@ Jobs de `checks.yml`:
 | Job | Conteúdo |
 |---|---|
 | `quality` | `npm ci` + `npm run check` (lint, typecheck e testes unitários). |
-| `integration` | Postgres `postgres:18-alpine` (porta 5440) e proxy Neon (porta 4444) como `services`; espera o proxy responder e roda `npm run test:int`. A imagem do proxy usa o **mesmo digest** do `docker-compose.yml`. `DATABASE_URL` e `NEON_FETCH_ENDPOINT` do job apontam para o banco descartável do próprio job (não são segredos). |
+| `integration` | Postgres `postgres:18-alpine` (porta 5440) e proxy Neon (porta 4444) como `services`; espera o proxy responder, aplica as migrations (`npm run db:migrate`, passo "Migrations (Postgres do job)", no banco descartável do job, nunca dev/produção) e roda `npm run test:int`. A imagem do proxy usa o **mesmo digest** do `docker-compose.yml`. `DATABASE_URL` e `NEON_FETCH_ENDPOINT` do job apontam para o banco descartável do próprio job (não são segredos). |
 | `security` | Checkout com histórico completo; instala o gitleaks **8.30.1** verificando o checksum (`sha256sum --check`); `gitleaks git --redact` varre o histórico inteiro; `npm audit --omit=dev --audit-level=high` (ADR-007). |
 
 Passos dos jobs de deploy (`deploy-dev` e `deploy-production`): `npm ci` →
 migrations (`npm run db:migrate` só se existir
 `src/lib/db/migrations/meta/_journal.json`; hoje não existe, então o passo
-imprime "Nenhuma migration ainda.") → `npm run deploy:dev` ou
+imprime "Nenhuma migration ainda"; agora existe a `0000`, então roda) →
+**(só `deploy-dev`) probe de transação do batch** → `npm run deploy:dev` ou
 `npm run deploy:production` → `scripts/smoke-health.sh <url>/api/health`.
+
+**Probe do `db.batch` no Neon dev** (`pull-request.yml`, passo "Probe de
+transação do batch (Neon dev)", ADR-008): `npx vitest run --config
+vitest.probe.config.mts` com `DATABASE_URL: ${{ secrets.DATABASE_URL }}` do
+environment `dev` (o mesmo secret da migration, **sem secret novo**) e
+`PROBE_SLEEP_S=5`. Prova que o `db.batch` roda numa única transação, que o lock
+advisory fica visível em `pg_locks` e bloqueia o segundo batch, o isolamento
+`read committed` e a forma do erro `23001`; não escreve em tabelas. Roda depois
+da migration e **antes** do deploy: se falhar, o deploy dev não acontece e o
+ADR-008 deve ser reaberto. Se o app passar a usar a string com pooler, repita o
+probe com ela antes de chegar à produção.
+A **primeira** execução do PR da feature 002 aplica a migration `0000` no Neon
+dev e a congela (mudança depois disso é migration nova).
 A trava `scripts/require-ci.mjs` passa porque o Actions define `CI=true`.
 
 `scripts/smoke-health.sh` tenta `GET` no `/api/health` até 10 vezes, com 6 s de
@@ -527,7 +574,7 @@ O `.nvmrc` fixa o **Node 24**, lido por `actions/setup-node` (`node-version-file
   `actions/checkout` v7.0.1 e `actions/setup-node` v7.0.0.
 - `permissions: contents: read` em todos os workflows; `persist-credentials: false`
   em todo checkout; `HUSKY: 0` no CI.
-- Secrets só no passo que os usa (`DATABASE_URL` na migration;
+- Secrets só no passo que os usa (`DATABASE_URL` na migration e no probe;
   `CLOUDFLARE_API_TOKEN` no deploy); `CLOUDFLARE_ACCOUNT_ID` vem de `vars`.
 - Concorrência: `pr-<número>` com cancelamento por PR; `deploy-dev` e
   `deploy-production` serializados (`cancel-in-progress: false`).
@@ -554,7 +601,7 @@ Nunca cole o valor junto com outros comandos nem o imprima.
 2. Valide:
    - Token Cloudflare: `GET /user/tokens/verify` deve retornar `active`.
    - `DATABASE_URL` do Neon: esquema `postgres`, host `neon.tech`, **sem
-     pooler**, `sslmode=require`, sem espaços, e o endpoint `ep-...` conferido
+     pooler** (string direta, decisão N1), `sslmode=require`, sem espaços, e o endpoint `ep-...` conferido
      com o console do Neon e **diferente** entre dev e production.
 3. Grave por pipe, no environment correto:
 
@@ -665,6 +712,16 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   `.dev.vars`.
 - **`npm run test:int` falha com "DATABASE_URL ausente"**: rode `npm run db:up`
   e configure o `.dev.vars` a partir do `.dev.vars.example`.
+- **`npm run test:int` falha com "relation categorias does not exist" ou
+  seed ausente**: faltou `npm run db:migrate` depois do `db:up` (ou do
+  `db:reset`). A integração exige as migrations aplicadas.
+- **`test:int` falha com tabela `produtos` "already exists" ou `TRUNCATE`
+  recusado por FK**: sobrou a fixture de uma execução interrompida. Rode
+  `npm run db:reset` (destrutivo, só local) e `npm run db:migrate`.
+- **Probe do batch falha no CI do PR**: o `deploy-dev` não roda. Não force: o
+  ADR-008 assume transação única no `db.batch` e, se o probe provar o contrário,
+  deve ser reaberto. Antes disso, confira se o `secrets.DATABASE_URL` do
+  environment `dev` é a string direta (sem pooler).
 - **`psql`/migration não conecta**: use `localhost:5440` (não 5432) e confirme
   que o Postgres está saudável (`docker compose ps`).
 - **Commit bloqueado com "gitleaks não encontrado"**: instale conforme a seção

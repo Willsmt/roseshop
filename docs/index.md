@@ -7,11 +7,12 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 
 > Estado atual do projeto: **Fase 0 concluída** (fundação de infraestrutura:
 > scaffold OpenNext, banco local, testes, hooks, CI, ambientes dev e produção no
-> ar, branch `main` protegido) e **feature 001 (autenticação das
-> administradoras) implementada**: login com Google, allowlist e painel
-> protegido, sem middleware. Catálogo, sacola, upload de imagem e IA ainda não
-> existem; por isso este índice é deliberadamente curto: só existem documentos
-> para o que já tem código real por trás.
+> ar, branch `main` protegido), **feature 001 (autenticação das
+> administradoras)**: login com Google, allowlist e painel protegido, sem
+> middleware, e **feature 002 (categorias)**: primeira tabela do banco e
+> telas de categorias no painel. Catálogo, sacola, upload de imagem e IA ainda
+> não existem; por isso este índice é deliberadamente curto: só existem
+> documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
 
@@ -24,16 +25,20 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 3. **[operacao.md](./operacao.md)** — comandos do dia a dia (`dev`, `preview`,
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
-   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations, testes unitários e de integração, auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`,
+   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations (fluxo `db:up` → `db:migrate` → `test:int`), testes unitários e de integração (inclui recuperação de fixture sobrada e o probe do CI), auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`,
    `allowScripts`), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
 4. **[features/F01-autenticacao.md](./features/F01-autenticacao.md)** — login
    das administradoras: rotas, como a proteção funciona sem middleware (guards e
    teste de conformidade), módulos de `src/lib/auth/` e pegadinhas.
+5. **[database.md](./database.md)** — schema Drizzle (tabela `categorias`,
+   função `categoria_chave`, migration `0000` com seed), regras de integridade
+   sem transação interativa (ADR-008) e o aviso de FK `ON DELETE RESTRICT` para
+   a feature 003.
+6. **[features/F02-categorias.md](./features/F02-categorias.md)** — cadastro de
+   categorias no painel: rotas, actions, camadas (`src/lib/categorias/` e
+   `src/lib/db/`), fronteira de acesso, fluxo de remoção e pegadinhas.
 
 ## O que ainda não existe aqui
 
-Não há `docs/database.md`: o schema Drizzle continua vazio (a sessão de login é
-JWT, sem tabelas), então não há tabelas para documentar. Esse documento deve ser
-criado pelo `doc-sync-onboarding` na primeira sync que tocar schema de banco.
-Também só existe doc de feature para a F01; as demais serão criadas ao serem
-fechadas.
+Só há doc de feature para a F01 e a F02; as demais serão criadas ao serem
+fechadas (catálogo, produtos, sacola, upload, IA).

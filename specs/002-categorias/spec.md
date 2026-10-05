@@ -77,7 +77,7 @@ na lista; tentar criar outra com nome equivalente e conferir a recusa.
 5. **Given** um nome com menos de 2 ou mais de 40 caracteres (contados após remover espaços nas pontas e colapsar espaços repetidos), **When** a administradora confirma, **Then** a criação é recusada com mensagem dizendo o tamanho aceito (de 2 a 40 letras), e o texto digitado continua no campo.
 6. **Given** um nome com caracteres fora de letras (incluindo acentuadas), números, espaço e hífen (por exemplo, "Bolsas!" ou "Meias 😀"), **When** a administradora confirma, **Then** a criação é recusada com mensagem dizendo que só letras, números, espaço e hífen são aceitos.
 7. **Given** o nome "  Bolsas   de   Praia  ", **When** a categoria é criada, **Then** ela é salva e exibida como "Bolsas de Praia" (espaços normalizados, maiúsculas e acentos preservados).
-8. **Given** uma recusa por nome repetido, **When** a mensagem aparece, **Then** ela diz em português simples qual categoria já existe com aquele nome (por exemplo, "Já existe uma categoria chamada Panos de prato."), sem termos técnicos, e o que a administradora digitou continua no campo para ela corrigir.
+8. **Given** uma recusa por nome repetido, **When** a mensagem aparece, **Then** ela diz em português simples qual categoria já existe com aquele nome e pede outro nome (por exemplo, "Já existe uma categoria chamada Panos de prato. Escolha outro nome."), sem termos técnicos, e o que a administradora digitou continua no campo para ela corrigir.
 9. **Given** uma pessoa sem sessão autorizada, **When** a ação de criar é chamada diretamente (sem passar pela interface), **Then** ela é recusada e nada é criado.
 
 ---
@@ -171,9 +171,9 @@ para criar categoria fora da ação das administradoras no painel.
   categorias: só uma remoção é aceita e a outra recebe a mensagem de que precisa
   existir pelo menos uma categoria.
 - Categoria inicial removida ou renomeada: nunca é recriada por uma nova publicação.
-- Falha ao salvar por motivo externo (conexão ruim no celular): mensagem simples
-  ("Não foi possível salvar agora. Tente de novo em instantes."), sem jargão, e a
-  lista continua como estava.
+- Falha ao salvar ou remover por motivo externo (conexão ruim no celular): mensagem
+  simples ("Não foi possível concluir agora. Tente de novo em instantes."), sem
+  jargão, e a lista continua como estava.
 - Equivalência: "Guarda-chuvas", "Guarda chuvas", "GUARDÁ-CHUVAS" e "guarda   chuvas"
   são o mesmo nome para fins de duplicidade; já "Guarda-chuva" (sem o "s") é outro
   nome. O nome salvo e exibido é sempre o que a administradora digitou, só com os

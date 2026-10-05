@@ -74,12 +74,12 @@ Páginas (H7-A, uma tarefa por tela), cada uma com `requireAdminPage(<rota>)` (`
 | `nome_tamanho` | "O nome precisa ter de 2 a 40 letras." |
 | `nome_caracteres` | "Use só letras, números, espaço e hífen." |
 | `nome_sem_letra` | "O nome precisa ter pelo menos uma letra ou número." |
-| `nome_repetido` | "Já existe uma categoria chamada {nome existente}." |
+| `nome_repetido` | "Já existe uma categoria chamada {nome existente}. Escolha outro nome." |
 | `nao_existe` | "Esta categoria não existe mais. Atualize a lista." |
 | `alterada` | "Esta categoria foi alterada por outra pessoa. Atualize a lista e tente de novo." |
 | `tem_produtos` | "Esta categoria tem {N} produtos. Mova esses produtos para outra categoria e tente remover de novo." (N = 1: "Esta categoria tem 1 produto. Mova esse produto para outra categoria e tente remover de novo.") |
 | `ultima` | "A loja precisa ter pelo menos uma categoria. Crie outra antes de remover esta." |
-| `falha_geral` | "Não foi possível salvar agora. Tente de novo em instantes." |
+| `falha_geral` | "Não foi possível concluir agora. Tente de novo em instantes." |
 
 O texto do banco nunca chega ao usuário.
 

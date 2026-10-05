@@ -53,14 +53,14 @@ describe("FormCriar (US2)", () => {
     criarMock.mockResolvedValue({
       ok: false,
       motivo: "nome_repetido",
-      mensagem: "Já existe uma categoria chamada Bolsas.",
+      mensagem: "Já existe uma categoria chamada Bolsas. Escolha outro nome.",
       campo: "nome",
     });
     render(<FormCriar />);
     digitar("Bolsas");
     salvar();
     const alerta = await screen.findByRole("alert");
-    expect(alerta).toHaveTextContent("Já existe uma categoria chamada Bolsas.");
+    expect(alerta).toHaveTextContent("Já existe uma categoria chamada Bolsas. Escolha outro nome.");
     expect(alerta).toHaveAttribute("id", "nome-erro");
     const input = screen.getByLabelText("Nome da categoria");
     expect(input).toHaveAttribute("aria-invalid", "true");
@@ -75,7 +75,7 @@ describe("FormCriar (US2)", () => {
     digitar("Bolsas");
     salvar();
     const alerta = await screen.findByRole("alert");
-    expect(alerta).toHaveTextContent("Não foi possível salvar agora. Tente de novo em instantes.");
+    expect(alerta).toHaveTextContent("Não foi possível concluir agora. Tente de novo em instantes.");
     expect(screen.getByLabelText("Nome da categoria")).toHaveValue("Bolsas");
     expect(push).not.toHaveBeenCalled();
   });

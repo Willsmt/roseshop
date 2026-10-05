@@ -130,7 +130,7 @@ describe("criarCategoria: fluxo", () => {
     await expect(criarCategoria({ nome: "bolsas" })).resolves.toEqual({
       ok: false,
       motivo: "nome_repetido",
-      mensagem: "Já existe uma categoria chamada Bolsas.",
+      mensagem: "Já existe uma categoria chamada Bolsas. Escolha outro nome.",
       campo: "nome",
     });
     expect(m.revalidatePath).not.toHaveBeenCalled();

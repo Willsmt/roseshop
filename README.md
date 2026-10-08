@@ -45,6 +45,18 @@ Se você usa o painel pelo menos uma vez a cada 29 dias, continua conectada. Se 
 
 Avise o Willians. As administradoras têm todas o mesmo poder.
 
+### Produtos no painel
+
+Em `/painel/produtos` fica a lista dos produtos. Cada produto ganha um código (`#0001`, `#0002`…) que não se repete, nem depois de removido.
+
+- **Cadastrar**: toque em "Novo produto", escreva o nome, escolha a categoria e, se quiser, descrição e preço. O preço pode ser "12,90" ou "R$ 12,90"; marque "a partir de" quando o valor varia. Sem preço, o produto aparece como "Sem preço".
+- **Lista**: os mais novos aparecem primeiro. Use a busca (por nome ou pelo código, como "42" ou "#0042") e os filtros de categoria e de esgotado. "Ver mais produtos" mostra os próximos.
+- **Esgotado**: no detalhe do produto, toque em "Marcar como esgotado". Para voltar, "Marcar como disponível".
+- **Destaque**: no detalhe, "Destacar" põe o produto em destaque. O limite é de 8 destaques ao mesmo tempo; para destacar outro, tire um do destaque antes. Produto esgotado sai do destaque sozinho e não volta sozinho.
+- **Editar e remover**: no detalhe do produto. Remover pede a confirmação com o código e o nome.
+- **Se duas pessoas mexerem no mesmo produto**: quem agir depois vê o aviso "Outra pessoa mudou este produto…"; recarregue a página e faça de novo.
+- **Categoria com produtos** não pode ser removida: mude ou remova os produtos antes.
+
 ## Para quem mantém o sistema
 
 ### Categorias do catálogo (feature 002)
@@ -69,8 +81,8 @@ npm run db:migrate     # aplica migrations no banco local
 npm run test:int       # roda testes de integração (inclui probe do batch)
 ```
 
-Se uma execução for interrompida antes do fim (Ctrl+C, timeout), a tabela de produtos
-de teste (`produtos`) pode sobrar no banco. Para recuperar:
+Se uma execução for interrompida antes do fim (Ctrl+C, timeout), dados de teste podem
+sobrar no banco. Para recuperar:
 
 ```bash
 npm run db:reset       # DESTRUTIVO: apaga dados e reinicia o banco local
@@ -82,6 +94,25 @@ npm run db:migrate     # reaplica migrations e seed
 A feature 002 não adiciona variáveis de ambiente nem secrets: o probe de transação
 no Neon dev (CI) reutiliza `DATABASE_URL` do environment `dev`, o mesmo que a aplicação
 e as migrations já usam.
+
+### Produtos (feature 003)
+
+Tabelas `produtos` e `produto_fotos` (migration `0001`); o código `#NNNN` vem de uma
+sequência do banco. O teto de 8 destaques e a regra "esgotado não fica em destaque" são
+garantidos pelo próprio banco (constraints), além das Server Actions. Sem variáveis nem
+secrets novos. O CI do PR roda no Neon dev o teste da FK `ON DELETE RESTRICT`
+(`src/lib/db/fk-produtos.int.test.ts`) junto do probe do `db.batch`.
+
+Medição de desempenho da lista (SC-007, nível de banco; só no banco local, fora do
+`test:int` e do `check`):
+
+```bash
+npm run test:perf      # popula 500 produtos, mede a lista, a próxima página, o filtro e a busca; limpa a massa
+```
+
+O comando imprime média e máximo de cada consulta (meta: < 2 s) e **recria as categorias**
+do banco local, então não rode com dados que queira manter. A medição no `preview`
+(rede "Fast 4G") é manual, descrita em `specs/003-produtos/quickstart.md` §4.
 
 ### Dependências novas da feature 001
 

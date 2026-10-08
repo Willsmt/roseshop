@@ -257,8 +257,9 @@ já entrega `aPartirDe = false` sem preço; o SQL repete como defesa). Contrato 
 - [ ] T024 [US1] `src/lib/db/produtos.concorrencia.int.test.ts` (rodando em série como o
   resto): duas inserções simultâneas de nome equivalente ⇒ 1 `ok` + 1 `nome_repetido` com o
   código do outro; N cadastros simultâneos ⇒ códigos distintos; código de produto removido
-  não volta; dois `editar`/`remover` com a mesma `versao` ⇒ 1 aceito, 1 `versao_diferente`,
-  nada sobrescrito; **`inserir` × `remover` da categoria (002) simultâneos** e **`editar`
+  não volta; dois `editar` com a mesma `versao` ⇒ 1 aceito, 1 `versao_diferente`, nada
+  sobrescrito; dois `remover` com a mesma `versao` ⇒ 1 `removido`, 1 `ausente` (a linha já
+  sumiu; US6-AC6); **`inserir` × `remover` da categoria (002) simultâneos** e **`editar`
   trocando para a categoria × `remover` dela simultâneos** ⇒ só dois desfechos aceitos
   (produto gravado + `tem_produtos`, ou categoria removida + `categoria_ausente`) e nunca
   produto órfão (US7-AC3 com as funções reais) — **test-writer**

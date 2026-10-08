@@ -22,7 +22,8 @@
   no aparelho, onde o navegador abrir; o servidor nunca recebe HEIC. O servidor não
   processa imagem: na confirmação do envio, relê o objeto e confere conteúdo
   (assinatura do arquivo), tamanho, dimensões mínimas e ausência de metadados; o que
-  estiver fora da regra é apagado e recusado.
+  estiver fora da regra é apagado e recusado. (formato de saída substituído pela clarificação
+  sobre JPEG/WebP quadrado)
 - Q: Como é o botão de remover foto no cadastro (cenário 6 da US1)? → A: ícone de
   lixeira com o texto "Remover" ao lado, igual ao da US4. Nenhum botão da feature
   usa o verbo "Tirar" para remover; "Tirar foto" só abre a câmera.
@@ -54,6 +55,15 @@
   botão "Tentar de novo". Na segunda recusa seguida pelo mesmo motivo, na mesma
   tela, a mensagem passa a ser "Essa foto não está passando. Escolha outra ou peça
   ajuda.".
+- Q: (plan, 2026-10-08) A regra "no banco continuam só as constraints já existentes" (FR-003)
+  impede constraints novas em `produto_fotos` que não tratam de contagem nem de posição? → A:
+  não. A regra vale para "1 a 3 fotos sem buracos". `produto_fotos` ganha `UNIQUE` da chave do
+  objeto e `CHECK` do formato da chave (uma foto pertence a um só produto; nenhuma chave fora do
+  padrão é gravada). Registrado também no ADR-009.
+- Q: (plan, 2026-10-08) A verificação do servidor aceita PNG e qualquer dimensão acima do
+  mínimo? → A: não. O aparelho só gera WebP ou JPEG, quadrado, com lado de até 1200 pixels; o
+  servidor recusa PNG pela assinatura e recusa foto que não seja quadrada ou que tenha lado
+  acima de 1200 pixels (FR-012, FR-016).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -424,12 +434,15 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 - **FR-011**: No aparelho, as entradas aceitas MUST ser fotos JPEG, PNG e WebP e,
   onde o navegador conseguir abrir, HEIC/HEIF (senão vale o cenário 7 da US2).
   SVG, GIF e qualquer outro formato MUST ser recusados no aparelho com a mensagem
-  do cenário 3 da US2. O que sai do aparelho MUST ser sempre JPEG, PNG ou WebP
-  (constitution III.4); o servidor MUST NOT aceitar HEIC/HEIF nem outro formato.
+  do cenário 3 da US2. PNG continua aceito como entrada (ex.: print de tela ou imagem
+  salva na galeria), mas o que sai do aparelho MUST ser sempre WebP ou JPEG (dentro da
+  lista da constitution III.4); o servidor MUST NOT aceitar PNG, HEIC/HEIF nem outro
+  formato.
 - **FR-012**: Na confirmação do envio, o servidor MUST reler o arquivo guardado na
   área temporária e verificar o tipo pelo conteúdo (assinatura do arquivo); nome,
   extensão e tipo declarado são ignorados para essa decisão. Conteúdo que não seja
-  JPEG, PNG ou WebP MUST ser apagado e recusado com a mensagem do cenário 3 da US2.
+  JPEG ou WebP (inclusive PNG, que o aparelho nunca gera) MUST ser apagado e recusado
+  com a mensagem do cenário 3 da US2.
 - **FR-013**: No aparelho, antes do envio, a foto MUST ser recortada na moldura
   1:1, reduzida e regravada (o que descarta EXIF, GPS e equivalentes), gerando
   WebP; se o navegador não gerar WebP, gera JPEG. O original MUST NOT sair do
@@ -451,8 +464,10 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
   A confirmação exige a mesma autenticação e allowlist. O servidor MUST NOT
   processar a imagem (decodificar, redimensionar, converter ou regravar),
   conforme a constitution (VII).
-- **FR-016**: O que fica guardado MUST estar em WebP, JPEG ou PNG, estático e sem
-  metadados, garantido pela verificação do servidor na confirmação (FR-015). A
+- **FR-016**: O que fica guardado MUST estar em WebP ou JPEG, estático, sem
+  metadados, quadrado e com lado entre 400 e 1200 pixels, garantido pela verificação
+  do servidor na confirmação (FR-015); foto fora dessas dimensões é apagada e recusada
+  (o que não for o mínimo de 400 pixels usa a mensagem dos cenários 9 e 10 da US2). A
   verificação MUST usar lista de blocos permitidos: só passam os blocos
   estruturais do formato (dados da imagem, cabeçalho, JFIF, sRGB/gama) e o perfil
   de cor ICC; qualquer outro bloco (EXIF, GPS, XMP, IPTC, comentários, texto ou
@@ -557,7 +572,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 ### Key Entities *(include if feature involves data)*
 
 - **Foto do produto** *(prevista na 003, criada a partir desta feature)*: imagem
-  tratada no aparelho e verificada pelo servidor (WebP, JPEG ou PNG, estática,
+  tratada no aparelho e verificada pelo servidor (WebP ou JPEG, estática,
   sem metadados) pertencente a exatamente um produto, com
   posição 1 a 3, data de envio e quem enviou. A posição 1 é a capa.
 - **Conjunto de fotos do produto**: as fotos de um produto vistas como um todo,
@@ -595,7 +610,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 - **SC-005**: Uma foto de celular comum (cerca de 12 megapixels) gasta no máximo
   1 MB de dados móveis para ser enviada, medido no envio.
 - **SC-006**: 0 fotos guardadas contêm metadados de localização ou de câmera, e 0
-  arquivos fora dos formatos aceitos (JPEG, PNG, WebP estáticos) permanecem
+  arquivos fora dos formatos aceitos (WebP ou JPEG estáticos) permanecem
   guardados depois da confirmação do envio, verificado por teste automatizado que
   coloca na área temporária arquivos forjados, sem o tratamento do aparelho (com
   GPS, SVG, GIF, HEIC, animado, PDF renomeado), e confere que todos são apagados e

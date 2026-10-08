@@ -76,4 +76,4 @@ US6-AC1, US6-AC2) — marcar o id nesses `it()` é opcional e cabe ao escritor d
 | Prova | Situação |
 |---|---|
 | FK `ON DELETE RESTRICT` no Neon dev (`fk-produtos.int.test.ts`, `23001` e 0 linhas pelo marcador) | **Pendente de PR**: conferir o log do CI e registrar o link. |
-| Constraint `produtos_destaque_vaga_unique` no `23505` de `destacar` (T059, no dev) | **Pendente de PR**: conferir no Neon dev/preview do dev que o erro chega com o nome da constraint e vira `vaga_disputada`. |
+| Constraint `produtos_destaque_vaga_unique` no `23505` de `destacar` (T059, no dev) | **Risco aceito**: não reproduzível manualmente (exige destaque simultâneo); falha segura — nada é gravado errado, só a mensagem vira a falha geral; coberto localmente pelo teste determinístico de `vaga_disputada` (`produtos.destaque.int.test.ts`). |

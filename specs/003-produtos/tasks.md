@@ -588,9 +588,11 @@ humano commita README e `docs/` em commits separados.
   cobre, e apontar qualquer critério sem teste antes de fechar (SC-004) — **principal**
 - [ ] T059 Rodar `npm run preview` e percorrer o roteiro do quickstart §3 (passos 1–10) em
   390 px, registrando o resultado de cada passo (passos de celular real: humano).
-  Inclui conferir no Neon dev/`preview` que o `23505` de `destacar` chega com o nome da
-  constraint (`produtos_destaque_vaga_unique`) e vira `vaga_disputada` (decisão da SF5: o
-  probe do CI não foi estendido) — **principal**
+  A conferência de que o `23505` de `destacar` chega com o nome da constraint
+  (`produtos_destaque_vaga_unique`) no Neon dev é **risco aceito**: não é reproduzível
+  manualmente (exige destaque simultâneo); falha segura (nada é gravado errado, só a
+  mensagem vira a falha geral); coberta localmente pelo teste determinístico de
+  `vaga_disputada` (`produtos.destaque.int.test.ts`) — **principal**
 - [ ] T060 Medição SC-007 no `preview` local com 500 produtos (script da T038, comando
   `npm run test:perf` para a massa/medição de banco): abrir a
   lista, "Ver mais produtos", filtrar e buscar, cada resposta < 2 s excluída a primeira após

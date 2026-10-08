@@ -459,7 +459,7 @@ ADR-005 reestiliza depois). Constitution V (alvo ≥ 48 px, texto ≥ 16 px).
 mensagem-campo,aviso}.tsx` e um `*.test.tsx` ao lado de cada um.
 **Fecha**: base de US1/US4 na UI.
 
-- [ ] T047 Testes de componente (Testing Library/jsdom) para os 6 primitivos, um arquivo
+- [x] T047 Testes de componente (Testing Library/jsdom) para os 6 primitivos, um arquivo
   cada, cada um com o docblock `// @vitest-environment jsdom` na primeira linha (o
   `vitest.config.mts` usa `environment: "node"`; se o projeto já tiver outro padrão para
   `*.test.tsx`, seguir o existente): rótulo visível ligado ao controle (`htmlFor`/`id`); com `erro`, `aria-invalid` e
@@ -467,13 +467,13 @@ mensagem-campo,aviso}.tsx` e um `*.test.tsx` ao lado de cada um.
   preservados; `Selecao` nativa (`<select>`) com `vazio?` como opção inicial; `CaixaMarcacao`
   com a área de toque incluindo o rótulo; `Aviso` com `role="status"` (sucesso) e
   `role="alert"` (erro); classes de alvo ≥ 48 px e texto ≥ 16 px — **test-writer**
-- [ ] T048 Implementar os 6 primitivos em `src/components/ui/` até T047 ficar verde, com as
+- [x] T048 Implementar os 6 primitivos em `src/components/ui/` até T047 ficar verde, com as
   props de C§5 (`CampoTexto`: `name`, `rotulo`, `defaultValue`, `erro?`, `inputMode?`,
   `maxLength?`; `AreaTexto`: igual + `linhas?`; `Selecao`: `name`, `rotulo`, `opcoes`,
   `defaultValue`, `erro?`, `vazio?`; `CaixaMarcacao`: `name`, `rotulo`, `defaultChecked`,
   `erro?`; `MensagemCampo`: `id`, `children`; `Aviso`: `tipo`, `children`), seguindo o estilo
   do `button.tsx` existente — **ui-dev**
-- [ ] T049 `npm run check` com output real — **principal**
+- [x] T049 `npm run check` com output real — **principal**
 - [ ] T050 Commit (humano), mensagem:
   ```text
   feat(ui): primitivos de formulário

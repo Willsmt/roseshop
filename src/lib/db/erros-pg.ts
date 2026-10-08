@@ -22,3 +22,17 @@ function codigoString(valor: unknown): string | undefined {
   const code: unknown = (valor as { code?: unknown }).code;
   return typeof code === "string" ? code : undefined;
 }
+
+/** Nome da constraint violada, na mesma busca de `codigoSqlstate` (causa primeiro, depois o topo). */
+export function nomeConstraint(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  const daCausa = constraintString((error as { cause?: unknown }).cause);
+  if (daCausa !== undefined) return daCausa;
+  return error instanceof NeonDbError ? constraintString(error) : undefined;
+}
+
+function constraintString(valor: unknown): string | undefined {
+  if (typeof valor !== "object" || valor === null) return undefined;
+  const constraint: unknown = (valor as { constraint?: unknown }).constraint;
+  return typeof constraint === "string" ? constraint : undefined;
+}

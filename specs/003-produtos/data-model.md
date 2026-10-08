@@ -80,6 +80,7 @@ na remoção do produto é da 004. FR-014 (≥ 1 foto) não é constraint nesta 
 | Esgotar tira do destaque | um `UPDATE` só | Statement único |
 | No máximo 8 destaques | `CHECK 1..8` + índice único parcial de `destaque_vaga` | Banco |
 | Concorrência otimista | `WHERE id AND versao` em todo `UPDATE`/`DELETE` | Statement único |
+| Todo writer de `produtos` incrementa `versao` | Convenção de código (sem constraint). Sustenta o `saiuDoDestaque` do `esgotar` (CTE `antes`) e a precedência da leitura após 0 linhas; escrita futura sem `versao + 1` quebra as duas | Convenção |
 | No máximo 3 fotos, posições únicas | `CHECK` + `UNIQUE (produto_id, posicao)` | Banco |
 
 ## Transições de estado

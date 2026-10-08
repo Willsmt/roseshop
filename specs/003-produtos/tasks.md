@@ -586,13 +586,15 @@ humano commita README e `docs/` em commits separados.
   critério de aceite da spec (US1-AC1 … US7-AC3) para o arquivo e o nome do teste que o
   cobre, e apontar qualquer critério sem teste antes de fechar (SC-004) — **principal**
 - [ ] T059 Rodar `npm run preview` e percorrer o roteiro do quickstart §3 (passos 1–10) em
-  390 px, registrando o resultado de cada passo (passos de celular real: humano) —
-  **principal**
+  390 px, registrando o resultado de cada passo (passos de celular real: humano).
+  Inclui conferir no Neon dev/`preview` que o `23505` de `destacar` chega com o nome da
+  constraint (`produtos_destaque_vaga_unique`) e vira `vaga_disputada` (decisão da SF5: o
+  probe do CI não foi estendido) — **principal**
 - [ ] T060 Medição SC-007 no `preview` local com 500 produtos (script da T038): abrir a
   lista, "Ver mais produtos", filtrar e buscar, cada resposta < 2 s excluída a primeira após
   banco ocioso, com o throttling do DevTools em "Fast 4G" (quickstart §4); registrar tempos
-  e o perfil de rede usado. Roda **depois** da T059 (o roteiro espera banco recém-resetado)
-  — **principal**
+  e o perfil de rede usado. Roda **depois** da T059 (o roteiro espera banco recém-resetado).
+  A conferência da constraint do `23505` no Neon dev fica na T059 (ver acima) — **principal**
 - [ ] T061 Revisão das mensagens de C§6 e dos avisos de sucesso (SC-008: sem jargão,
   texto simples); ajustes de texto vão em `src/lib/produtos/mensagens.ts` e nos testes
   correspondentes, `npm run check` de novo — **redator**

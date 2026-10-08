@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { AdminSession } from "@/lib/auth";
 
 import type { Db } from "./client";
-import { codigoSqlstate } from "./erros-pg";
+import { codigoSqlstate, nomeConstraint } from "./erros-pg";
 import { produtos } from "./schema";
 
 // Camada SQL de produtos, parte de escrita (contrato §2). Toda função recebe `db`; cada
@@ -49,6 +49,19 @@ export type ResultadoEditar =
   | CategoriaAusente
   | Ausente
   | VersaoDiferente;
+export type ResultadoEsgotar =
+  | { tipo: "ok"; saiuDoDestaque: boolean }
+  | Ausente
+  | VersaoDiferente;
+export type ResultadoStatus = { tipo: "ok" } | Ausente | VersaoDiferente;
+export type ResultadoDestacar =
+  | { tipo: "ok" }
+  | Ausente
+  | VersaoDiferente
+  | { tipo: "esgotado" }
+  | { tipo: "ja_em_destaque" }
+  | { tipo: "limite" }
+  | { tipo: "vaga_disputada" };
 export type ResultadoRemover = { tipo: "removido" } | Ausente | VersaoDiferente;
 
 const VIOLACAO_DE_UNICIDADE = "23505";
@@ -159,4 +172,128 @@ export async function remover(
     .returning({ id: produtos.id });
   if (linhas.length > 0) return { tipo: "removido" };
   return ausenteOuVersaoDiferente(db, id);
+}
+
+// Status e destaque (contrato §2, D1): statement único, sem lock e sem retry. Premissa: todo
+// writer de `produtos` incrementa `versao`. Dela dependem `saiuDoDestaque` (CTE `antes`) e a
+// precedência da leitura após 0 linhas; uma escrita futura sem `versao+1` quebra as duas. O teto de 8 e
+// "esgotado fora do destaque" são do banco (CHECKs e índice único parcial da vaga).
+const VAGA_UNICA = "produtos_destaque_vaga_unique";
+
+// A CTE `antes` e o UPDATE enxergam o mesmo snapshot e filtram pelo mesmo `versao`: se outra
+// escrita ganhou, o UPDATE reavalia o WHERE, não casa e `antes` também veio sem linha (0 linhas).
+export async function esgotar(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+): Promise<ResultadoEsgotar> {
+  const r = await db.execute(sql`
+    WITH antes AS (
+      SELECT destaque_vaga IS NOT NULL AS estava
+      FROM produtos WHERE id = ${id} AND versao = ${versao}
+    )
+    UPDATE produtos
+    SET esgotado = true, destaque_vaga = NULL, versao = versao + 1,
+        atualizado_por = ${sessao.email}, atualizado_em = now()
+    WHERE id = ${id} AND versao = ${versao}
+    RETURNING (SELECT estava FROM antes) AS estava`);
+  const linha = (r.rows as { estava: boolean | null }[])[0];
+  if (linha) return { tipo: "ok", saiuDoDestaque: linha.estava === true };
+  return ausenteOuVersaoDiferente(db, id);
+}
+
+async function atualizarStatus(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+  set: { esgotado: boolean } | { destaqueVaga: null },
+): Promise<ResultadoStatus> {
+  const linhas = await db
+    .update(produtos)
+    .set({
+      ...set,
+      versao: sql`${produtos.versao} + 1`,
+      atualizadoPor: sessao.email,
+      atualizadoEm: sql`now()`,
+    })
+    .where(and(eq(produtos.id, id), eq(produtos.versao, versao)))
+    .returning({ id: produtos.id });
+  if (linhas.length > 0) return { tipo: "ok" };
+  return ausenteOuVersaoDiferente(db, id);
+}
+
+// Não toca `destaque_vaga`: voltar a ficar disponível não recoloca no destaque (FR-017).
+export function disponibilizar(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+): Promise<ResultadoStatus> {
+  return atualizarStatus(db, sessao, id, versao, { esgotado: false });
+}
+
+export function tirarDoDestaque(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+): Promise<ResultadoStatus> {
+  return atualizarStatus(db, sessao, id, versao, { destaqueVaga: null });
+}
+
+// Depois de 0 linhas a leitura só escolhe a mensagem, nesta precedência (contrato §2).
+async function motivoDoDestaqueRecusado(
+  db: Db,
+  id: number,
+  versao: number,
+): Promise<Exclude<ResultadoDestacar, { tipo: "ok" } | { tipo: "vaga_disputada" }>> {
+  const [linha] = await db
+    .select({
+      versao: produtos.versao,
+      esgotado: produtos.esgotado,
+      destaqueVaga: produtos.destaqueVaga,
+    })
+    .from(produtos)
+    .where(eq(produtos.id, id))
+    .limit(1);
+  if (!linha) return { tipo: "ausente" };
+  if (linha.versao !== versao) return { tipo: "versao_diferente" };
+  if (linha.esgotado) return { tipo: "esgotado" };
+  if (linha.destaqueVaga !== null) return { tipo: "ja_em_destaque" };
+  return { tipo: "limite" };
+}
+
+// Menor vaga livre de 1..8 escolhida no próprio UPDATE. Duas pessoas na mesma vaga: o índice
+// único faz a segunda esperar o commit da primeira e falhar com 23505 ⇒ `vaga_disputada`.
+// O `SET` só grava `destaque_vaga` entre as colunas únicas, mas o 23505 é conferido pela
+// constraint (ADR-008): qualquer outra unicidade é erro inesperado e propaga.
+export async function destacar(
+  db: Db,
+  sessao: AdminSession,
+  id: number,
+  versao: number,
+): Promise<ResultadoDestacar> {
+  try {
+    const r = await db.execute(sql`
+      UPDATE produtos
+      SET destaque_vaga = livre.vaga, versao = produtos.versao + 1,
+          atualizado_por = ${sessao.email}, atualizado_em = now()
+      FROM (
+        SELECT min(v) AS vaga FROM generate_series(1, 8) AS v
+        WHERE NOT EXISTS (SELECT 1 FROM produtos o WHERE o.destaque_vaga = v)
+      ) AS livre
+      WHERE produtos.id = ${id} AND produtos.versao = ${versao}
+        AND NOT produtos.esgotado AND produtos.destaque_vaga IS NULL
+        AND livre.vaga IS NOT NULL
+      RETURNING produtos.id`);
+    if (r.rows.length > 0) return { tipo: "ok" };
+  } catch (erro) {
+    if (codigoSqlstate(erro) === VIOLACAO_DE_UNICIDADE && nomeConstraint(erro) === VAGA_UNICA) {
+      return { tipo: "vaga_disputada" };
+    }
+    throw erro;
+  }
+  return motivoDoDestaqueRecusado(db, id, versao);
 }

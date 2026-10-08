@@ -1,7 +1,7 @@
 import { NeonDbError } from "@neondatabase/serverless";
 import { describe, expect, it } from "vitest";
 
-import { codigoSqlstate } from "./erros-pg";
+import { codigoSqlstate, nomeConstraint } from "./erros-pg";
 
 const embrulhado = (code?: unknown) =>
   Object.assign(new Error("Failed query"), {
@@ -58,5 +58,25 @@ describe("codigoSqlstate (cause.code; code no topo só se instância de NeonDbEr
 
   it.each([null, undefined, "23505"])("valor %o ⇒ undefined", (v) => {
     expect(codigoSqlstate(v)).toBeUndefined();
+  });
+});
+
+describe("nomeConstraint (mesma regra de codigoSqlstate)", () => {
+  it("lê cause.constraint", () => {
+    const e = Object.assign(new Error("x"), { cause: { constraint: "produtos_chave_unique" } });
+    expect(nomeConstraint(e)).toBe("produtos_chave_unique");
+  });
+
+  it("NeonDbError sem embrulho (forma do db.batch) tem o constraint do topo lido", () => {
+    const e = Object.assign(new NeonDbError("x"), { constraint: "produtos_destaque_vaga_unique" });
+    expect(nomeConstraint(e)).toBe("produtos_destaque_vaga_unique");
+  });
+
+  it("constraint no topo de erro que não é NeonDbError é ignorado", () => {
+    expect(nomeConstraint(Object.assign(new Error("x"), { constraint: "a" }))).toBeUndefined();
+  });
+
+  it("constraint que não é string é ignorado", () => {
+    expect(nomeConstraint({ cause: { constraint: 5 } })).toBeUndefined();
   });
 });

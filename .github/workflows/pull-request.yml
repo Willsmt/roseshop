@@ -47,7 +47,8 @@ jobs:
           else
             echo "Nenhuma migration ainda."
           fi
-      # Probe do ADR-008 (T062): só batch-transacao.int.test.ts, sem tabelas.
+      # Probe do ADR-008 (T062): batch-transacao.int.test.ts (sem tabelas) e
+      # fk-produtos.int.test.ts (FK de produtos, com marcador único e sem TRUNCATE).
       # Falha bloqueia o deploy dev: parar e reabrir o ADR-008.
       - name: Probe de transação do batch (Neon dev)
         env:

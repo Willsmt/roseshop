@@ -102,6 +102,9 @@ na remoção do produto é da 004. FR-014 (≥ 1 foto) não é constraint nesta 
 - Disponibilizar nunca recoloca no destaque (FR-017).
 - Destacar sem vaga livre ⇒ `limite`; duas pessoas pegando a mesma vaga ⇒ uma recebe
   `vaga_disputada` ("tente de novo"), sem alterar nada.
+- Destacar produto já em destaque (versão correta) ⇒ `ja_em_destaque`, sem alterar nada.
+  Precedência da leitura após 0 linhas: inexistente → versão diferente → esgotado → já em
+  destaque → limite (contrato §2).
 - Toda seta (exceto cadastrar) exige a `versao` lida e incrementa `versao`,
   `atualizado_por` e `atualizado_em`; remover não grava autoria.
 

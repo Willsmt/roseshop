@@ -4,7 +4,7 @@ import { listar, obterPorId } from "@/lib/db/categorias";
 import { dbDoContexto } from "@/lib/db/contexto";
 
 import { CategoriaInvalidaError } from "./erros";
-import { idCategoria } from "./nome";
+import { idCategoria, normalizarNome } from "./nome";
 
 // Barrel SOMENTE LEITURA (contrato §1, FR-014/FR-015). Única porta para a 003, a IA e o
 // catálogo: não expõe `versao`, escrita, schema nem o módulo do painel. A allowlist de
@@ -33,4 +33,5 @@ export async function exigirCategoriaValida(id: unknown): Promise<number> {
   return linha.id;
 }
 
-export { CategoriaInvalidaError };
+// Normalização do nome (NFC + trim + colapso de espaços), reusada pela 003 (research D5).
+export { CategoriaInvalidaError, normalizarNome };

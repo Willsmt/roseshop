@@ -11,6 +11,6 @@ export default defineConfig({
     // só mock de server-only e env; não adicionar reset ou escrita de banco aqui,
     // o probe roda no Neon dev
     setupFiles: ["./vitest.int.setup.ts"],
-    include: ["src/lib/db/batch-transacao.int.test.ts"],
+    include: ["src/lib/db/batch-transacao.int.test.ts", "src/lib/db/fk-produtos.int.test.ts"],
   },
 });

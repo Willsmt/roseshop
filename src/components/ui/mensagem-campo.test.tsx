@@ -17,6 +17,7 @@ describe("MensagemCampo (contrato §5)", () => {
 	it("aceita conteúdo composto (ex.: link para o código existente)", () => {
 		render(
 			<MensagemCampo id="m">
+				{/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a regra passou a disparar porque a rota /painel/produtos agora existe; aqui o <a> é só um filho composto de teste */}
 				Já existe: <a href="/painel/produtos/42">#0042</a>.
 			</MensagemCampo>,
 		);

@@ -244,7 +244,7 @@ chamar `requireAdminPage`.
 ### Navegação e avisos
 
 - Formulários e botões de ação usam `useActionState(action, null)` com as assinaturas do §3;
-  a UI não cria wrapper de action nem lógica de negócio.
+  a UI não cria wrapper de action nem lógica de negócio (a única exceção é `com-falha-geral.ts`, que só captura a rejeição, ver "Sessão expirada").
 - **Sucesso** (a action só faz `revalidatePath`; quem navega é a UI, como na 002):
   - `criarProduto` ⇒ `router.push("/painel/produtos/" + id)` (o detalhe é a confirmação);
   - `editarProduto` ⇒ `router.push("/painel/produtos/" + id)` com o `id` do formulário;
@@ -262,9 +262,12 @@ chamar `requireAdminPage`.
 - **Remoção de produto que já não existe** (US6-AC6): a action devolve `nao_existe` (não
   redireciona); a UI faz `router.push("/painel/produtos?aviso=nao_existe")` e a lista
   mostra o `aviso` (tipo erro, "Este produto não existe mais.") num `Aviso` de erro.
-- **Sessão expirada**: a action lança `UnauthorizedError` (não é `Falha`); a tela segue o
-  mesmo tratamento das telas de categorias da 002 (volta ao login, nada salvo), verificado
-  no `preview` (quickstart §3, passo 10).
+- **Sessão expirada**: a action lança `UnauthorizedError` (não é `Falha`). Mesmo tratamento
+  das telas de categorias da 002: a UI captura a rejeição e a tela fica onde está com a
+  mensagem `falha_geral` (nos formulários, com o digitado preservado); nada é salvo e não há
+  redirecionamento ao login (o próximo carregamento de página passa pelo `requireAdminPage`).
+  A captura é o helper `com-falha-geral.ts` (único adaptador da UI; sem lógica de negócio).
+  Verificado no `preview` (quickstart §3, passo 10).
 - **Campo de preço (SF8b, registrado na SF3, ainda não implementado)**: máscara que preenche
   da direita, como em app de banco: teclado numérico, só dígitos ("1290" aparece como
   "12,90"); apagar tudo deixa sem preço. O valor enviado ao servidor sai no formato "12,90" e

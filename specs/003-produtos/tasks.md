@@ -502,7 +502,7 @@ lado, `src/test/conformance/produtos-paginas-guard.test.ts`. Contrato da 001
 (`requireAdminPage`) também é usado.
 **Fecha**: US1, US2, US3, US4, US5, US6 na UI; SC-008.
 
-- [ ] T051 [US1] [US2] [US3] [US4] [US5] [US6] Testes de componente das telas (docblock
+- [x] T051 [US1] [US2] [US3] [US4] [US5] [US6] Testes de componente das telas (docblock
   jsdom como na T047), a partir de C§5: lista (itens com código, nome, categoria,
   "Esgotado", "Em destaque", preço ou "Sem preço"; marcador "sem foto"; "Ver mais
   produtos" e "Voltar ao começo" só quando os hrefs existem; vazio com convite "Novo
@@ -525,7 +525,7 @@ lado, `src/test/conformance/produtos-paginas-guard.test.ts`. Contrato da 001
   (US6-AC2); sucesso ⇒ `router.push("/painel/produtos?aviso=removido")`; `nao_existe` ⇒
   `router.push("/painel/produtos?aviso=nao_existe")`, sem redirecionamento pela action
   (US6-AC6)) — **test-writer**
-- [ ] T052 [US1] [US4] Implementar `form-produto.tsx` (client; `useActionState(criarProduto,
+- [x] T052 [US1] [US4] Implementar `form-produto.tsx` (client; `useActionState(criarProduto,
   null)`/`useActionState(editarProduto, null)` com as assinaturas `(anterior, formData)` do
   C§3, sem wrapper; campos remontados por `key` derivada do estado com `defaultValue`/
   `defaultChecked` = `valores` na falha e só a mensagem da falha devolvida; `router.push`
@@ -535,20 +535,20 @@ lado, `src/test/conformance/produtos-paginas-guard.test.ts`. Contrato da 001
   teclado numérico, só dígitos; "1290" aparece como "12,90"; apagar tudo = sem preço); envia
   "12,90" ao servidor, que segue validando com `parsePreco`; na edição abre preenchido com o
   preço atual formatado (C§5) — **ui-dev**
-- [ ] T053 [US3] Implementar `page.tsx` da lista (Server Component; `requireAdminPage(
+- [x] T053 [US3] Implementar `page.tsx` da lista (Server Component; `requireAdminPage(
   "/painel/produtos")` antes de ler; filtros de categoria e situação, busca,
   `listarProdutosDoPainel(searchParams)`, "Ver mais produtos", "Voltar ao começo", estados
   vazio/nada encontrado, `aviso` no `Aviso` do `tipo` dele) — **ui-dev**
-- [ ] T054 [US2] [US4] [US5] [US6] Implementar `[id]/page.tsx` (detalhe "como a cliente
+- [x] T054 [US2] [US4] [US5] [US6] Implementar `[id]/page.tsx` (detalhe "como a cliente
   veria", descrição em `white-space: pre-line` como texto puro + ações de esgotar/
   disponibilizar/destacar/tirar do destaque com `useActionState` e `Aviso` de sucesso ou
   erro, autoria, "Voltar à lista") e `[id]/remover/page.tsx` (confirmação com código e
   nome, "Cancelar", `nao_existe` ⇒ `router.push` para a lista com `aviso=nao_existe`),
   ambas chamando `requireAdminPage` com o caminho incluindo o `id`, conforme C§5 —
   **ui-dev**
-- [ ] T055 Apontar a entrada do painel para `/painel/produtos` em
+- [x] T055 Apontar a entrada do painel para `/painel/produtos` em
   `src/app/painel/(protegido)/page.tsx` (ao lado do link de categorias) — **ui-dev**
-- [ ] T056 (a) **test-writer**: criar `src/test/conformance/produtos-paginas-guard.test.ts`
+- [x] T056 (a) **test-writer**: criar `src/test/conformance/produtos-paginas-guard.test.ts`
   (AST, nega por padrão, mesmo estilo dos testes de `src/test/conformance/`): percorre
   **toda** `page.tsx` em `src/app/painel/(protegido)/produtos/` (inclusive as que vierem a
   existir) e falha se alguma não chamar `requireAdminPage(...)` importado do barrel de

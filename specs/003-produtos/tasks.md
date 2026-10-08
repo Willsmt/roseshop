@@ -348,14 +348,14 @@ linha SF6, D3. Quickstart §4 (SC-007).
 `src/lib/db/produtos.leitura.int.test.ts`, `src/lib/produtos/painel.test.ts`.
 **Fecha**: US3-AC1–6, SC-007 (nível de banco), FR de `voltar` sem redirecionamento aberto.
 
-- [ ] T034 [US3] `src/lib/db/produtos.leitura.int.test.ts`: `obterPorId` com `categoriaNome`
+- [X] T034 [US3] `src/lib/db/produtos.leitura.int.test.ts`: `obterPorId` com `categoriaNome`
   (JOIN) e `null` para inexistente; `listar` ordena por `id DESC`, devolve 20 + `haMais`
   (consulta `LIMIT 21`); keyset `antes` não repete nem pula item **com cadastro e remoção no
   meio da paginação**; filtro por categoria e por situação (disponível/esgotado); busca por
   nome via `strpos(chave, categoria_chave($busca)) > 0` ("meia-soquete" encontra "Meia
   soquete"), busca por código "42"/"0042"/"#0042", busca normalizada vazia ⇒ sem filtro;
   combinação de filtros — **test-writer**
-- [ ] T035 [US3] `src/lib/produtos/painel.test.ts` (unitário, `db` mockado): schema Zod
+- [X] T035 [US3] `src/lib/produtos/painel.test.ts` (unitário, `db` mockado): schema Zod
   único `filtroLista` — valor inválido ignorado (lista sem aquele filtro), nunca erro;
   `verMais` mantém os mesmos filtros com `antes` = último id; `voltarAoComeco` só quando há
   `antes`; `ItemLista.href` carrega `?voltar=` com a query atual; `aviso=removido` ⇒
@@ -367,17 +367,18 @@ linha SF6, D3. Quickstart §4 (SC-007).
   id inválido/inexistente ⇒ `null`, `fotos: []`, `podeDestacar` (= não esgotado e fora do
   destaque), `criadoPor`/`atualizadoPor` presentes (US4-AC6), `voltarHref` = `/painel/produtos` + `voltar` revalidado (caminho fixo; `voltar`
   com URL absoluta, `//host` ou outro caminho ⇒ lista sem filtro) — **test-writer**
-- [ ] T036 [US3] Implementar `obterPorId` e `listar` (tipo `FiltroDb` do C§2) em
+- [X] T036 [US3] Implementar `obterPorId` e `listar` (tipo `FiltroDb` do C§2) em
   `src/lib/db/produtos.ts` até T034 ficar verde — **principal**
-- [ ] T037 [US3] Implementar `src/lib/produtos/painel.ts` (server-only;
+- [X] T037 [US3] Implementar `src/lib/produtos/painel.ts` (server-only;
   `listarProdutosDoPainel`, `obterProdutoDoPainel`, `filtroLista`; usa `preco.ts`/`codigo.ts`
   da SF3 e `listarCategorias` pelo barrel) até T035 ficar verde — **principal**
-- [ ] T038 [US3] Medição local com 500 produtos: script de teste em `src/test/db/` (não vai
+- [X] T038 [US3] Medição local com 500 produtos: script de teste em `src/test/db/` (não vai
   para produção, só stack local, ADR-006) que popula 500 produtos; medir `listar` (página,
   próxima página, filtro, busca) e registrar tempos (meta < 2 s; a medição no `preview` fica
-  na SF9) — **principal**
-- [ ] T039 `npm run check` e `npm run test:int` com output real — **principal**
-- [ ] T040 Revisão do diff pelo tech-lead (opus): SQL de `listar`/`obterPorId`, índices
+  na SF9). Fora do `test:int`: roda com `npm run test:perf` (`vitest.perf.config.mts`) —
+  **principal**
+- [X] T039 `npm run check` e `npm run test:int` com output real — **principal**
+- [X] T040 Revisão do diff pelo tech-lead (opus): SQL de `listar`/`obterPorId`, índices
   usados, sem N+1 — **tech-lead**
 - [ ] T041 Commit (humano), mensagem:
   ```text
@@ -590,7 +591,8 @@ humano commita README e `docs/` em commits separados.
   Inclui conferir no Neon dev/`preview` que o `23505` de `destacar` chega com o nome da
   constraint (`produtos_destaque_vaga_unique`) e vira `vaga_disputada` (decisão da SF5: o
   probe do CI não foi estendido) — **principal**
-- [ ] T060 Medição SC-007 no `preview` local com 500 produtos (script da T038): abrir a
+- [ ] T060 Medição SC-007 no `preview` local com 500 produtos (script da T038, comando
+  `npm run test:perf` para a massa/medição de banco): abrir a
   lista, "Ver mais produtos", filtrar e buscar, cada resposta < 2 s excluída a primeira após
   banco ocioso, com o throttling do DevTools em "Fast 4G" (quickstart §4); registrar tempos
   e o perfil de rede usado. Roda **depois** da T059 (o roteiro espera banco recém-resetado).

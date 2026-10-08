@@ -1,10 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql, type SQL } from "drizzle-orm";
 
 import type { AdminSession } from "@/lib/auth";
 
 import type { Db } from "./client";
 import { codigoSqlstate, nomeConstraint } from "./erros-pg";
-import { produtos } from "./schema";
+import { categorias, produtos } from "./schema";
 
 // Camada SQL de produtos, parte de escrita (contrato §2). Toda função recebe `db`; cada
 // escrita é um único statement (ADR-008: sem transação interativa nem lock advisory) e a
@@ -296,4 +296,73 @@ export async function destacar(
     throw erro;
   }
   return motivoDoDestaqueRecusado(db, id, versao);
+}
+
+// Leitura (contrato §2). Sem lock nem transação; `JOIN` só para o nome da categoria.
+export type FiltroDb = {
+  categoriaId?: number;
+  esgotado?: boolean;
+  // `texto` é comparado por strpos(chave, categoria_chave(texto)) > 0 (mesma função da coluna
+  // `chave`, então acento, caixa e hífen se comportam como na unicidade); `codigo` entra em OR.
+  busca?: { texto: string; codigo: number | null };
+  antes?: number; // cursor keyset: id < antes
+};
+
+export const TAMANHO_PAGINA = 20;
+
+const colunas = {
+  id: produtos.id,
+  categoriaId: produtos.categoriaId,
+  categoriaNome: categorias.nome,
+  nome: produtos.nome,
+  descricao: produtos.descricao,
+  precoCentavos: produtos.precoCentavos,
+  aPartirDe: produtos.aPartirDe,
+  esgotado: produtos.esgotado,
+  destaqueVaga: produtos.destaqueVaga,
+  versao: produtos.versao,
+  criadoPor: produtos.criadoPor,
+  atualizadoPor: produtos.atualizadoPor,
+  criadoEm: produtos.criadoEm,
+  atualizadoEm: produtos.atualizadoEm,
+};
+
+export async function obterPorId(db: Db, id: number): Promise<ProdutoDb | null> {
+  const [linha] = await db
+    .select(colunas)
+    .from(produtos)
+    .innerJoin(categorias, eq(categorias.id, produtos.categoriaId))
+    .where(eq(produtos.id, id))
+    .limit(1);
+  return linha ?? null;
+}
+
+// Keyset por `id DESC` (D3): `id < antes` não repete nem pula item quando há cadastro ou
+// remoção entre páginas. `LIMIT 21` só serve para calcular `haMais`.
+export async function listar(
+  db: Db,
+  filtro: FiltroDb,
+): Promise<{ itens: ProdutoDb[]; haMais: boolean }> {
+  const condicoes: (SQL | undefined)[] = [
+    filtro.categoriaId === undefined ? undefined : eq(produtos.categoriaId, filtro.categoriaId),
+    filtro.esgotado === undefined ? undefined : eq(produtos.esgotado, filtro.esgotado),
+    filtro.antes === undefined ? undefined : lt(produtos.id, filtro.antes),
+  ];
+  if (filtro.busca) {
+    const { texto, codigo } = filtro.busca;
+    condicoes.push(
+      or(
+        sql`strpos(${produtos.chave}, categoria_chave(${texto})) > 0`,
+        codigo === null ? undefined : eq(produtos.id, codigo),
+      ),
+    );
+  }
+  const linhas = await db
+    .select(colunas)
+    .from(produtos)
+    .innerJoin(categorias, eq(categorias.id, produtos.categoriaId))
+    .where(and(...condicoes))
+    .orderBy(desc(produtos.id))
+    .limit(TAMANHO_PAGINA + 1);
+  return { itens: linhas.slice(0, TAMANHO_PAGINA), haMais: linhas.length > TAMANHO_PAGINA };
 }

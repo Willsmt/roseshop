@@ -1,4 +1,4 @@
-import { configDefaults, defineConfig } from "vitest/config";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -7,9 +7,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./vitest.int.setup.ts"],
-    include: ["src/**/*.int.test.{ts,tsx}"],
-    // Medição de desempenho roda só em `npm run test:perf` (vitest.perf.config.mts).
-    exclude: [...configDefaults.exclude, "src/test/db/produtos-medicao.int.test.ts"],
+    include: ["src/test/db/produtos-medicao.int.test.ts"],
     testTimeout: 15_000,
     // Arquivos que fazem TRUNCATE em `categorias` não podem rodar em paralelo (feature 002, T007).
     fileParallelism: false,

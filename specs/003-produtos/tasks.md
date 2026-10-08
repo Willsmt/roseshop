@@ -406,7 +406,7 @@ sucesso); C§2 (assinaturas e resultados consumidos). Contrato da 001
 **Fecha**: US1 (action), US2-AC4 (acesso negado), US2-AC5 (`saiuDoDestaque`), sessão
 expirada (quickstart §3 passo 10).
 
-- [ ] T042 [P] [US1] [US2] `src/lib/produtos/actions.test.ts` (`db`, guard, `revalidatePath`
+- [x] T042 [P] [US1] [US2] `src/lib/produtos/actions.test.ts` (`db`, guard, `revalidatePath`
   e barrel mockados): para cada uma das 7 actions (`criarProduto`, `editarProduto`,
   `marcarEsgotado`, `marcarDisponivel`, `destacarProduto`, `tirarProdutoDoDestaque`,
   `removerProduto`), chamadas como `action(null, formData)`: `requireAdminAction()` é
@@ -424,18 +424,18 @@ expirada (quickstart §3 passo 10).
   da lista e do detalhe e **não** chama `redirect`; **toda** falha de `criarProduto`/
   `editarProduto` traz `valores` iguais ao que veio no `FormData` (textos crus, caixa
   marcada ⇒ `aPartirDe: true`), e falha nunca redireciona — **test-writer**
-- [ ] T043 [P] `src/test/conformance/produtos-acesso.test.ts` (AST, nega por padrão, mesmo
+- [x] T043 [P] `src/test/conformance/produtos-acesso.test.ts` (AST, nega por padrão, mesmo
   estilo de `categorias-acesso.test.ts`): regra 1 `@/lib/db/produtos` só em `src/lib/produtos/`
   e `src/lib/db/`; regra 2 bindings `produtos`/`produtoFotos` do schema só nesses dois
   diretórios; regra 3 `@/lib/produtos/actions` só em `src/app/painel/` (exceção para os
   testes unitários ao lado); regra 4 `@/lib/produtos/painel` só em `src/app/painel/` e
   `src/lib/produtos/`; regra 5 `src/lib/produtos/` acessa categorias só por `@/lib/categorias`
   — **test-writer**
-- [ ] T044 [US1] [US2] Implementar `src/lib/produtos/actions.ts` (`"use server"`) até T042 e
+- [x] T044 [US1] [US2] Implementar `src/lib/produtos/actions.ts` (`"use server"`) até T042 e
   T043 ficarem verdes, com as assinaturas `(anterior, formData)` do C§3, usando
   `validacao.ts`, `erros.ts`, `mensagens.ts`, `db/produtos.ts` e `requireAdminAction`
   (barrel de auth) — **principal**
-- [ ] T045 `npm run check` com output real (inclui `categorias-acesso`, `painel-guard`,
+- [x] T045 `npm run check` com output real (inclui `categorias-acesso`, `painel-guard`,
   `produtos-acesso`) — **principal**
 - [ ] T046 Commit (humano), mensagem:
   ```text

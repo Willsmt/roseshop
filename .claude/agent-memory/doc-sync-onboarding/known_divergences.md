@@ -19,9 +19,10 @@ verifique se ainda existem e, se resolvidas, remova a nota dos docs e daqui.
    reexecuta verificações do junior). Remover quando resolvidas em PR próprio.
 5. Feature 001: `docs/features/F01-autenticacao.md`. Feature 002 (sync de 2026-10-04):
    `docs/database.md` e `docs/features/F02-categorias.md` criados.
-6. **Dívidas da 002 registradas** (em `docs/architecture.md` e `docs/database.md`): FK da 003
-   precisa de `ON DELETE RESTRICT` (só `23001` é tratado); "FK RESTRICT => 23001" provado só no
-   proxy local, não no Neon dev; `contarProdutosDaCategoria` usa SQL cru até a 003.
+6. Dívidas da 002 (FK RESTRICT, 23001 no Neon dev, `contarProdutosDaCategoria` em SQL cru): RESOLVIDAS
+   na 003 (sync de 2026-10-08); `fk-produtos.int.test.ts` roda no Neon dev pelo CI. Não reabrir.
+   Feature 003: `docs/features/F03-produtos.md`. Dívida ativa: comentário de `pull-request.yml`
+   (~linha 50) diz que o probe é "sem tabelas"; fora do escopo do doc-sync (registrado em `architecture.md`).
 7. Decisão N1 (docs coerentes): app, migration e probe usam o mesmo `DATABASE_URL` direto do Neon
    dev, sem pooler. Nunca reintroduzir "pooled" nos docs.
 

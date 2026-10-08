@@ -4,8 +4,8 @@
 > existe hoje em `package.json` e `wrangler.jsonc` (três ambientes declarados e
 > publicados; a produção está no ar desde o primeiro deploy pelo CI). Já existem a stack local de
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
-> exercitada pela rota `/api/health` e pelas categorias do painel (feature 002:
-> tabela `categorias` e migration `0000`). O login das administradoras
+> exercitada pela rota `/api/health`, pelas categorias (feature 002: migration
+> `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
 > (Auth.js + Google) está implementado (feature 001); R2 e IA não estão
 > configurados.
 
@@ -31,6 +31,7 @@ da Cloudflare e, futuramente, publicar.
 | `npm run typecheck` | `tsc --noEmit` — checagem de tipos de todo o projeto (`tsconfig.json`, modo `strict`). |
 | `npm test` | `vitest run` — roda os testes **unitários** (`*.test.ts`, sem banco) uma vez (modo CI). Exclui `*.int.test.ts`. Sem `passWithNoTests`: suíte vazia agora falha. |
 | `npm run test:int` | `vitest run --config vitest.int.config.mts` — roda os testes de **integração** (`*.int.test.ts`), que exigem `npm run db:up`, **migrations aplicadas** (`npm run db:migrate`) e `DATABASE_URL` no `.dev.vars`. Não faz parte do `check` nem do `pre-push`. |
+| `npm run test:perf` | `vitest run --config vitest.perf.config.mts --disableConsoleIntercept` — medição de desempenho de `listar` com **500 produtos**, só no banco **local** (exige `db:up` e `db:migrate`). Popula, mede (meta < 2 s) e limpa; usa `resetCategorias`, então **recria as categorias** do banco local. Fora do `check` e do `test:int`. |
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
@@ -52,7 +53,7 @@ app, migration e probe usam o mesmo `DATABASE_URL` direto, ver "CI").
 
 ```bash
 npm run db:up        # sobe Postgres 18 + proxy HTTP do Neon
-npm run db:migrate   # aplica a 0000 (tabela categorias + seed) no banco local
+npm run db:migrate   # aplica as migrations (0000 categorias + seed, 0001 produtos) no banco local
 npm run test:int     # integração (exige as migrations aplicadas)
 ```
 
@@ -199,15 +200,17 @@ Há dois tipos de teste, cada um com sua config:
 | Integração | `src/**/*.int.test.{ts,tsx}` | `vitest.int.config.mts` + `vitest.int.setup.ts` | `npm run test:int`, manual; **fora** do `pre-push` | Exige `npm run db:up`; o setup falha se `DATABASE_URL` faltar (lê `.dev.vars` se existir), `testTimeout` de 15 s |
 
 Hoje existem testes em `src/lib/db/` (`health.test.ts`, `erros-pg.test.ts`
-unitários; `client.int.test.ts`, `batch-transacao.int.test.ts` e os
-`categorias.*.int.test.ts` de integração, via proxy local), em
-`src/lib/categorias/`, em `src/lib/auth/`, nas telas do painel e em
+unitários; `client.int.test.ts`, `batch-transacao.int.test.ts`, `fk-produtos.int.test.ts`,
+os `categorias.*.int.test.ts` e os `produtos.*.int.test.ts` de integração, via
+proxy local), em `src/lib/categorias/`, `src/lib/produtos/`, em `src/lib/auth/`, nas telas do painel e em
 `src/components/ui/`, além de testes transversais:
 `src/test/conformance/painel-guard.test.ts` (nega por padrão rotas/actions sem
 guard; ver [F01](./features/F01-autenticacao.md#teste-de-conformidade-nega-por-padrão)),
 `categorias-guard.test.ts` e `categorias-acesso.test.ts` (guard nas telas e
 actions de categorias e fronteira de imports; ver
-[F02](./features/F02-categorias.md#camadas-e-fronteira-de-acesso)) e
+[F02](./features/F02-categorias.md#camadas-e-fronteira-de-acesso)),
+`produtos-acesso.test.ts` e `produtos-paginas-guard.test.ts` (o mesmo para
+produtos; ver [F03](./features/F03-produtos.md#fronteira-de-acesso-e-guards)) e
 `src/next-config.test.ts` (header `no-store` em `/painel`). Em
 `vitest.setup.ts`, `server-only` é trocado por um mock vazio. Configuração
 do tipo unitário (`vitest.config.mts`):
@@ -226,17 +229,24 @@ do tipo unitário (`vitest.config.mts`):
 - **`fileParallelism: false`** em `vitest.int.config.mts`: vários arquivos fazem
   `TRUNCATE categorias`, então os arquivos de integração rodam em série.
 - `vitest.int.setup.ts` também troca `server-only` por um mock vazio.
-- Infra em `src/test/db/categorias-fixtures.ts`: `resetCategorias` refaz o seed
-  lendo o bloco entre os marcadores da migration `0000`; a fixture
-  `criarFixtureProdutos` cria uma tabela `produtos` provisória.
-- **Fixture sobrada**: se uma execução for interrompida (Ctrl+C, timeout) antes
-  do `afterAll`, a tabela `produtos` fica no banco local e quebra a próxima
-  `criarFixtureProdutos` ("já existe") e o `TRUNCATE` (FK). Recuperação:
-  `npm run db:reset` (**destrutivo, só local**) e depois `npm run db:migrate`.
-- **Probe do batch**: `vitest.probe.config.mts` roda **somente**
-  `src/lib/db/batch-transacao.int.test.ts` (include literal, para nenhum teste
-  com `TRUNCATE` tocar o Neon dev). Usado pelo CI do PR; não adicione reset nem
-  escrita de banco no setup dessa config. `PROBE_SLEEP_S` (padrão 2 s; o CI usa 5)
+- Infra em `src/test/db/categorias-fixtures.ts` (`resetCategorias` refaz o seed
+  lendo o bloco entre os marcadores da migration `0000`) e
+  `src/test/db/produtos-fixtures.ts` (`inserirProduto(s)`, `limparProdutos`,
+  `nomeUnicoProduto`: `chave` tem unicidade global, então nomes são únicos por
+  processo). `produtos` é tabela real (migration `0001`); não há mais fixture
+  provisória.
+- **Execução interrompida** (Ctrl+C, timeout) pode deixar produtos de teste ou
+  categorias fora do seed no banco local. Recuperação: `npm run db:reset`
+  (**destrutivo, só local**) e depois `npm run db:migrate`.
+- **`produtos-medicao.int.test.ts` fica fora do `test:int`** (exclusão em
+  `vitest.int.config.mts`) e roda só em `npm run test:perf`.
+- **Probe do CI**: `vitest.probe.config.mts` roda **somente**
+  `src/lib/db/batch-transacao.int.test.ts` e `src/lib/db/fk-produtos.int.test.ts`
+  (include literal, para nenhum teste com `TRUNCATE` tocar o Neon dev). O
+  `fk-produtos` não usa `TRUNCATE`: grava categoria e produto com marcador único
+  no nome dentro de um `db.batch` que reverte, e a limpeza apaga só pelo
+  marcador. Usado pelo CI do PR; não adicione reset nem escrita de banco no
+  setup dessa config. `PROBE_SLEEP_S` (padrão 2 s; o CI usa 5)
   controla o `pg_sleep` do cenário de lock.
 
 Os testes rodam em Node/jsdom, **não em workerd**: não substituem a validação
@@ -545,8 +555,8 @@ Jobs de `checks.yml`:
 
 Passos dos jobs de deploy (`deploy-dev` e `deploy-production`): `npm ci` →
 migrations (`npm run db:migrate` só se existir
-`src/lib/db/migrations/meta/_journal.json`; hoje não existe, então o passo
-imprime "Nenhuma migration ainda"; agora existe a `0000`, então roda) →
+`src/lib/db/migrations/meta/_journal.json`; hoje existem a `0000` e a `0001`,
+então roda) →
 **(só `deploy-dev`) probe de transação do batch** → `npm run deploy:dev` ou
 `npm run deploy:production` → `scripts/smoke-health.sh <url>/api/health`.
 
@@ -556,10 +566,13 @@ vitest.probe.config.mts` com `DATABASE_URL: ${{ secrets.DATABASE_URL }}` do
 environment `dev` (o mesmo secret da migration, **sem secret novo**) e
 `PROBE_SLEEP_S=5`. Prova que o `db.batch` roda numa única transação, que o lock
 advisory fica visível em `pg_locks` e bloqueia o segundo batch, o isolamento
-`read committed` e a forma do erro `23001`; não escreve em tabelas. Roda depois
+`read committed` e a forma do erro `23001`; o `batch-transacao` não escreve em tabelas. Roda depois
 da migration e **antes** do deploy: se falhar, o deploy dev não acontece e o
 ADR-008 deve ser reaberto. Se o app passar a usar a string com pooler, repita o
 probe com ela antes de chegar à produção.
+O mesmo passo roda também `src/lib/db/fk-produtos.int.test.ts` (feature 003): prova
+no Neon dev que a FK `produtos.categoria_id` é `ON DELETE RESTRICT` (`23001`) e
+que o batch reverte. Esse teste escreve linhas marcadas e as apaga.
 A **primeira** execução do PR da feature 002 aplica a migration `0000` no Neon
 dev e a congela (mudança depois disso é migration nova).
 A trava `scripts/require-ci.mjs` passa porque o Actions define `CI=true`.
@@ -715,8 +728,8 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
 - **`npm run test:int` falha com "relation categorias does not exist" ou
   seed ausente**: faltou `npm run db:migrate` depois do `db:up` (ou do
   `db:reset`). A integração exige as migrations aplicadas.
-- **`test:int` falha com tabela `produtos` "already exists" ou `TRUNCATE`
-  recusado por FK**: sobrou a fixture de uma execução interrompida. Rode
+- **`test:int` falha com `TRUNCATE` recusado por FK ou nome de produto
+  repetido**: sobraram produtos de uma execução interrompida. Rode
   `npm run db:reset` (destrutivo, só local) e `npm run db:migrate`.
 - **Probe do batch falha no CI do PR**: o `deploy-dev` não roda. Não force: o
   ADR-008 assume transação única no `db.batch` e, se o probe provar o contrário,

@@ -10,8 +10,8 @@ import { LOCK_PROBE_BATCH } from "@/lib/db/locks";
 // única transação. NÃO toca em tabelas; reutilizado contra o Neon dev no CI (T062).
 // O caso (d) prova o Fato 1 (forma do erro no db.batch: NeonDbError sem embrulho, sem
 // `cause`, código em `error.code`) com o SQLSTATE 23001 sem usar tabela. O Fato 2
-// (FK ON DELETE RESTRICT => 23001) segue provado só localmente (categorias.remocao /
-// produtos-fixture), porque exige tabela.
+// (FK ON DELETE RESTRICT => 23001) exige tabela e é provado por fk-produtos.int.test.ts
+// (feature 003), que roda no banco local e no Neon dev pelo CI do PR.
 const db = createDb({
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   NEON_FETCH_ENDPOINT: process.env.NEON_FETCH_ENDPOINT,

@@ -5,9 +5,9 @@
 > plano, contrato (`contracts/categorias.md`) e roteiro de validação
 > (`quickstart.md`) na mesma pasta; decisões em
 > [`specs/adr/008-integridade-de-dados-neon-http.md`](../../specs/adr/008-integridade-de-dados-neon-http.md).
-> Ainda não há produtos: a regra "categoria com produtos não pode ser removida"
-> só fica completa com a feature 003 (ver
-> [database.md](../database.md#aviso-para-a-feature-003-fk-de-produtos)).
+> A regra "categoria com produtos não pode ser removida" ficou completa com a
+> feature 003 (FK `ON DELETE RESTRICT`; ver [F03](./F03-produtos.md) e
+> [database.md](../database.md#regras-de-exclusão-e-integridade)).
 
 ## Visão leiga
 
@@ -28,7 +28,7 @@ O sistema recusa, com mensagem em português:
   "GUÁRDA-chuvas" ou " Meias " contam como repetidos; "Guarda-chuva" no singular
   não);
 - remover a **última** categoria (a loja precisa de pelo menos uma);
-- remover categoria que tem produtos (vale quando a feature 003 existir);
+- remover categoria que tem produtos (mensagem com a quantidade);
 - salvar uma categoria que **outra pessoa alterou** enquanto a tela estava
   aberta: pede para atualizar a lista e tentar de novo.
 
@@ -85,8 +85,8 @@ graph TD
 | `src/lib/db/categorias.ts` | Camada SQL: `listar`, `obterPorId`, `inserir`, `renomear`, `remover`, `contarProdutosDaCategoria`. Devolve resultados discriminados (`ok`, `nome_repetido`, `ausente`, `versao_diferente`, `ultima`, `tem_produtos`); não conhece mensagens. |
 | `src/lib/db/contexto.ts` | `dbDoContexto()`: `createDb` com `DATABASE_URL` e `NEON_FETCH_ENDPOINT` de `getCloudflareContext({ async: true })`. Os testes de integração a substituem por `createDb(process.env)` com `vi.mock`. |
 | `src/lib/db/locks.ts` | Registro único das chaves de lock advisory (ADR-008). |
-| `src/lib/db/erros-pg.ts` | `codigoSqlstate(erro)`: lê o SQLSTATE em `error.cause.code` (statement isolado) ou em `error.code` somente se for instância real de `NeonDbError` (dentro do `db.batch`). |
-| `src/test/db/categorias-fixtures.ts` | Infra de teste (não é produção): `resetCategorias` (TRUNCATE + seed lido da migration), `criarFixtureProdutos`/`descartarFixtureProdutos` (tabela `produtos` provisória). |
+| `src/lib/db/erros-pg.ts` | `codigoSqlstate(erro)`: lê o SQLSTATE em `error.cause.code` (statement isolado) ou em `error.code` somente se for instância real de `NeonDbError` (dentro do `db.batch`). `nomeConstraint(erro)` (feature 003) lê o nome da constraint violada com a mesma busca. |
+| `src/test/db/categorias-fixtures.ts` | Infra de teste (não é produção): `resetCategorias` (TRUNCATE + seed lido da migration). A fixture provisória de `produtos` saiu na feature 003; a infra de produtos fica em `src/test/db/produtos-fixtures.ts`. |
 
 A fronteira é imposta em **duas camadas**: ESLint (`no-restricted-imports` em
 `eslint.config.mjs`) e o teste `src/test/conformance/categorias-acesso.test.ts`
@@ -133,8 +133,9 @@ Criar e renomear não usam lock: a unicidade é do `UNIQUE(chave)` (SQLSTATE
 
 - **SQLSTATE `23001`, não `23503`**: o bloqueio por produtos só é reconhecido por
   `23001` (FK `ON DELETE RESTRICT`). O padrão `NO ACTION` gera `23503` e não é
-  tratado. A FK da 003 **precisa** declarar `RESTRICT` explicitamente (aviso em
-  [database.md](../database.md#aviso-para-a-feature-003-fk-de-produtos)).
+  tratado. A FK de `produtos.categoria_id` declara `RESTRICT` explicitamente
+  ([database.md](../database.md#regras-de-exclusão-e-integridade)) e o teste
+  `src/lib/db/fk-produtos.int.test.ts` prova o `23001`.
 - **Forma do erro difere no `db.batch`** (ADR-008, Fato 1): no batch o
   `NeonDbError` chega sem embrulho (`error.code`); em statement isolado vem
   dentro de `DrizzleQueryError` (`error.cause.code`). Use sempre
@@ -142,18 +143,18 @@ Criar e renomear não usam lock: a unicidade é do `UNIQUE(chave)` (SQLSTATE
 - **`remover` contorna-se por SQL manual**: a regra do mínimo de 1 é da
   aplicação (ADR-008, consequências). Não faça `DELETE` direto em `categorias`
   no console do Neon.
-- **`contarProdutosDaCategoria` usa SQL cru** (`FROM produtos`) porque a tabela
-  ainda não está no schema; só roda após o `23001`. A 003 deve trocá-lo pelo
-  schema Drizzle.
+- **`contarProdutosDaCategoria`** usa o schema Drizzle de `produtos`
+  (`count()` com `WHERE categoria_id`); só roda após o `23001`.
 - **Testes de integração não rodam em paralelo**: `fileParallelism: false` em
   `vitest.int.config.mts`, porque vários arquivos fazem `TRUNCATE categorias`.
-  Detalhes e a recuperação de fixture sobrada em
+  Detalhes em
   [operacao.md, "Testes"](../operacao.md#testes-vitest).
 - **Probe do `db.batch` no Neon dev** (`src/lib/db/batch-transacao.int.test.ts`,
   rodado por `vitest.probe.config.mts` no CI do PR): prova mesmo `txid_current`
   no batch, lock visível em `pg_locks` bloqueando o segundo batch, isolamento
-  `read committed` e a forma do erro `23001` sem usar tabela. Não escreve em
-  tabelas. Ver [operacao.md, "CI"](../operacao.md#ci).
+  `read committed` e a forma do erro `23001` sem usar tabela. Esse arquivo não escreve em
+  tabelas; o `fk-produtos.int.test.ts` (feature 003) roda na mesma config e
+  escreve linhas marcadas, que apaga ao final. Ver [operacao.md, "CI"](../operacao.md#ci).
 - **Seed na migration, uma vez só**: remover ou renomear uma categoria inicial é
   permanente; migrate e novos deploys não a recriam.
 - **`sessao` é parâmetro ainda sem uso** nas funções de escrita de

@@ -134,7 +134,7 @@ type ValoresFormulario = {       // texto como digitado, para reidratar o formul
 // Assinatura de useActionState: (estado anterior, FormData). O estado inicial é null.
 // O FormData é a entrada externa: passa pelo Zod antes de qualquer uso.
 criarProduto(anterior: ResultadoAction<{ id: number }> | null, formData: FormData): Promise<ResultadoAction<{ id: number }>>
-editarProduto(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
+editarProduto(anterior: ResultadoAction<{ id: number; versao: number }> | null, formData: FormData): Promise<ResultadoAction<{ id: number; versao: number }>>
 marcarEsgotado(anterior: ResultadoAction<{ saiuDoDestaque: boolean }> | null, formData: FormData): Promise<ResultadoAction<{ saiuDoDestaque: boolean }>>
 marcarDisponivel(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
 destacarProduto(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
@@ -146,6 +146,12 @@ removerProduto(anterior: ResultadoAction | null, formData: FormData): Promise<Re
   `nome_repetido`, `categoria_invalida`, `alterado`, `nao_existe`, `falha_geral`), com os
   textos exatamente como chegaram no `FormData` (`aPartirDe` = caixa marcada). O formulário
   reidrata os campos com `defaultValue`/`defaultChecked` a partir de `valores` (§5).
+- O `ok` é uma união discriminada por modo: cadastro ⇒ `{ ok: true, id }` (id novo); edição ⇒
+  `{ ok: true, id, versao }`, onde `versao` é a **nova** versão da linha (a validada + 1, pois
+  o `UPDATE` soma 1), para o próximo envio do mesmo formulário. As demais actions seguem
+  `ResultadoAction` / `ResultadoAction<{ saiuDoDestaque }>`.
+- `aPartirDe` chega do `FormData` como `"on"` ou ausente; a action converte em booleano antes
+  de `validarCamposProduto`.
 - `exigirCategoriaValida` lança `CategoriaInvalidaError` ⇒ falha `categoria_invalida`
   com `campo: "categoria"` (mesmo motivo de `categoria_ausente` vindo do banco).
 

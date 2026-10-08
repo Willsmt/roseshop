@@ -1,11 +1,11 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 
 import type { AdminSession } from "@/lib/auth";
 
 import type { Db } from "./client";
 import { codigoSqlstate } from "./erros-pg";
 import { LOCK_REMOCAO_CATEGORIAS } from "./locks";
-import { categorias } from "./schema";
+import { categorias, produtos } from "./schema";
 
 // Camada SQL de categorias (contrato §4). Toda função recebe `db`; nada aqui conhece
 // motivos nem mensagens de UI: a escrita devolve resultado discriminado, traduzido em
@@ -148,12 +148,12 @@ export async function remover(
   return atual.versao === versao ? { tipo: "ultima" } : { tipo: "versao_diferente" };
 }
 
-// SQL cru porque `produtos` ainda não está no schema: a 003 troca esta consulta pela
-// referência ao schema Drizzle de `produtos` (contrato §5). Só é chamada após `23001`, que
-// já implica a tabela; erro aqui propaga e vira `falha_geral` na tradução.
+// Só é chamada após `23001`, que já implica a FK de `produtos`; erro aqui propaga e vira
+// `falha_geral` na tradução.
 export async function contarProdutosDaCategoria(db: Db, categoriaId: number): Promise<number> {
-  const r = await db.execute(
-    sql`SELECT count(*)::int AS n FROM produtos WHERE categoria_id = ${categoriaId}`,
-  );
-  return Number((r.rows[0] as { n: number }).n);
+  const [linha] = await db
+    .select({ n: count() })
+    .from(produtos)
+    .where(eq(produtos.categoriaId, categoriaId));
+  return Number(linha.n);
 }

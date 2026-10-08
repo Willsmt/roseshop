@@ -23,6 +23,40 @@ editada à mão: função antes do `CREATE TABLE`, seed depois. A decisão não 
 - Fato 2: a FK `ON DELETE RESTRICT` recusa o `DELETE` com `23001` (restrict_violation);
   `23503` só é produzido por `NO ACTION` (confirmado no psql, PG 18.6). Decisão: o bloqueio
   por produtos (FR-011) é reconhecido só por `23001`.
+**Emenda (2026-10-07, plano da feature 003, aprovada pelo humano):** aplicações da regra
+geral, sem mudar a Decisão (origem: D1, D4 e D9 de `specs/003-produtos/research.md` §3).
+- Teto de 8 destaques (FR-018 da 003) é **constraint, não lock advisory**:
+  `produtos.destaque_vaga smallint NULL CHECK (BETWEEN 1 AND 8)` + índice único parcial
+  `ON (destaque_vaga) WHERE destaque_vaga IS NOT NULL`, e `CHECK (NOT (esgotado AND
+  destaque_vaga IS NOT NULL))`. Destacar é um único `UPDATE` que escolhe a menor vaga livre
+  (`generate_series(1, 8)` menos as ocupadas) e só grava se ela existir. Mesma vaga
+  disputada ⇒ o índice único faz o segundo esperar o commit do primeiro e falhar com
+  `23505`, traduzido em "tente de novo" (`vaga_disputada`), **sem retry automático**.
+  Nenhuma chave nova em `locks.ts`. Descartados: `db.batch` + lock + contagem (teto só na
+  aplicação, e o banco consegue expressá-lo) e trigger. Consequências: (+) teto e "esgotado
+  fora do destaque" valem contra qualquer writer; (+) a vaga pode ordenar o carrossel do
+  catálogo; (−) recusa espúria possível com duas pessoas destacando ao mesmo tempo e mais
+  de uma vaga livre (aceito: 3 administradoras, nada é alterado); (−) em `destacar`,
+  `23505` é sempre a vaga porque o `SET` não toca `nome` — se o statement passar a gravar
+  outra coluna única, a tradução deve distinguir pela constraint.
+- Equivalência compartilhada: `produtos.chave` é `GENERATED ALWAYS AS
+  (categoria_chave(nome)) STORED` com `UNIQUE`, reusando a função da Decisão 1 sem wrapper;
+  lookup após `23505` e busca por parte do nome (`strpos(chave, categoria_chave($1)) > 0`)
+  usam a mesma função. Consequência: mudar a regra exige recriar as colunas geradas e os
+  índices de **`categorias` e `produtos`** na mesma migration.
+- Prova da FK `RESTRICT` ⇒ `23001` no Neon dev (contrato §5 da 002): o probe do CI ganha
+  um teste que, num único `db.batch`, insere categoria e produto com marcador único e tenta
+  apagar a categoria; o `23001` aborta a transação inteira e nada persiste. Include literal
+  no `vitest.probe.config.mts`; sem `TRUNCATE`. Resíduo por configuração da FK: com
+  `NO ACTION` o batch aborta com `23503` (sem resíduo; o teste falha pelo código); com
+  `CASCADE` o `DELETE` apaga categoria e produto (nada sobra; o teste falha por não haver
+  erro); **só FK inexistente deixa resíduo** (produto órfão), e a limpeza do teste apaga o
+  produto pelo marcador. Consequência: o probe do dev deixa de ser só leitura; todo teste
+  nele precisa ter escrita revertida pelo próprio erro esperado.
+- O probe com escrita roda **só no CI do PR contra o Neon dev**, nunca contra produção (nem
+  no deploy do `main`): mesmo revertido, o insert consome valores das identities.
+  Verificado em 2026-10-07: o probe está só em `.github/workflows/pull-request.yml`
+  (environment `dev`); `main.yml` não o executa.
 
 ## Contexto
 

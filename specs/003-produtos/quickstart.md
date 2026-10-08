@@ -43,15 +43,20 @@ Esperado: tudo verde, com output real. Arquivos de integração que precisam pas
 ## 2. Neon dev (CI do PR)
 
 No PR, o job do `pull-request.yml` roda `db:migrate` no Neon dev e depois
-`vitest run --config vitest.probe.config.mts`. Esperado no log: o teste da FK passando
-com `23001` (batch revertido pelo próprio erro) e o probe do `db.batch` da 002
-continuando verde. Conferir no Neon dev que nenhuma linha de teste sobrou (`SELECT count(*) FROM produtos` igual ao de antes).
+`vitest run --config vitest.probe.config.mts`. Esperado no log: o teste da FK
+(`src/lib/db/fk-produtos.int.test.ts`) passando com `23001` (batch revertido pelo próprio
+erro) e o probe do `db.batch` da 002 continuando verde. A ausência de resíduo é verificada
+**pelo próprio teste** (0 linhas com o marcador depois do batch); ninguém consulta o Neon
+dev a partir da máquina local (constitution VIII).
 
 ## 3. Runtime real (preview)
 
 ```bash
+npm run db:reset && npm run db:migrate   # o test:int consome números do identity; o roteiro espera #0001
 npm run preview             # http://localhost:8787
 ```
+
+A carga de 500 produtos da §4 vem **depois** deste roteiro.
 
 Roteiro manual pelo celular (ou DevTools em 390 px):
 
@@ -79,7 +84,9 @@ Roteiro manual pelo celular (ou DevTools em 390 px):
 
 Somente na stack local (ADR-006: nunca contra workers deployados): popular 500
 produtos com script de teste e medir, no `preview`, abrir a lista, "Ver mais produtos",
-filtrar e buscar — cada resposta < 2 s, excluída a primeira após o banco ocioso.
+filtrar e buscar — cada resposta < 2 s, excluída a primeira após o banco ocioso. Medir
+com o throttling de rede do DevTools em "Fast 4G" (aproximação da "conexão móvel comum"
+do SC-007) e registrar o perfil usado junto dos tempos.
 
 ## 5. Observação com a administradora (SC-001 a SC-003)
 

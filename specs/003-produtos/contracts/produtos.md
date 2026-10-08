@@ -64,7 +64,18 @@ type CamposProduto = {      // já normalizados e validados pelo domínio
   precoCentavos: number | null; aPartirDe: boolean;
 };
 
-type NomeRepetido     = { tipo: "nome_repetido"; codigoExistente: number };
+type FiltroDb = {           // montado por painel.ts a partir de FiltroLista (§4)
+  categoriaId?: number;
+  esgotado?: boolean;       // situacao "esgotado" ⇒ true, "disponivel" ⇒ false
+  busca?: {                 // ausente quando a busca normalizada é vazia
+    texto: string;          // comparado por strpos(chave, categoria_chave(texto)) > 0
+    codigo: number | null;  // de codigo.ts quando o texto casa ^#?\d{1,9}$; OR com o nome
+  };
+  antes?: number;           // cursor keyset (id < antes)
+};                          // página fixa de 20 (LIMIT 21 para calcular haMais)
+
+type NomeRepetido     = { tipo: "nome_repetido"; codigoExistente?: number };
+  // sem código quando o lookup após 23505 não acha a linha (removida/renomeada no meio)
 type CategoriaAusente = { tipo: "categoria_ausente" };          // 23503 no INSERT/UPDATE
 type Ausente          = { tipo: "ausente" };
 type VersaoDiferente  = { tipo: "versao_diferente" };
@@ -74,7 +85,7 @@ editar(db, sessao, id, versao, campos): Promise<{ tipo: "ok" } | NomeRepetido | 
 esgotar(db, sessao, id, versao): Promise<{ tipo: "ok"; saiuDoDestaque: boolean } | Ausente | VersaoDiferente>
 disponibilizar(db, sessao, id, versao): Promise<{ tipo: "ok" } | Ausente | VersaoDiferente>
 destacar(db, sessao, id, versao): Promise<{ tipo: "ok" } | Ausente | VersaoDiferente
-  | { tipo: "esgotado" } | { tipo: "limite" } | { tipo: "vaga_disputada" }>
+  | { tipo: "esgotado" } | { tipo: "ja_em_destaque" } | { tipo: "limite" } | { tipo: "vaga_disputada" }>
 tirarDoDestaque(db, sessao, id, versao): Promise<{ tipo: "ok" } | Ausente | VersaoDiferente>
 remover(db, sessao, id, versao): Promise<{ tipo: "removido" } | Ausente | VersaoDiferente>
 
@@ -86,11 +97,11 @@ Garantias por função (todas num único statement; nenhuma usa lock advisory):
 
 | Função | Statement | 0 linhas ⇒ |
 |---|---|---|
-| `inserir` | `INSERT ... RETURNING id`; `23505` ⇒ busca `id` por `chave = categoria_chave($nome)`; `23503` ⇒ `categoria_ausente` | — |
-| `editar` | `UPDATE ... SET campos, versao+1, atualizado_por, atualizado_em WHERE id AND versao`; `23505`/`23503` como acima. `a_partir_de` forçado a `false` quando `preco_centavos` é `NULL` | leitura escolhe `ausente`/`versao_diferente` |
+| `inserir` | `INSERT ... RETURNING id`; `23505` ⇒ busca `id` por `chave = categoria_chave($nome)` (sem linha ⇒ `nome_repetido` sem `codigoExistente`); `23503` ⇒ `categoria_ausente` | — |
+| `editar` | `UPDATE ... SET campos, versao+1, atualizado_por, atualizado_em WHERE id AND versao`; `23505`/`23503` como acima. `a_partir_de` forçado a `false` quando `preco_centavos` é `NULL` (defesa; o domínio em modo `edicao` já entrega `aPartirDe = false`, §3) | leitura escolhe `ausente`/`versao_diferente` |
 | `esgotar` | `WITH antes AS (SELECT destaque_vaga IS NOT NULL AS estava ... WHERE id AND versao) UPDATE ... SET esgotado = true, destaque_vaga = NULL, versao+1 ... WHERE id AND versao RETURNING (SELECT estava FROM antes)` | idem |
 | `disponibilizar` | `UPDATE ... SET esgotado = false ...` (não toca `destaque_vaga`) | idem |
-| `destacar` | `UPDATE ... SET destaque_vaga = livre.vaga ... FROM (menor vaga livre de 1..8) livre WHERE id AND versao AND NOT esgotado AND destaque_vaga IS NULL AND livre.vaga IS NOT NULL`; `23505` ⇒ `vaga_disputada` (sem retry) | leitura escolhe `ausente`/`versao_diferente`/`esgotado`/`limite` |
+| `destacar` | `UPDATE ... SET destaque_vaga = livre.vaga ... FROM (menor vaga livre de 1..8) livre WHERE id AND versao AND NOT esgotado AND destaque_vaga IS NULL AND livre.vaga IS NOT NULL`; `23505` ⇒ `vaga_disputada` (sem retry) | leitura escolhe, nesta precedência: `ausente` → `versao_diferente` → `esgotado` → `ja_em_destaque` → `limite` |
 | `tirarDoDestaque` | `UPDATE ... SET destaque_vaga = NULL ...` | idem |
 | `remover` | `DELETE ... WHERE id AND versao RETURNING id` (fotos em cascata) | leitura escolhe `ausente`/`versao_diferente` |
 | `listar` | `SELECT ... JOIN categorias ... WHERE filtros AND (antes IS NULL OR id < antes) ORDER BY id DESC LIMIT 21` | — |
@@ -113,17 +124,30 @@ type Falha = {
   motivo: Motivo;
   mensagem: string;              // texto simples (§6)
   campo?: "nome" | "categoria" | "descricao" | "preco" | "aPartirDe";
-  codigoExistente?: number;      // só em nome_repetido (link para o detalhe)
+  codigoExistente?: number;      // só em nome_repetido, quando o lookup achou (link para o detalhe)
+  valores?: ValoresFormulario;   // só em criarProduto/editarProduto: o que foi enviado
+};
+type ValoresFormulario = {       // texto como digitado, para reidratar o formulário
+  nome: string; categoriaId: string; descricao: string; preco: string; aPartirDe: boolean;
 };
 
-criarProduto(entrada: unknown): Promise<ResultadoAction<{ id: number }>>
-editarProduto(entrada: unknown): Promise<ResultadoAction>
-marcarEsgotado(entrada: unknown): Promise<ResultadoAction<{ saiuDoDestaque: boolean }>>
-marcarDisponivel(entrada: unknown): Promise<ResultadoAction>
-destacarProduto(entrada: unknown): Promise<ResultadoAction>
-tirarProdutoDoDestaque(entrada: unknown): Promise<ResultadoAction>
-removerProduto(entrada: unknown): Promise<ResultadoAction>
+// Assinatura de useActionState: (estado anterior, FormData). O estado inicial é null.
+// O FormData é a entrada externa: passa pelo Zod antes de qualquer uso.
+criarProduto(anterior: ResultadoAction<{ id: number }> | null, formData: FormData): Promise<ResultadoAction<{ id: number }>>
+editarProduto(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
+marcarEsgotado(anterior: ResultadoAction<{ saiuDoDestaque: boolean }> | null, formData: FormData): Promise<ResultadoAction<{ saiuDoDestaque: boolean }>>
+marcarDisponivel(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
+destacarProduto(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
+tirarProdutoDoDestaque(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
+removerProduto(anterior: ResultadoAction | null, formData: FormData): Promise<ResultadoAction>
 ```
+
+- `valores` vem preenchido em **toda** falha de `criarProduto`/`editarProduto` (validação,
+  `nome_repetido`, `categoria_invalida`, `alterado`, `nao_existe`, `falha_geral`), com os
+  textos exatamente como chegaram no `FormData` (`aPartirDe` = caixa marcada). O formulário
+  reidrata os campos com `defaultValue`/`defaultChecked` a partir de `valores` (§5).
+- `exigirCategoriaValida` lança `CategoriaInvalidaError` ⇒ falha `categoria_invalida`
+  com `campo: "categoria"` (mesmo motivo de `categoria_ausente` vindo do banco).
 
 Entradas (validadas no servidor):
 
@@ -137,8 +161,22 @@ O formulário preserva o que foi digitado em qualquer falha (FR-009): a action n
 redireciona em erro.
 
 Validação de domínio (`src/lib/produtos/validacao.ts`, server-only por importar o barrel)
-é a mesma porta que a IA futura usará (FR-032): `validarCamposProduto(entrada: unknown)`
-⇒ `{ ok: true; campos: CamposProduto } | { ok: false; falhas: Falha[] }`.
+é a mesma porta que a IA futura usará (FR-032): `validarCamposProduto(entrada: unknown,
+modo: "cadastro" | "edicao")` ⇒ `{ ok: true; campos: CamposProduto } | { ok: false;
+falhas: Falha[] }`.
+
+**Ordem de validação** (a ordem do formulário): `id`/`versao` (só na edição; inválidos ⇒
+`falha_geral`, sem `campo`) → `nome` → `categoria` → `descricao` → `preco` → `aPartirDe`.
+`falhas[]` sai nessa ordem; a action devolve **só a primeira** (`falhas[0]`), com o
+`campo` dela, e o formulário mostra só essa mensagem. Depois de passar na validação, a
+ordem segue a fixa acima: `exigirCategoriaValida`, então banco.
+
+A única diferença entre os modos é o "a partir de" sem preço:
+
+- `cadastro`: caixa marcada e preço vazio ⇒ falha `a_partir_de_sem_preco` (US1-AC6).
+- `edicao`: preço vazio ⇒ `aPartirDe = false` no resultado, sem falha (US4-AC2, FR-006).
+
+`criarProduto` usa `cadastro`; `editarProduto` usa `edicao`. A IA (futura) usa `cadastro`.
 
 ## 4. Leitura do painel — `src/lib/produtos/painel.ts`
 
@@ -148,11 +186,14 @@ type FiltroLista = {
   situacao?: "disponivel" | "esgotado";
   busca?: string;          // código ("42", "0042", "#0042") ou parte do nome
   antes?: number;          // cursor keyset: código do último item da página anterior (D3)
+  aviso?: "removido" | "nao_existe"; // só exibição; nunca propagado em verMais/voltarAoComeco/href
 };
 listarProdutosDoPainel(searchParams: unknown): Promise<{
   itens: ItemLista[];
   verMais: string | null;      // href da próxima página (mesmos filtros, antes = último id)
   voltarAoComeco: string | null; // href sem `antes`, quando há cursor
+  aviso: { tipo: "sucesso" | "erro"; texto: string } | null;
+    // removido ⇒ sucesso, "Produto removido."; nao_existe ⇒ erro, "Este produto não existe mais." (§6)
 }>
 obterProdutoDoPainel(id: unknown, voltar: unknown): Promise<DetalheProduto | null>
 ```
@@ -169,7 +210,7 @@ obterProdutoDoPainel(id: unknown, voltar: unknown): Promise<DetalheProduto | nul
   string atual da lista).
 - `DetalheProduto`: tudo de `ProdutoDb` + campos formatados (preço, código), `fotos: []`
   (marcador "sem foto"), `podeDestacar` (= não esgotado e fora do destaque), e-mails de
-  autoria, `voltarHref` = `/painel/produtos` + `voltar` revalidado pelo mesmo `filtroLista`
+  autoria (`criadoPor`, `atualizadoPor`, exibidos no detalhe — US4-AC6), `voltarHref` = `/painel/produtos` + `voltar` revalidado pelo mesmo `filtroLista`
   (caminho fixo; inválido ⇒ lista sem filtro).
 
 ## 5. Rotas e telas (`src/app/painel/(protegido)/produtos/`)
@@ -182,8 +223,40 @@ obterProdutoDoPainel(id: unknown, voltar: unknown): Promise<DetalheProduto | nul
 | `/painel/produtos/[id]/editar` | Formulário de edição (campos ocultos `id`, `versao`) | `editarProduto` |
 | `/painel/produtos/[id]/remover` | Confirmação: "O produto #0042 Meia soquete listrada será apagado de vez e não poderá ser recuperado" | `removerProduto` ⇒ lista com mensagem de sucesso |
 
-Todas herdam o guard do layout `(protegido)` e são cobertas pelo `painel-guard`
-existente (nega por padrão).
+Cada `page.tsx` de produtos chama `requireAdminPage(<rota>)` (contrato da 001) antes de
+qualquer leitura, com o caminho da própria página, incluindo o `id` dinâmico (ex.:
+`` requireAdminPage(`/painel/produtos/${id}/editar`) ``). O layout `(protegido)` **não**
+protege a página (ele só decide a moldura; quem redireciona é a página). Garantido pelo
+`painel-guard` existente e pelo teste de conformidade `produtos-paginas-guard` (T056), que
+nega por padrão: falha se alguma `page.tsx` em `src/app/painel/(protegido)/produtos/` não
+chamar `requireAdminPage`.
+
+### Navegação e avisos
+
+- Formulários e botões de ação usam `useActionState(action, null)` com as assinaturas do §3;
+  a UI não cria wrapper de action nem lógica de negócio.
+- **Sucesso** (a action só faz `revalidatePath`; quem navega é a UI, como na 002):
+  - `criarProduto` ⇒ `router.push("/painel/produtos/" + id)` (o detalhe é a confirmação);
+  - `editarProduto` ⇒ `router.push("/painel/produtos/" + id)` com o `id` do formulário;
+  - `removerProduto` ⇒ `router.push("/painel/produtos?aviso=removido")`; a lista mostra o
+    `aviso` devolvido por `listarProdutosDoPainel` num `Aviso` do `tipo` dele;
+  - status e destaque ficam no detalhe: `Aviso` de sucesso com o texto do §6 (com
+    `saiuDoDestaque`, acrescenta "...e saiu do destaque."); o `revalidatePath` traz a
+    `versao` nova para os campos ocultos.
+- **Falha**: a tela continua onde está. Nos formulários, os campos são remontados (`key`
+  derivada do estado) com `defaultValue`/`defaultChecked` = `valores`, e a **única**
+  mensagem (a primeira falha, na ordem do §3) vai no `MensagemCampo` do `campo` dela ou
+  num `Aviso` de erro quando não há `campo`; os demais campos ficam sem erro.
+  `nome_repetido` com `codigoExistente` mostra o código como link para
+  `/painel/produtos/{codigoExistente}`; sem `codigoExistente`, a mensagem sai sem link.
+- **Remoção de produto que já não existe** (US6-AC6): a action devolve `nao_existe` (não
+  redireciona); a UI faz `router.push("/painel/produtos?aviso=nao_existe")` e a lista
+  mostra o `aviso` (tipo erro, "Este produto não existe mais.") num `Aviso` de erro.
+- **Sessão expirada**: a action lança `UnauthorizedError` (não é `Falha`); a tela segue o
+  mesmo tratamento das telas de categorias da 002 (volta ao login, nada salvo), verificado
+  no `preview` (quickstart §3, passo 10).
+- **Descrição**: exibida como texto puro com `white-space: pre-line` (quebras preservadas,
+  nada interpretado como formatação, D10.2).
 
 ### Primitivos de formulário (`src/components/ui/`, E2)
 
@@ -205,7 +278,7 @@ Contrato estável para as próximas features; a fundação visual (ADR-005) muda
 | `nome_vazio` | nome | "Escreva o nome do produto." |
 | `nome_tamanho` | nome | "O nome precisa ter de 3 a 80 letras." |
 | `nome_invalido` | nome | "Use letras ou números no nome." |
-| `nome_repetido` | nome | "Já existe um produto com esse nome: #0042." (código como link) |
+| `nome_repetido` | nome | "Já existe um produto com esse nome: #0042." (código como link); sem `codigoExistente`: "Já existe um produto com esse nome." (sem link) |
 | `categoria_obrigatoria` | categoria | "Escolha uma categoria." |
 | `categoria_invalida` | categoria | "Essa categoria não existe mais. Escolha outra." |
 | `descricao_tamanho` | descricao | "A descrição pode ter até 1000 letras." |
@@ -217,6 +290,7 @@ Contrato estável para as próximas features; a fundação visual (ADR-005) muda
 | `limite_destaques` | — | "Já existem 8 produtos em destaque. Tire um do destaque antes de destacar outro." |
 | `vaga_disputada` | — | "Outra pessoa destacou um produto ao mesmo tempo. Tente de novo." |
 | `esgotado_nao_destaca` | — | "Produto esgotado não pode ficar em destaque." |
+| `ja_em_destaque` | — | "Este produto já está em destaque." |
 | `falha_geral` | — | mesma da 002 |
 
 Avisos de sucesso: "Produto marcado como esgotado." / "...e saiu do destaque." /

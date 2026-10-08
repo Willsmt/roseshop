@@ -55,7 +55,7 @@ Sem `NEEDS CLARIFICATION`.
 |---|---|---|---|
 | I. Fonte de verdade | Spec com Given/When/Then e clarificações; cada critério mapeado a teste (tabela "Cobertura"). Spec **Approved**. Sem ADR novo; emenda ao ADR-008 (D1, D4, D9) aprovada em 2026-10-07 | ✅ | ✅ |
 | II. Stack fechada | Nenhuma dependência nova; Zod em toda fronteira; Drizzle/Neon conforme ADR-002 | ✅ | ✅ |
-| III. Segurança | `requireAdminAction` em toda action e guard do layout `(protegido)` em toda tela (FR-001, `painel-guard` nega por padrão); Zod em form, query string e campos ocultos; descrição exibida como texto puro; nenhum segredo novo; zona protegida tocada: **`src/lib/db/`** (schema, migration, `categorias.ts`, `produtos.ts`) ⇒ diff revisado pelo tech-lead antes de cada commit (E1) + revisão humana; `wrangler.jsonc`/`.dev.vars*` intocados | ✅ | ✅ |
+| III. Segurança | `requireAdminAction` em toda action e `requireAdminPage(<rota>)` em toda `page.tsx` (FR-001; o layout `(protegido)` não protege a página, contrato da 001; `painel-guard` e `produtos-paginas-guard` negam por padrão); Zod em form, query string e campos ocultos; descrição exibida como texto puro; nenhum segredo novo; zona protegida tocada: **`src/lib/db/`** (schema, migration, `categorias.ts`, `produtos.ts`) ⇒ diff revisado pelo tech-lead antes de cada commit (E1) + revisão humana; `wrangler.jsonc`/`.dev.vars*` intocados | ✅ | ✅ |
 | IV. Arquitetura | Server Components por padrão, forms client só onde há interação; mutações só por Server Actions; SQL só em `src/lib/db/produtos.ts`; **preço em centavos `integer`**; `timestamptz` UTC, formatação pt-BR na apresentação | ✅ | ✅ |
 | V. UX | Uma tarefa por tela (lista, novo, detalhe, editar, remover); alvos ≥ 48 px e texto ≥ 16 px; mensagens sem jargão (§6 do contrato, SC-008); remoção com confirmação nomeando código e nome; mobile-first; preservação do digitado | ✅ | ✅ |
 | VI. Qualidade e entrega | "Pronto" = `npm run check` + `test:int` com output real; um commit Conventional Commits por sub-fase, **sem `Co-Authored-By`**; README atualizado no fechamento | ✅ | ✅ |
@@ -91,7 +91,8 @@ src/lib/db/
 ├── migrations/0001_*.sql             # gerada pelo drizzle-kit             [protegido]
 ├── categorias.ts                     # contarProdutosDaCategoria → schema  [protegido]
 ├── produtos.ts                       # SQL de produtos (contrato §2)       [protegido]
-└── produtos.*.int.test.ts            # schema/FK, escrita, concorrência, leitura
+├── produtos.*.int.test.ts            # schema/FK, escrita, concorrência, destaque, leitura
+└── fk-produtos.int.test.ts           # probe da FK no Neon dev (D9; padrão de batch-transacao)
 src/lib/categorias/index.ts           # barrel passa a exportar normalizarNome (D5)
 src/lib/produtos/
 ├── validacao.ts  preco.ts  codigo.ts # domínio (+ *.test.ts)
@@ -105,6 +106,7 @@ src/app/painel/(protegido)/produtos/
 src/components/ui/                    # + campo-texto, area-texto, selecao, caixa-marcacao,
                                       #   mensagem-campo, aviso (E2; contrato §5)
 src/test/conformance/produtos-acesso.test.ts
+src/test/conformance/produtos-paginas-guard.test.ts  # toda page.tsx de produtos chama requireAdminPage
 src/test/conformance/categorias-acesso.test.ts  # allowlist + normalizarNome
 src/test/db/categorias-fixtures.ts    # sem fixture de produtos
 src/test/db/produtos-fixtures.ts      # fixtures reais de produtos
@@ -119,32 +121,34 @@ vitest.probe.config.mts               # + teste da FK no Neon dev (D9)
 Cada sub-fase fecha com testes passando (output real) e **um commit próprio**. Testes
 antes da implementação (Red → Green). Execução (E1): toda implementação em **sonnet**
 (sessão principal, `test-writer` para testes, `ui-dev` para telas); o **tech-lead
-(opus) só revisa** o diff de tudo que toca `src/lib/db/` antes do commit da sub-fase.
+(opus) só revisa** o diff de tudo que toca `src/lib/db/` antes do commit da sub-fase, e
+também o diff da SF3 (que edita o §1 do contrato da 002).
 
 | SF | Escopo | Testes que fecham | Commit | Dono |
 |---|---|---|---|---|
-| **SF1** | **Primeira task**: troca do SQL cru de `contarProdutosDaCategoria` pela referência ao schema e remoção de `criarFixtureProdutos`/`descartarFixtureProdutos` de `src/test/db/` — o que exige, no mesmo passo, declarar `produtos` (FK `onDelete: "restrict"`, vaga com índice único parcial) e `produto_fotos` no `schema.ts` e gerar a migration `0001`. `resetCategorias` limpa `produtos` antes. Teste da fixture da 002 passa a usar a tabela real. | int: FK ⇒ `23001`; `remover` ⇒ `tem_produtos` com N; US7-AC2/AC3; checks, `UNIQUE(chave)`, vaga 1–8 única, esgotado × vaga, identity recusa `UPDATE`, fotos 1–3 únicas; `drizzle-kit generate` = "No schema changes"; testes da 002 verdes | `feat(db): cria tabela produtos com FK restrict para categorias` | sonnet (sessão principal; testes: `test-writer`) · revisão tech-lead |
-| **SF2** | Teste da FK `23001` no Neon dev via CI (D9: batch revertido); include literal no `vitest.probe.config.mts` | probe local verde; no PR, log do CI com o teste passando e Neon dev sem resíduo | `test(db): prova a FK restrict de produtos no Neon dev` | sonnet (`test-writer`) · revisão tech-lead |
-| **SF3** | Domínio: `normalizarNome` exportado pelo barrel (D5) + allowlist da conformidade + §1 do contrato da 002; `validacao.ts` (nome, descrição, categoria obrigatória, "a partir de", `idProduto`/`versaoProduto`), `preco.ts` (D8 + formato R$), `codigo.ts` (`#0042`, busca por código), `mensagens.ts`, `erros.ts` | unitários de cada regra (FR-003/006/009/010, D10, edge cases); `categorias-acesso` e testes da 002 verdes | `feat(produtos): valida campos, preço e código de referência` | sonnet (`test-writer` → sessão principal) |
+| **SF1** | **Primeira task de implementação** (precedida só pelo teste de schema, vermelho por não haver tabela): troca do SQL cru de `contarProdutosDaCategoria` pela referência ao schema e remoção de `criarFixtureProdutos`/`descartarFixtureProdutos` de `src/test/db/` — o que exige, no mesmo passo, declarar `produtos` (FK `onDelete: "restrict"`, vaga com índice único parcial) e `produto_fotos` no `schema.ts` e gerar a migration `0001`. `resetCategorias` limpa `produtos` antes. Teste da fixture da 002 passa a usar a tabela real. | int: FK ⇒ `23001`; `remover` ⇒ `tem_produtos` com N; US7-AC2/AC3; checks, `UNIQUE(chave)`, vaga 1–8 única, esgotado × vaga, identity recusa `UPDATE`, fotos 1–3 únicas; `drizzle-kit generate` = "No schema changes"; testes da 002 verdes | `feat(db): cria tabela produtos com FK restrict para categorias` | sonnet (sessão principal; testes: `test-writer`) · revisão tech-lead |
+| **SF2** | Teste da FK `23001` no Neon dev via CI (D9: batch revertido), em `src/lib/db/fk-produtos.int.test.ts` com marcador no nome; include literal no `vitest.probe.config.mts` | probe local verde; no PR, log do CI com o teste passando, incluindo a verificação de 0 linhas pelo marcador feita pelo próprio teste | `test(db): prova a FK restrict de produtos no Neon dev` | sonnet (`test-writer`) · revisão tech-lead |
+| **SF3** | Domínio: `normalizarNome` exportado pelo barrel (D5) + allowlist da conformidade + §1 do contrato da 002; `validacao.ts` (nome, descrição, categoria obrigatória, "a partir de", `idProduto`/`versaoProduto`), `preco.ts` (D8 + formato R$), `codigo.ts` (`#0042`, busca por código), `mensagens.ts`, `erros.ts` | unitários de cada regra (FR-003/006/009/010, D10, edge cases); `categorias-acesso` e testes da 002 verdes | `feat(produtos): valida campos, preço e código de referência` | sonnet (`test-writer` → sessão principal, que também edita o §1 do contrato da 002) · revisão tech-lead (diff da SF3, inclusive o contrato da 002) |
 | **SF4** | SQL de escrita: `inserir`, `editar`, `remover` (otimista, `nome_repetido` com código, `categoria_ausente`) | int: US1-AC1/4/7/8, US4-AC1–5, US6-AC3–6, concorrência de nome e de código | `feat(db): grava, edita e remove produtos com concorrência otimista` | sonnet (`test-writer` → sessão principal) · revisão tech-lead |
 | **SF5** | SQL de status e destaque: `esgotar` (vaga = NULL, `saiuDoDestaque`), `disponibilizar`, `destacar` (menor vaga livre, `vaga_disputada` em `23505`, sem retry), `tirarDoDestaque` | int: US2-AC1–3/5/6, US5-AC1–6 (7 destaques + 2 simultâneos ⇒ 1 aceito, 1 `vaga_disputada`, total 8) | `feat(db): troca status e destaque de produtos com teto de 8` | sonnet (`test-writer` → sessão principal) · revisão tech-lead |
 | **SF6** | Leitura: `obterPorId`, `listar` (filtros, busca, `ORDER BY id DESC`, keyset `antes`) em `db/produtos.ts`; `painel.ts` com schema Zod único `filtroLista` para URL e `voltar` | int: US3-AC1–6 (página sem repetir/pular com cadastro e remoção no meio); unitários do `filtroLista` (inválido ignorado, `voltar` sem redirecionamento aberto); medição com 500 produtos local | `feat(produtos): lista, filtra e busca produtos no painel` | sonnet (`test-writer` → sessão principal) · revisão tech-lead |
 | **SF7** | Server Actions (`actions.ts`) + conformidade `produtos-acesso` | unitários das 7 actions (guard primeiro, Zod antes do SQL, tradução de cada resultado, US2-AC4, sessão expirada); conformidade nega imports fora das fronteiras | `feat(produtos): server actions do painel de produtos` | sonnet (`test-writer` → sessão principal) |
 | **SF8a** | Primitivos de formulário em `src/components/ui/` (E2, contrato §5) | componentes: rótulo ligado, erro com `aria-*`, valor preservado, alvos/texto mínimos | `feat(ui): primitivos de formulário` | sonnet (`test-writer` → `ui-dev`) |
-| **SF8b** | Telas: as 5 rotas, marcador "sem foto", "Ver mais"/"Voltar ao começo"/"Voltar à lista", entrada do painel apontando para produtos | componentes: preservação do digitado, mensagens junto do campo, link do código repetido, "Destacar" oculto para esgotado, aviso `vaga_disputada`, confirmação de remoção, vazio/nada encontrado, "Produto não encontrado"; `painel-guard` verde | `feat(painel): telas de produtos` | sonnet (`test-writer` → `ui-dev`) |
-| **SF9** | Fechamento: `preview` com o roteiro do quickstart, revisão das mensagens (SC-008), observação SC-001–003 no dev, README | output real do `check`, `test:int`, `preview`; registro da observação | `docs(readme): ...` + sync do `doc-sync-onboarding` em commit `docs(...)` próprio | sonnet (redator, doc-sync) |
+| **SF8b** | Telas: as 5 rotas, marcador "sem foto", "Ver mais"/"Voltar ao começo"/"Voltar à lista", entrada do painel apontando para produtos | componentes: preservação do digitado, mensagens junto do campo, link do código repetido, "Destacar" oculto para esgotado, aviso `vaga_disputada`, confirmação de remoção, vazio/nada encontrado, "Produto não encontrado"; `painel-guard` verde; conformidade `produtos-paginas-guard` (toda `page.tsx` de produtos chama `requireAdminPage`) | `feat(painel): telas de produtos` | sonnet (`test-writer` → `ui-dev`) |
+| **SF9** | Fechamento: `preview` com o roteiro do quickstart, revisão das mensagens (SC-008), observação SC-001–003 no dev, README | output real do `check`, `test:int`, `preview`; registro da observação | `fix(produtos): ...` (só se a revisão mudar mensagens) + `docs(readme): ...` + sync do `doc-sync-onboarding` em commit `docs(...)` próprio | sonnet (sessão principal: gate, preview, medição; redator; doc-sync) · humano (observação) |
 
 ### Cobertura dos critérios de aceite
 
 | História | Sub-fase(s) |
 |---|---|
 | US1 (cadastrar) | SF3 (AC2, AC3, AC5, AC6), SF4 (AC1, AC4, AC7, AC8), SF7, SF8b |
-| US2 (status) | SF5 (AC1–3, AC5, AC6), SF7 (AC4), SF8b |
+| US2 (status) | SF5 (AC1–3, AC5, AC6), SF7 (AC4, AC5), SF8b (AC1, AC5) |
 | US3 (lista) | SF6 (AC1–6), SF8b (AC6, AC7) |
-| US4 (editar) | SF4 (AC1–5), SF6/SF8b (AC6) |
+| US4 (editar) | SF3 (AC2, modo `edicao`), SF4 (AC1–5), SF6 (AC6, autoria no `DetalheProduto`), SF8b (AC6, exibição) |
 | US5 (destaque) | SF5 (AC1–6), SF8b (AC5 oculto) |
-| US6 (remover) | SF4 (AC3–6), SF8b (AC1–3) |
-| US7 (categoria com produtos) | SF1 (AC1–3), SF2 (Neon dev) |
+| US6 (remover) | SF4 (AC3–6), SF8b (AC1–3, AC6) |
+| US7 (categoria com produtos) | SF1 (AC1–3), SF2 (Neon dev), SF4 (AC3 com `inserir`/`editar` reais) |
+| SC-004 (rastreabilidade) | SF9 (tabela critério → teste na T058) |
 | SC-005 (concorrência, 0 ocorrências) | SF1, SF4, SF5 |
 | SC-007 (desempenho) | SF6, SF9 |
 | SC-001–003, SC-008 | SF9 |

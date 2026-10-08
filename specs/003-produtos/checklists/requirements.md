@@ -31,9 +31,9 @@
 
 ## Notes
 
-- 2 marcadores [NEEDS CLARIFICATION] mantidos de propósito para o `/speckit-clarify`
-  (decisões de produto): limites de tamanho de nome/descrição (FR-003) e regra de
-  destaque — limite máximo e produto esgotado em destaque (US5, cenário 3; FR-018).
+- Os 2 marcadores [NEEDS CLARIFICATION] (limites de nome/descrição, FR-003; regra de
+  destaque, US5/FR-018) foram resolvidos no `/speckit-clarify` de 2026-10-07 (seção
+  Clarifications da spec); nenhum marcador resta.
 - FR-030/FR-031 e a seção Dependencies citam o contrato §5 da 002 sem detalhar a
   técnica; o detalhe (FK, código de erro, fixtures) fica para o plan.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

@@ -6,7 +6,7 @@ type CampoTextoProps = {
 	name: string;
 	rotulo: string;
 	defaultValue: string;
-	erro?: string;
+	erro?: React.ReactNode;
 	inputMode?: React.ComponentProps<"input">["inputMode"];
 	maxLength?: number;
 };

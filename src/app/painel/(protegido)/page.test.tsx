@@ -52,6 +52,13 @@ describe("/painel (US1-1, US3-1)", () => {
     expect(document.body.textContent).toBe("");
   });
 
+  it("aponta para as telas de produtos e de categorias", async () => {
+    requireMock.mockResolvedValue({ email: "ana@x.com", name: "Ana" });
+    render(await PainelPage());
+    expect(screen.getByRole("link", { name: "Produtos" })).toHaveAttribute("href", "/painel/produtos");
+    expect(screen.getByRole("link", { name: "Categorias" })).toHaveAttribute("href", "/painel/categorias");
+  });
+
   it("saúda pelo nome (US1-1)", async () => {
     requireMock.mockResolvedValue({ email: "ana@x.com", name: "Ana" });
     render(await PainelPage());

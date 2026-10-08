@@ -277,8 +277,11 @@ categoria pelo painel de categorias.
   mensagem mostra o código do produto já criado como link para o detalhe dele; na
   edição, troca de status ou destaque, o segundo envio é recusado pela
   concorrência otimista (FR-026). Em nenhum caso surge produto duplicado.
-- Sessão expirada no meio do cadastro: a ação é recusada e a administradora é
-  levada a entrar de novo, sem salvar dado parcial.
+- Sessão expirada no meio do cadastro (ou em qualquer ação do painel): a ação é
+  recusada, nada é salvo, aparece a mensagem geral de falha e a administradora
+  continua na tela (o que ela digitou é preservado); não há redirecionamento
+  automático ao login. Ao recarregar a página, o guard da página a manda entrar
+  de novo.
 - Endereço de detalhe de produto inexistente ou removido: tela simples "Produto
   não encontrado" com caminho de volta à lista.
 - Texto da descrição com quebras de linha: preservadas na exibição; nenhum texto

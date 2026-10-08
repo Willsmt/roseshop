@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-07
 
-**Status**: Draft
+**Status**: Approved
 
 **Input**: User description: "Feature 003 — produtos (CRUD de produtos no painel das admins). As três admins (mesmo poder) cadastram, editam, marcam disponível/esgotado e removem os produtos de revenda, que depois alimentam o catálogo público e a sacola do WhatsApp. A mãe usa pelo celular e tem baixa familiaridade com tecnologia: o fluxo precisa ser curto e tolerante a erro."
 

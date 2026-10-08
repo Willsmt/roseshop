@@ -1,10 +1,7 @@
 // Infra de teste de integração da feature 002 (categorias). Não é teste nem produção.
 //
-// Recuperação: se uma execução for interrompida antes do `afterAll` (Ctrl+C, timeout),
-// a tabela `produtos` criada por `criarFixtureProdutos` sobra no banco local e quebra
-// tanto a próxima `criarFixtureProdutos` (tabela já existe) quanto o `TRUNCATE` de
-// `resetCategorias` (FK). Recuperar com `npm run db:reset` (DESTRUTIVO, só local)
-// seguido de `npm run db:migrate`.
+// Recuperação: se uma execução de integração for interrompida e deixar dados sobrando,
+// `npm run db:reset` (DESTRUTIVO, só local) seguido de `npm run db:migrate` recria o banco.
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -68,36 +65,14 @@ function statementsDoBloco(bloco: string): string[] {
     .filter((s) => s.split("\n").some((l) => l.trim() && !l.trim().startsWith("--")));
 }
 
-/** TRUNCATE + seed da migration. Nunca descarta tabelas (a fixture sai antes, no afterAll). */
+/**
+ * Refaz `categorias` com o seed da migration. O TRUNCATE lista as tabelas que a referenciam
+ * (o Postgres recusa truncar tabela alvo de FK fora do mesmo comando, mesmo vazia).
+ */
 export async function resetCategorias(db: Db): Promise<void> {
   const statements = statementsDoBloco(lerBlocoSeedCategorias());
-  await db.execute(sql.raw("TRUNCATE categorias RESTART IDENTITY"));
+  await db.execute(sql.raw("TRUNCATE produto_fotos, produtos, categorias RESTART IDENTITY"));
   for (const s of statements) {
     await db.execute(sql.raw(s));
   }
-}
-
-// Estado do módulo: só descarta `produtos` quem a criou nesta execução.
-let produtosCriadaPeloHelper = false;
-
-/**
- * Tabela COMUM (não TEMP: FK de temp para permanente é recusada e, no neon-http, cada
- * statement é uma sessão nova). Sem IF NOT EXISTS: se existir uma `produtos` real
- * (feature 003), falha de propósito e sinaliza que a fixture deve sair (contrato §5).
- */
-export async function criarFixtureProdutos(db: Db): Promise<void> {
-  await db.execute(
-    sql.raw(
-      "CREATE TABLE produtos (id integer generated always as identity primary key, " +
-        "categoria_id integer NOT NULL REFERENCES categorias(id) ON DELETE RESTRICT)",
-    ),
-  );
-  produtosCriadaPeloHelper = true;
-}
-
-/** DROP da `produtos` somente se foi este helper que a criou. */
-export async function descartarFixtureProdutos(db: Db): Promise<void> {
-  if (!produtosCriadaPeloHelper) return;
-  await db.execute(sql.raw("DROP TABLE produtos"));
-  produtosCriadaPeloHelper = false;
 }

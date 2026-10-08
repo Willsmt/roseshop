@@ -123,23 +123,15 @@ O texto do banco nunca chega ao usuário.
   `falha_geral`).
 - Cadastro/edição valida o valor com `exigirCategoriaValida(id)`; IA sugere apenas
   entre `listarCategorias()` e o resultado passa pela mesma validação.
-- `contarProdutosDaCategoria(db, categoriaId)` (H3-A) já conta de verdade na 002, com um
-  único `SELECT count(*)::int FROM produtos WHERE categoria_id = $1` em SQL cru. Só é
-  chamada após `23001`, que já implica a existência de `produtos`; por isso não verifica a
-  existência da tabela. Contagem ≤ 0 ou erro na contagem ⇒ `falha_geral`. Na 002 o mecanismo (FK + contagem + mensagem) é provado por
-  uma tabela `produtos` **comum** criada e descartada pelo próprio teste de integração
-  (`criarFixtureProdutos`/`descartarFixtureProdutos` em `src/test/db/categorias-fixtures.ts`).
-- **Checklist da primeira task da 003**:
-  1. Criar `produtos` pelo schema Drizzle com a FK acima.
-  2. Trocar o SQL cru de `contarProdutosDaCategoria` pela referência ao schema Drizzle de
-     `produtos` (mesmo comportamento: um único `count(*)`).
-  3. Remover `criarFixtureProdutos`/`descartarFixtureProdutos` do helper (a criação da
-     fixture falharia com a tabela real, de propósito) e passar o teste de bloqueio por
-     produtos a usar a tabela real.
-  4. **Obrigatório**: teste de integração da FK `produtos.categoria_id → categorias.id ON
-     DELETE RESTRICT` gerando `23001` no Neon dev via CI. Na 002 o probe do Neon dev prova
-     só a forma do erro no `db.batch` com `23001` via `RAISE`, sem tabela; o Fato 2 do
-     ADR-008 (FK `RESTRICT` ⇒ `23001`) foi provado apenas no proxy local, porque exige
-     `produtos`. O passo no CI segue sem `TRUNCATE`/escrita fora do que a 003 definir, na
-     linha do `vitest.probe.config.mts`.
+- `contarProdutosDaCategoria(db, categoriaId)` (H3-A) conta pelo schema Drizzle de
+  `produtos` (`count()` com `where categoriaId`), um único `SELECT`. Só é chamada após
+  `23001`, que já implica a existência de `produtos`. Contagem ≤ 0 ou erro na contagem ⇒
+  `falha_geral`. Desde a feature 003 o teste de bloqueio por produtos usa a tabela real; a
+  fixture de `produtos` criada pelo teste (`criarFixtureProdutos`/`descartarFixtureProdutos`)
+  deixou de existir.
+- **Checklist da primeira task da 003** (concluído na 003): `produtos` criada pelo schema
+  Drizzle com a FK acima; `contarProdutosDaCategoria` passou a usar o schema; a fixture saiu
+  do helper; o teste de integração da FK `ON DELETE RESTRICT` (`23001`)
+  (`src/lib/db/fk-produtos.int.test.ts`) roda no Neon dev pelo CI do PR, na linha do
+  `vitest.probe.config.mts`, sem `TRUNCATE` (cada linha leva o marcador único da execução).
 - Nenhuma categoria criada, renomeada ou removida fora das actions da 002.

@@ -44,6 +44,7 @@ const EXPORTS_PERMITIDOS: readonly string[] = [
   "obterCategoria",
   "exigirCategoriaValida",
   "CategoriaInvalidaError",
+  "normalizarNome",
 ];
 const PREFIXOS_PROIBIDOS = ["criar", "renomear", "remover", "inserir"];
 const MODULOS_PROIBIDOS_NO_BARREL = [
@@ -533,6 +534,7 @@ describe("autoteste do detector de imports (a violação seria pega)", () => {
 describe("autoteste do detector do barrel (nega por padrão)", () => {
   const OK = `export { listarCategorias, obterCategoria, exigirCategoriaValida } from "./leitura";
 export { CategoriaInvalidaError } from "./erros";
+export { normalizarNome } from "./nome";
 export type { Categoria } from "./leitura";
 `;
   const barrel = (fonte: string) => analisarBarrel({ [BARREL]: fonte });
@@ -548,6 +550,7 @@ export type { Categoria } from "./leitura";
 export const obterCategoria = async () => null;
 export function exigirCategoriaValida() {}
 export class CategoriaInvalidaError extends Error {}
+export function normalizarNome() {}
 `),
     ).toEqual([]);
   });

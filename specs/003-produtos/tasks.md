@@ -169,8 +169,8 @@ codigo,erros,mensagens}.ts` + `*.test.ts`.
 - [ ] T012 [P] [US1] Testes unitários `src/lib/produtos/preco.test.ts` (D8): aceitos "12",
   "12,90", "12.90", "12,9", "R$ 12,90", "R$12,90", " 12,90 ", "1.290,00", "1.290,5" (⇒
   centavos inteiros exatos, sem float: "12,9" ⇒ 1290, "1.290,5" ⇒ 129050); recusados como
-  ambíguos "1.290" e "1,290" (`preco_ambiguo`); recusados como inválidos (`preco_invalido`)
-  "0", "0,00", negativo, texto, "12,345", "1.2.3", "1,290.00", "12,90,1", sinais, e acima
+  ambíguos "1.290", "1,290", "12,345" e espaço entre dígitos "12 90" (`preco_ambiguo`); recusados como inválidos (`preco_invalido`)
+  "0", "0,00", negativo, texto, "12,3456", "1.2.3", "1,290.00", "12,90,1", sinais, e acima
   de 99.999,99 ("100.000,00"); limite exato "99.999,99" aceito; formatação `R$ 12,90` e
   "a partir de R$ 12,90" — **test-writer**
 - [ ] T013 [P] [US1] Testes unitários `src/lib/produtos/codigo.test.ts`: `#0042` a partir
@@ -529,7 +529,10 @@ lado, `src/test/conformance/produtos-paginas-guard.test.ts`. Contrato da 001
   `defaultChecked` = `valores` na falha e só a mensagem da falha devolvida; `router.push`
   para o detalhe no sucesso; usando os primitivos da SF8a), `novo/page.tsx` e
   `[id]/editar/page.tsx`, cada `page.tsx` chamando `requireAdminPage(<rota>)` antes de
-  ler (C§5) — **ui-dev**
+  ler (C§5). **Campo de preço**: máscara que preenche da direita (padrão de app de banco:
+  teclado numérico, só dígitos; "1290" aparece como "12,90"; apagar tudo = sem preço); envia
+  "12,90" ao servidor, que segue validando com `parsePreco`; na edição abre preenchido com o
+  preço atual formatado (C§5) — **ui-dev**
 - [ ] T053 [US3] Implementar `page.tsx` da lista (Server Component; `requireAdminPage(
   "/painel/produtos")` antes de ler; filtros de categoria e situação, busca,
   `listarProdutosDoPainel(searchParams)`, "Ver mais produtos", "Voltar ao começo", estados

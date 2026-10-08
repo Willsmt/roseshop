@@ -156,6 +156,11 @@ Recusa: um único separador seguido de exatamente 3 dígitos ("1.290", "1,290") 
 zero ou acima de 99.999,99 (`preco_invalido`). Conversão para centavos sem float
 (aritmética sobre as partes inteiras da string).
 
+**Emendas (SF3, 2026-10-08)**:
+- espaço entre dígitos ("12 90") também é `preco_ambiguo` (sem a emenda viraria R$ 1.290,00);
+  espaços nas pontas e depois de "R$" continuam ignorados;
+- "R$" só vale como prefixo; em qualquer outra posição ("12R$90", "12,90R$") ⇒ `preco_invalido`.
+
 ### D9 — Teste da FK no Neon dev: **A, batch revertido**
 
 Um `db.batch` insere categoria e produto com marcador único e tenta apagar a categoria;
@@ -172,7 +177,9 @@ ao ADR-008.
 ### D10 — Regras menores (confirmadas em bloco)
 
 1. Nome do produto: normalização da 002, 3–80 code points, pelo menos uma letra ou
-   dígito, sem caracteres de controle; demais caracteres livres.
+   dígito, sem caracteres de controle (categoria Unicode `Cc`) nem de formatação invisível
+   (`Cf`, ex.: U+200B, U+202E), ambos ⇒ `nome_invalido` (emenda SF3, 2026-10-08);
+   demais caracteres livres.
 2. Descrição: `\r\n` → `\n`, trim nas pontas, vazio ⇒ `NULL`, até 1000 code points;
    exibida como texto puro com `white-space: pre-line`.
 3. Apagar o preço desmarca "a partir de" no servidor.

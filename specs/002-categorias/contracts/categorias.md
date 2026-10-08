@@ -12,6 +12,7 @@ futuro); (2) leitura do painel; (3) Server Actions do painel; (4) camadas intern
 | `obterCategoria(id)` | `{ id; nome } \| null` | `null` se não existe |
 | `exigirCategoriaValida(id)` | `number` (o id) ou lança `CategoriaInvalidaError` | Rejeita id fora da lista; nunca cria (FR-014, SC-006) |
 | `CategoriaInvalidaError` | classe (re-export de `erros.ts`) | Para consumidores tratarem a rejeição |
+| `normalizarNome(nome)` | `string` | NFC + trim + colapso de espaços; função pura, re-export de `nome.ts` (adicionado pela 003, D5) |
 
 Regras: consumidores guardam **somente `id`**; o barrel não expõe `versao`, não exporta
 criar/renomear/remover, nem o schema, nem o módulo do painel. Conformidade verifica (FR-015):

@@ -171,6 +171,10 @@ falhas: Falha[] }`.
 `campo` dela, e o formulário mostra só essa mensagem. Depois de passar na validação, a
 ordem segue a fixa acima: `exigirCategoriaValida`, então banco.
 
+Em `edicao`, o `ok` traz também `id` e `versao` já validados (D5) no topo do retorno:
+`{ ok: true; campos: CamposProduto; id: number; versao: number }`. Em `cadastro` não há
+`id`/`versao`. A action converte o checkbox do `FormData` (`"on"`) em booleano antes de validar.
+
 A única diferença entre os modos é o "a partir de" sem preço:
 
 - `cadastro`: caixa marcada e preço vazio ⇒ falha `a_partir_de_sem_preco` (US1-AC6).
@@ -255,6 +259,11 @@ chamar `requireAdminPage`.
 - **Sessão expirada**: a action lança `UnauthorizedError` (não é `Falha`); a tela segue o
   mesmo tratamento das telas de categorias da 002 (volta ao login, nada salvo), verificado
   no `preview` (quickstart §3, passo 10).
+- **Campo de preço (SF8b, registrado na SF3, ainda não implementado)**: máscara que preenche
+  da direita, como em app de banco: teclado numérico, só dígitos ("1290" aparece como
+  "12,90"); apagar tudo deixa sem preço. O valor enviado ao servidor sai no formato "12,90" e
+  continua passando por `parsePreco` (defesa no servidor). Na edição, o campo abre preenchido
+  com o preço atual formatado.
 - **Descrição**: exibida como texto puro com `white-space: pre-line` (quebras preservadas,
   nada interpretado como formatação, D10.2).
 

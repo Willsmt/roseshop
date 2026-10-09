@@ -161,5 +161,6 @@ pode qualificar com a tabela) e mantém o `id::text` (é ele que faz o `||` reso
 gerada). A coluna precisa ser `STORED` (coluna virtual, padrão no PG 18, não aceita `UNIQUE`).
 Na regex do `CHECK`, `\\.` no template. Conferir no SQL: a expressão da
 `chave` gerada, o `CHECK` da regex do `chave_objeto` e os nomes das constraints. Conferir "No
-schema changes" numa segunda geração. Sem seed. Ordem de aplicação nos ambientes no
-quickstart §2 (depois da limpeza dos produtos sem foto).
+schema changes" numa segunda geração. Sem seed. A migration não depende da limpeza dos
+produtos sem foto (quickstart §2): ela só falha se `produto_fotos` tiver linhas, e a tabela está
+vazia em todos os ambientes. A limpeza tem outra condição (antes do deploy da SF6 no dev).

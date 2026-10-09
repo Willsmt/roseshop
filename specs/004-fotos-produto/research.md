@@ -56,7 +56,7 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 ### D3 — Verificação: **parser próprio, lista de permitidos, arquivo inteiro**
 - Em `src/lib/r2/verificacao/` (zona protegida; revisão do tech-lead). Sem dependência.
 - Lê o **arquivo inteiro**: recusa bloco proibido em qualquer posição (inclusive depois do SOS),
-  **qualquer byte depois do EOI / IEND / fim declarado do RIFF**, segmento ou chunk truncado,
+  **qualquer byte depois do EOI / fim declarado do RIFF**, segmento ou chunk truncado,
   comprimento inconsistente e assinatura desconhecida.
 - Lista exata por formato e motivos: [contracts/fotos.md §4](./contracts/fotos.md#4-verificação-do-arquivo--srclibr2verificacao).
 - Só **JPEG e WebP** passam; PNG é recusado pela assinatura (decisão B da revisão; FR-012).
@@ -78,7 +78,8 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 - Na carga da tela, `toBlob` de um canvas 1×1 com `image/webp`; o resultado (WebP sim/não) vale
   para a sessão. Em cada foto, o `blob.type` é conferido de novo; se não for o pedido, recodifica
   em JPEG; PNG nunca é enviado (falha ⇒ "Não enviada").
-- **Modo registro**: `FOTOS_VERIFICACAO=registro` existe **só em `env.dev.vars`**. Nele, a recusa
+- **Modo registro**: `FOTOS_VERIFICACAO=registro` existe **só nas `vars` do `env.dev` no
+  `wrangler.jsonc`**, e só durante a SF10. Nele, a recusa
   por **bloco fora da lista** (`metadado`) é registrada em log (nome dos blocos, formato, tamanho;
   nunca bytes) e o envio é aceito. Formato, tamanho, dimensões, animação e truncamento continuam
   recusando. Qualquer valor diferente de exatamente `registro`, ou ausência, ⇒ recusa ligada.
@@ -206,7 +207,8 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 - A sessão principal (sonnet) implementa todas as sub-fases, com `test-writer` para testes e
   `ui-dev` para telas; o tech-lead (opus) **só revisa o diff** de tudo que toca zona protegida
   (`src/lib/db/`, `src/lib/r2/`, `src/lib/ai/`, `wrangler.jsonc`, `.dev.vars.example`,
-  `cloudflare/worker.ts`) antes do commit da sub-fase. Substitui a correção proposta em TL-5.
+  `cloudflare/`, `tsconfig.json`) antes do commit da sub-fase. Substitui a correção proposta
+  em TL-5.
 
 ## 3. Riscos e provas (SF0 e SF10)
 

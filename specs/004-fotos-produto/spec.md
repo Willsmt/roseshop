@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Approved
 
 **Input**: User description: "Feature 004 — fotos de produto (upload no R2) com sugestão por IA. As admins cadastram um produto começando pelas fotos: sobem até 3 fotos, a IA lê as fotos e sugere nome, categoria (dentro da lista fixa da 002) e descrição; a admin revisa, ajusta e salva. Pensado para uso pelo celular pela mãe, com baixa familiaridade com tecnologia." (descrição completa, com decisões de produto, restrições de segurança e armazenamento, fora do escopo e itens técnicos para o plan, registrada na conversa de abertura desta spec)
 
@@ -139,7 +139,7 @@ privacidade da família. Faz parte do mínimo do P1.
 **Independent Test**: com uma autorização de envio válida, colocar na área
 temporária, por teste automatizado e sem passar pelo tratamento do aparelho,
 arquivos forjados (foto com localização gravada, não-imagem com extensão de imagem,
-SVG, GIF, HEIC, imagem animada, foto pequena e arquivo acima do teto) e confirmar o
+SVG, GIF, HEIC, PNG, imagem animada, foto pequena e arquivo acima do teto) e confirmar o
 envio; conferir que todos são apagados e recusados, e que uma foto válida gerada
 pelo tratamento do aparelho é aceita.
 
@@ -156,9 +156,9 @@ pelo tratamento do aparelho é aceita.
    o envio é recusado no aparelho com a mensagem "Esse tipo de arquivo não é
    aceito. Use uma foto tirada pelo celular ou salva na galeria." e nada é
    enviado.
-4. **Given** um arquivo na área temporária cujo conteúdo não é JPEG, PNG ou WebP,
+4. **Given** um arquivo na área temporária cujo conteúdo não é JPEG nem WebP,
    mesmo com nome ou tipo declarado de imagem (ex.: um PDF renomeado para `.jpg`,
-   ou um HEIC), **When** o envio é confirmado, **Then** o servidor o recusa pelo
+   um HEIC ou um PNG), **When** o envio é confirmado, **Then** o servidor o recusa pelo
    conteúdo, com a mesma mensagem do cenário 3, e o apaga.
 5. **Given** um envio acima do teto de tamanho, **When** é feito, **Then** é
    recusado pela própria autorização de envio ou, se chegar à área temporária, é
@@ -174,7 +174,7 @@ pelo tratamento do aparelho é aceita.
 8. **Given** uma falha de conexão durante o envio, **When** o envio não termina,
    **Then** a miniatura mostra "Não enviada" com o botão "Tentar de novo", sem
    perder as fotos já enviadas.
-9. **Given** um arquivo na área temporária que é JPEG, PNG ou WebP mas contém
+9. **Given** um arquivo na área temporária que é JPEG ou WebP mas contém
    metadados (EXIF, GPS ou equivalentes) ou é animado, **When** o envio é
    confirmado, **Then** o servidor o apaga e recusa, ele não pode ser adotado
    por nenhum produto nem enviado à IA, e a miniatura mostra "Não enviada" com o
@@ -425,7 +425,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
   "adota" essas fotos, na ordem mostrada, numa única ação: ou o produto é criado
   com todas as fotos, ou nada é criado.
 - **FR-009**: Uma foto temporária MUST poder ser adotada no máximo uma vez, só pela
-  administradora que a enviou, e só enquanto não tiver expirado (FR-031).
+  administradora que a enviou, e só enquanto não tiver expirado (24 horas, FR-037).
 - **FR-010**: Um cadastro recusado (nome repetido, validação, conflito) MUST manter
   as fotos temporárias já enviadas na tela, para nova tentativa sem reenvio.
 
@@ -450,7 +450,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 - **FR-014**: A autorização de envio MUST limitar o tamanho máximo do arquivo, e a
   confirmação MUST conferir de novo o tamanho do arquivo guardado; acima do teto,
   o envio é recusado (ou apagado, se já estiver na área temporária) com a mensagem
-  do cenário 5 da US2. O valor do teto é definido no plan, compatível com uma foto
+  do cenário 5 da US2. O teto é de 1 MB (1.048.576 bytes), compatível com uma foto
   já reduzida pelo aparelho (FR-013) e com o SC-005.
 - **FR-015**: O envio MUST ir direto do navegador ao armazenamento de fotos, por
   autorização de envio (URL pré-assinada) de curta duração, emitida só para
@@ -469,7 +469,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
   do servidor na confirmação (FR-015); foto fora dessas dimensões é apagada e recusada
   (o que não for o mínimo de 400 pixels usa a mensagem dos cenários 9 e 10 da US2). A
   verificação MUST usar lista de blocos permitidos: só passam os blocos
-  estruturais do formato (dados da imagem, cabeçalho, JFIF, sRGB/gama) e o perfil
+  estruturais do formato (dados da imagem, cabeçalho, JFIF) e o perfil
   de cor ICC; qualquer outro bloco (EXIF, GPS, XMP, IPTC, comentários, texto ou
   bloco desconhecido) faz o arquivo ser apagado e recusado. O original MUST NOT
   ser guardado.
@@ -613,7 +613,7 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
   arquivos fora dos formatos aceitos (WebP ou JPEG estáticos) permanecem
   guardados depois da confirmação do envio, verificado por teste automatizado que
   coloca na área temporária arquivos forjados, sem o tratamento do aparelho (com
-  GPS, SVG, GIF, HEIC, animado, PDF renomeado), e confere que todos são apagados e
+  GPS, SVG, GIF, HEIC, PNG, animado, PDF renomeado), e confere que todos são apagados e
   recusados.
 - **SC-007**: Em teste automatizado de ações simultâneas, 0 produtos ficam com 0
   fotos, mais de 3 fotos, posições repetidas ou com buraco, ou em destaque sem
@@ -650,11 +650,11 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 ## Itens técnicos para o plan (registrados, não decididos aqui)
 
 - Limite de tamanho na URL pré-assinada do R2 (como amarrar o tamanho máximo à
-  autorização de envio), duração da autorização e valor do teto do FR-014.
+  autorização de envio) e duração da autorização (o teto está no FR-014).
 - Geração de WebP pelo canvas no Safari (iPhone) e o fallback para JPEG quando o
   navegador não gerar WebP; qualidade de compressão para cumprir o SC-005.
 - Como verificar, sem processar a imagem, a ausência de metadados (leitura da
-  estrutura do arquivo: blocos do JPEG, chunks do PNG e do WebP; lista exata de
+  estrutura do arquivo: segmentos do JPEG e chunks do WebP; lista exata de
   blocos permitidos por formato, conforme FR-016), a imagem
   estática e as dimensões (pelo cabeçalho), dentro do limite de CPU do Worker.
 - Suporte a HEIC/HEIF no navegador (abertura para o recorte fora do Safari).
@@ -675,6 +675,10 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
 
 - Produção está vazia: não há produtos sem foto a migrar (dev online e local: ver
   Clarifications).
+- No dev online, só durante a prova com aparelhos reais (SF10 do plan), a recusa por
+  metadado (FR-016) fica em modo registro: o envio é aceito e os nomes dos blocos vão para o
+  log; formato, tamanho, dimensões e animação continuam recusados. Local e produção sempre
+  recusam. Fora dessa janela, FR-015, FR-016 e FR-033 valem sem exceção também no dev.
 - A sugestão da IA é pedida uma vez por cadastro, automaticamente ao tocar em
   "Continuar"; novos pedidos só pelo botão "Tentar sugestão de novo" depois de
   falha. Trocar as fotos depois de pedir a sugestão não pede outra sugestão

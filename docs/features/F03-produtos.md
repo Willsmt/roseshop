@@ -7,8 +7,11 @@
 > a matriz critério → teste (`rastreabilidade.md`) na mesma pasta. Decisões de
 > integridade em
 > [`specs/adr/008-integridade-de-dados-neon-http.md`](../../specs/adr/008-integridade-de-dados-neon-http.md).
-> **Fotos ainda não existem** (feature 004): as telas mostram o quadro "sem foto"
-> e a tabela `produto_fotos` é só modelo.
+> **Fotos**: a feature 004 (em andamento, ver [F04](./F04-fotos.md)) mudou o
+> servidor: `criarProduto` exige 1 a 3 fotos e `removerProduto` apaga os objetos no
+> R2. A tela de cadastro **ainda não envia fotos** (SF9), então criar produto pela
+> tela devolve "Coloque pelo menos 1 foto do produto."; o texto abaixo sobre
+> cadastro descreve a 003 original.
 
 ## Visão leiga
 
@@ -56,10 +59,11 @@ Telas em `src/app/painel/(protegido)/produtos/`; cada `page.tsx` chama
 
 | Server Action (`src/lib/produtos/actions.ts`) | Entrada (FormData) | Resultado |
 |---|---|---|
-| `criarProduto` | `nome`, `categoriaId`, `descricao`, `preco`, `aPartirDe` | `{ ok: true, id }` ou falha |
+| `criarProduto` | `nome`, `categoriaId`, `descricao`, `preco`, `aPartirDe`, `fotos` (repetido, 1..3 ids de envio; feature 004) | `{ ok: true, id }` ou falha (`sem_foto`, `foto_expirada` com `envioIds`) |
 | `editarProduto` | idem + `id`, `versao` | `{ ok: true, id, versao }` (versão nova) ou falha |
 | `marcarEsgotado` | `id`, `versao` | `{ ok: true, saiuDoDestaque }` ou falha |
-| `marcarDisponivel`, `destacarProduto`, `tirarProdutoDoDestaque`, `removerProduto` | `id`, `versao` | `{ ok: true }` ou falha |
+| `marcarDisponivel`, `destacarProduto`, `tirarProdutoDoDestaque` | `id`, `versao` | `{ ok: true }` ou falha |
+| `removerProduto` | `id`, `versao` | `{ ok: true }` ou falha; depois do banco apaga os objetos das fotos no R2 em melhor esforço |
 
 Falha é `{ ok: false, motivo, mensagem, campo?, codigoExistente?, valores? }`;
 `valores` devolve o digitado para reidratar o formulário. Ordem fixa nas
@@ -87,7 +91,7 @@ graph TD
 |---|---|
 | `src/lib/db/schema.ts` | Tabelas `produtos` e `produto_fotos` (ver [database.md](../database.md#tabela-produtos)). |
 | `src/lib/db/migrations/0001_premium_boomerang.sql` | Cria as duas tabelas, FKs e índices. |
-| `src/lib/db/produtos.ts` | Camada SQL: `inserir`, `editar`, `remover`, `esgotar`, `disponibilizar`, `tirarDoDestaque`, `destacar`, `obterPorId`, `listar`. Um statement por operação; devolve resultados discriminados (`ok`, `nome_repetido`, `categoria_ausente`, `ausente`, `versao_diferente`, `limite`, `vaga_disputada`, `esgotado`, `ja_em_destaque`). Não conhece mensagens. |
+| `src/lib/db/produtos.ts` | Camada SQL: `inserirComFotos` (substituiu `inserir`, feature 004), `editar`, `remover`, `esgotar`, `disponibilizar`, `tirarDoDestaque`, `destacar`, `obterPorId`, `listar`. Um statement por operação; devolve resultados discriminados (`ok`, `nome_repetido`, `categoria_ausente`, `ausente`, `versao_diferente`, `limite`, `vaga_disputada`, `esgotado`, `ja_em_destaque`). Não conhece mensagens. |
 | `src/lib/produtos/actions.ts` | As Server Actions (`"use server"`). |
 | `src/lib/produtos/painel.ts` | Leitura do painel (`server-only`): valida a query da URL com Zod (valor ruim é ignorado, nunca erro), monta `ItemLista`/`DetalheProduto`, preço formatado, links de paginação e `voltar` seguro. |
 | `src/lib/produtos/validacao.ts` | Porta única de validação dos campos (`validarCamposProduto`, modos `cadastro`/`edicao`); reusa `normalizarNome` do barrel de categorias. |
@@ -178,8 +182,10 @@ explícitas por arquivo, só em testes). `produtos-paginas-guard.test.ts` exige
   limpa. Fica fora do `check` e do `test:int` (exclusão em
   `vitest.int.config.mts`); como usa `resetCategorias`, **recria as categorias**
   do banco local. A medição no `preview` (SC-007) é da SF9.
-- **Sem foto**: `DetalheProduto.fotos` é sempre `[]` e `produto_fotos` não é
-  gravada por nenhum código até a feature 004.
+- **Fotos (feature 004)**: `obterPorId` já devolve `fotosVersao` e `fotos`, e `listar`
+  a `capa` (posição 1), mas `DetalheProduto.fotos` em `painel.ts` segue vazio e as telas
+  mostram o quadro "sem foto" até a UI (SF9). `remover` devolve `{ tipo: "removido",
+  chaves }`. Ver [F04](./F04-fotos.md).
 - **`criadoPor`/`atualizadoPor` guardam o e-mail da sessão**, exibido no
   detalhe ("Cadastrado por …").
 - **Testes de integração de produtos** usam nomes únicos por processo

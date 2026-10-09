@@ -37,3 +37,8 @@ Sync da feature 002 (2026-10-04): `docs/database.md` segue o padrão (estado em 
 marcadas como "planejado"). Doc de feature usa tabela rota→arquivo e tabela arquivo→papel, e
 `graph TD` das camadas. `README.md` e `specs/` aparecem modificados no working tree por outros
 agentes: não tocar nem atribuir a esta sync.
+
+Sync da SF6 da 004 (2026-10-09): feature em andamento ganha doc próprio parcial
+(`docs/features/F04-fotos.md`, estado em blockquote com o que falta); a observação de UX
+"criar produto pela tela falha até a SF9" fica no F04, em `architecture.md` (dívidas) e em
+`operacao.md` (Troubleshooting). Docs de feature anteriores só linkam para o F04.

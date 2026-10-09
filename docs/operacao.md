@@ -7,7 +7,8 @@
 > exercitada pela rota `/api/health`, pelas categorias (feature 002: migration
 > `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
-> endpoint, credenciais e CORS configurados, mas nenhuma rota o usa ainda); IA não está
+> endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
+> `/painel/fotos/<arquivo>`, ainda sem UI de fotos); IA não está
 > configurada.
 
 ## Visão leiga
@@ -212,7 +213,9 @@ guard; ver [F01](./features/F01-autenticacao.md#teste-de-conformidade-nega-por-p
 actions de categorias e fronteira de imports; ver
 [F02](./features/F02-categorias.md#camadas-e-fronteira-de-acesso)),
 `produtos-acesso.test.ts` e `produtos-paginas-guard.test.ts` (o mesmo para
-produtos; ver [F03](./features/F03-produtos.md#fronteira-de-acesso-e-guards)) e
+produtos; ver [F03](./features/F03-produtos.md#fronteira-de-acesso-e-guards)),
+`fotos-acesso.test.ts` e `fotos-rota-guard.test.ts` (fronteiras de import das fotos e
+ordem da rota de exibição; ver [F04](./features/F04-fotos.md#fronteira-de-acesso-e-guards)) e
 `src/next-config.test.ts` (header `no-store` em `/painel`). Em
 `vitest.setup.ts`, `server-only` é trocado por um mock vazio. Configuração
 do tipo unitário (`vitest.config.mts`):
@@ -316,7 +319,7 @@ no `wrangler.jsonc`) é **experimental** e seu comportamento depende da versão
 ### `aws4fetch` fixado em `1.0.20` (dependência de runtime)
 
 Versão exata, sem dependências próprias. Assina a URL de envio ao R2
-(`src/lib/r2/assinatura.ts`). Ver [architecture.md, "Módulo R2"](./architecture.md#módulo-r2-feature-004-sf2-e-sf3).
+(`src/lib/r2/assinatura.ts`). Ver [architecture.md, "Módulo R2"](./architecture.md#módulo-r2-feature-004-sf2-sf3-e-sf6).
 
 ## Auditoria de dependências
 
@@ -825,3 +828,14 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   script é `"lint": "eslint ."` em `package.json`, com `eslint.config.mjs`
   (flat config). Confirmado: a CLI instalada (`next@16.3.8`) não traz
   `next-lint`. Não "restaure" o script para `next lint`.
+- **Criar produto pela tela dá "Coloque pelo menos 1 foto do produto."** (feature 004,
+  até a SF9): esperado. `criarProduto` exige 1 a 3 fotos e o formulário ainda não as
+  envia. Não é bug de ambiente; ver [F04](./features/F04-fotos.md).
+- **`/painel/fotos/<arquivo>` responde 404**: sem sessão, nome fora de
+  `<uuid v4>.(webp|jpg)`, chave que não está em `produto_fotos` nem em envio
+  `confirmado`, ou objeto ausente no R2. Todos dão o mesmo 404 de propósito. 500 com o
+  log `fotos.exibicao.falha` é falha de banco ou do binding (o log não traz a chave);
+  teste no `preview`, o `dev` não tem o binding do R2.
+- **`pedirEnvio` devolve "Não foi possível concluir agora"**: confira
+  `R2_S3_ENDPOINT`, `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY` (a action valida a
+  config antes de gravar). `muitos_pendentes` é o teto de 20 envios por 24 h.

@@ -217,7 +217,7 @@ describe("inserirComFotos (T044, US1)", () => {
   });
 
   it("TL-4: 23505 de OUTRA constraint (produto_fotos_objeto_unique) propaga; nada criado e envio continua", async () => {
-    const fixtureId = await inserirProduto(db, cat1);
+    const fixtureId = await inserirProduto(db, cat1, { fotos: 0 });
     const e = await valido();
     await db.execute(
       sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em)
@@ -333,7 +333,7 @@ describe("arrays como UM parâmetro (TL-3)", () => {
 
 describe("remover com fotos (T045, US6-AC1)", () => {
   it("devolve removido com as chaves em ordem de posição; apaga produto e fotos (CASCADE)", async () => {
-    const id = await inserirProduto(db, cat1);
+    const id = await inserirProduto(db, cat1, { fotos: 0 });
     // inseridas fora de ordem de posição para provar a ordenação
     const c3 = await adicionarFoto(id, 3);
     const c1 = await adicionarFoto(id, 1);
@@ -344,7 +344,7 @@ describe("remover com fotos (T045, US6-AC1)", () => {
   });
 
   it("versão errada ⇒ versao_diferente, sem chaves; produto e fotos intactos", async () => {
-    const id = await inserirProduto(db, cat1);
+    const id = await inserirProduto(db, cat1, { fotos: 0 });
     await adicionarFoto(id, 1);
     const r = await remover(db, ana, id, 99);
     expect(r).toEqual({ tipo: "versao_diferente" });
@@ -358,7 +358,7 @@ describe("remover com fotos (T045, US6-AC1)", () => {
   });
 
   it("produto sem fotos (fixture da 003) ⇒ removido com chaves []", async () => {
-    const id = await inserirProduto(db, cat1);
+    const id = await inserirProduto(db, cat1, { fotos: 0 });
     expect(await remover(db, ana, id, 1)).toEqual({ tipo: "removido", chaves: [] });
     expect(await n("produtos")).toBe(0);
   });
@@ -366,10 +366,10 @@ describe("remover com fotos (T045, US6-AC1)", () => {
 
 describe("leitura com fotos (T045, F§2.4)", () => {
   it("listar devolve capa = chave da posição 1; null para produto sem foto", async () => {
-    const comFoto = await inserirProduto(db, cat1);
+    const comFoto = await inserirProduto(db, cat1, { fotos: 0 });
     await adicionarFoto(comFoto, 2);
     const capa = await adicionarFoto(comFoto, 1);
-    const semFoto = await inserirProduto(db, cat1);
+    const semFoto = await inserirProduto(db, cat1, { fotos: 0 });
     const { itens } = await listar(db, {});
     expect(itens.find((p) => p.id === comFoto)?.capa).toBe(capa);
     expect(itens.find((p) => p.id === semFoto)?.capa).toBeNull();
@@ -377,7 +377,7 @@ describe("leitura com fotos (T045, F§2.4)", () => {
   });
 
   it("obterPorId devolve fotosVersao (1) e fotos [{posicao, chave}] em ordem", async () => {
-    const id = await inserirProduto(db, cat1);
+    const id = await inserirProduto(db, cat1, { fotos: 0 });
     const c2 = await adicionarFoto(id, 2);
     const c1 = await adicionarFoto(id, 1);
     const p = await obterPorId(db, id);
@@ -389,7 +389,7 @@ describe("leitura com fotos (T045, F§2.4)", () => {
   });
 
   it("obterPorId de produto sem fotos ⇒ fotos []; inexistente ⇒ null", async () => {
-    const id = await inserirProduto(db, cat1);
+    const id = await inserirProduto(db, cat1, { fotos: 0 });
     expect((await obterPorId(db, id))?.fotos).toEqual([]);
     expect(await obterPorId(db, 987654)).toBeNull();
   });

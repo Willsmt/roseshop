@@ -419,7 +419,7 @@ alheia/não confirmada/expirada e duplo "Salvar".
 **Fecha**: US4-AC1–5 (SQL), US5-AC1–5, SC-007, destaque sem foto, SC-005 da 003 estendido.
 **Revisão TL**: ✅.
 
-- [ ] T052 **Teste primeiro** — `fotos.conjunto.int.test.ts`: `lerConjunto` devolve `fotosVersao`
+- [X] T052 **Teste primeiro** — `fotos.conjunto.int.test.ts`: `lerConjunto` devolve `fotosVersao`
   e fotos em ordem; `substituirConjunto` ⇒ `ok` com `fotosVersao + 1` e **sem tocar `versao`**
   (003) mas com `atualizado_por`/`atualizado_em`; adicionar (envio consumido, entra na última
   posição), trocar (mesma posição, envio consumido), remover (as seguintes sobem; nunca zerar),
@@ -427,14 +427,14 @@ alheia/não confirmada/expirada e duplo "Salvar".
   diferente das chaves do banco ⇒ `alterado`; produto inexistente ⇒ `ausente`; envio inválido
   ⇒ `foto_expirada`; resultado nunca deixa 0 ou > 3 fotos (US4-AC1–5, US5-AC1/AC5) —
   **test-writer**
-- [ ] T053 **Teste primeiro** — `fotos.concorrencia.int.test.ts` (concorrência real, SC-007):
+- [X] T053 **Teste primeiro** — `fotos.concorrencia.int.test.ts` (concorrência real, SC-007):
   adicionar × adicionar (2 fotos ⇒ só uma entra, a outra ⇒ `alterado`; a foto da segunda não fica
   no produto, US5-AC2); remover × remover de fotos diferentes (só uma acontece, ≥ 1 foto, US5-AC3);
   mover × trocar; fotos × editar campos (as duas são aceitas, US5-AC4, pois `fotos_versao` e
   `versao` são independentes); fotos × remover produto (remoção antes ⇒ `ausente`, US5-AC5).
   Invariantes ao final: 0 produtos com 0 ou > 3 fotos, posições repetidas ou com buraco, destaque
   sem foto — **test-writer**
-- [ ] T054 **[TL✅]** Fixtures da 003: `src/test/db/produtos-fixtures.ts` passa a criar produtos
+- [X] T054 **[TL✅]** Fixtures da 003: `src/test/db/produtos-fixtures.ts` passa a criar produtos
   **com 1 foto** (linha em `produto_fotos` com chave sintética que **case com a regex v4**, mais
   `enviado_por` e `enviado_em`), **sem depender do `inserir` da 003** (removido na T067);
   estender o teste do SC-005 da 003 (destaque sempre com foto) e
@@ -443,19 +443,19 @@ alheia/não confirmada/expirada e duplo "Salvar".
   `produto_fotos` de `src/lib/db/produtos.schema.int.test.ts` e
   `src/lib/db/produtos.escrita.int.test.ts` (`enviado_por`, `enviado_em` e chaves
   `fotos/<uuid v4>.jpg`), sem mudar o que cada teste verifica. As fixtures continuam para cá.
-- [ ] T055 **[TL✅]** `src/lib/db/fotos.ts`: `lerConjunto` e `substituirConjunto` conforme F§2.3
+- [X] T055 **[TL✅]** `src/lib/db/fotos.ts`: `lerConjunto` e `substituirConjunto` conforme F§2.3
   (batch: lock → `UPDATE produtos` com `fotos_versao`, igualdade de `atuais` por `array_agg` e
   `VALIDO($envio)` → `DELETE fotos_envio` guardado por token → `DELETE produto_fotos` guardado →
   `INSERT … unnest(...) WITH ORDINALITY` guardado); leitura posterior com a precedência
   `ausente` → `alterado` → `foto_expirada`; `versao` não é tocada — **principal**
-- [ ] T056 **[TL✅]** Emenda da convenção da 003 (D5): atualizar o comentário em
+- [X] T056 **[TL✅]** Emenda da convenção da 003 (D5): atualizar o comentário em
   `src/lib/db/produtos.ts` (~linhas 177–179) e o invariante "Todo writer de `produtos`
   incrementa `versao`" em `specs/003-produtos/data-model.md` para "writers de **campos, status e
   destaque**; o writer de fotos altera só `fotos_versao`, `fotos_operacao`, `atualizado_por`,
   `atualizado_em`" (texto do data-model da 004, "Emenda de convenção da 003") — **principal**
-- [ ] T057 Rodar `npm run check` e `npm run test:int` (inclui toda a 003); colar o output
+- [X] T057 Rodar `npm run check` e `npm run test:int` (inclui toda a 003); colar o output
   real — **principal**
-- [ ] T058 Revisão do diff pelo tech-lead (opus): `substituirConjunto` sob READ COMMITTED com
+- [X] T058 Revisão do diff pelo tech-lead (opus): `substituirConjunto` sob READ COMMITTED com
   lock e token, interação com os `UPDATE`s da 003, emenda de convenção, fixtures —
   **tech-lead**
 - [ ] T059 Commit (humano), mensagem:

@@ -224,8 +224,8 @@ describe("produto_fotos: chave_objeto e autoria do envio", () => {
   }
 
   it("chave_objeto duplicada em produtos diferentes => 23505 produto_fotos_objeto_unique", async () => {
-    const a = await inserirProduto(db, categoriaId);
-    const b = await inserirProduto(db, categoriaId);
+    const a = await inserirProduto(db, categoriaId, { fotos: 0 });
+    const b = await inserirProduto(db, categoriaId, { fotos: 0 });
     const chave = `fotos/${randomUUID()}.webp`;
     await foto(a, 1, chave);
     expect(await erroPg(foto(b, 1, chave))).toEqual({
@@ -235,7 +235,7 @@ describe("produto_fotos: chave_objeto e autoria do envio", () => {
   });
 
   it("chave válida .webp e .jpg aceitas", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     await foto(p, 1, `fotos/${randomUUID()}.webp`);
     await foto(p, 2, `fotos/${randomUUID()}.jpg`);
   });
@@ -243,38 +243,38 @@ describe("produto_fotos: chave_objeto e autoria do envio", () => {
   const formato = { code: "23514", constraint: "produto_fotos_objeto_formato" };
 
   it("extensão .png => 23514 produto_fotos_objeto_formato", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     expect(await erroPg(foto(p, 1, `fotos/${randomUUID()}.png`))).toEqual(formato);
   });
 
   it("uuid v7 na chave => 23514 produto_fotos_objeto_formato", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     expect(await erroPg(foto(p, 1, `fotos/${UUID_V7}.webp`))).toEqual(formato);
   });
 
   it("uuid em maiúsculas => 23514 produto_fotos_objeto_formato", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     expect(await erroPg(foto(p, 1, `fotos/${randomUUID().toUpperCase()}.webp`))).toEqual(formato);
   });
 
   it("prefixo errado => 23514 produto_fotos_objeto_formato", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     expect(await erroPg(foto(p, 1, `imagens/${randomUUID()}.webp`))).toEqual(formato);
   });
 
   it("ponto trocado por outro caractere (xwebp) => 23514 (ponto da regex escapado)", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     expect(await erroPg(foto(p, 1, `fotos/${randomUUID()}xwebp`))).toEqual(formato);
   });
 
   it("insert sem enviado_por => 23502", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     const e = await erroPg(foto(p, 1, `fotos/${randomUUID()}.webp`, { semEnviadoPor: true }));
     expect(e.code).toBe("23502");
   });
 
   it("insert sem enviado_em => 23502", async () => {
-    const p = await inserirProduto(db, categoriaId);
+    const p = await inserirProduto(db, categoriaId, { fotos: 0 });
     const e = await erroPg(foto(p, 1, `fotos/${randomUUID()}.webp`, { semEnviadoEm: true }));
     expect(e.code).toBe("23502");
   });
@@ -282,19 +282,19 @@ describe("produto_fotos: chave_objeto e autoria do envio", () => {
 
 describe("produtos: fotos_versao e fotos_operacao", () => {
   it("fotos_versao nasce com 1 (NOT NULL DEFAULT 1)", async () => {
-    const id = await inserirProduto(db, categoriaId);
+    const id = await inserirProduto(db, categoriaId, { fotos: 0 });
     const r = (await db.execute(sql`SELECT fotos_versao FROM produtos WHERE id = ${id}`)) as Linhas;
     expect(r.rows[0].fotos_versao).toBe(1);
   });
 
   it("UPDATE de fotos_versao para NULL => 23502", async () => {
-    const id = await inserirProduto(db, categoriaId);
+    const id = await inserirProduto(db, categoriaId, { fotos: 0 });
     const e = await erroPg(db.execute(sql`UPDATE produtos SET fotos_versao = NULL WHERE id = ${id}`));
     expect(e.code).toBe("23502");
   });
 
   it("fotos_operacao nasce NULL e aceita uuid", async () => {
-    const id = await inserirProduto(db, categoriaId);
+    const id = await inserirProduto(db, categoriaId, { fotos: 0 });
     const antes = (await db.execute(sql`SELECT fotos_operacao FROM produtos WHERE id = ${id}`)) as Linhas;
     expect(antes.rows[0].fotos_operacao).toBeNull();
     const op = randomUUID();

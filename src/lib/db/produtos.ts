@@ -11,7 +11,8 @@ import { categorias, produtoFotos, produtos } from "./schema";
 // Camada SQL de produtos, parte de escrita (contrato §2). Toda função recebe `db`; cada
 // escrita da 003 é um único statement (ADR-008: sem transação interativa) e a garantia de
 // concorrência está no WHERE/UNIQUE/FK. Os writers que tocam fotos (`inserirComFotos`,
-// `remover`) são `db.batch` sob LOCK_FOTOS (feature 004, emenda de 2026-10-09 do ADR-008).
+// `remover` e `substituirConjunto` em fotos.ts) são `db.batch` sob LOCK_FOTOS (feature 004,
+// emenda de 2026-10-09 do ADR-008).
 // A leitura depois de 0 linhas só escolhe a mensagem. Erros inesperados do banco propagam.
 
 export type ProdutoDb = {
@@ -272,9 +273,13 @@ export async function remover(
 }
 
 // Status e destaque (contrato §2, D1): statement único, sem lock e sem retry. Premissa: todo
-// writer de `produtos` incrementa `versao`. Dela dependem `saiuDoDestaque` (CTE `antes`) e a
-// precedência da leitura após 0 linhas; uma escrita futura sem `versao+1` quebra as duas. O teto de 8 e
-// "esgotado fora do destaque" são do banco (CHECKs e índice único parcial da vaga).
+// writer que altera campos, status ou destaque de `produtos` incrementa `versao`. Dela dependem
+// `saiuDoDestaque` (CTE `antes`) e a precedência da leitura após 0 linhas; uma escrita futura
+// dessas sem `versao+1` quebra as duas. O writer de fotos (`substituirConjunto` em fotos.ts)
+// altera só `fotos_versao`, `fotos_operacao`, `atualizado_por` e `atualizado_em`, nunca `versao`
+// (emenda de 2026-10-09 do ADR-008): não afeta as duas, que leem só `versao`, `esgotado` e
+// `destaque_vaga`. O teto de 8 e "esgotado fora do destaque" são do banco (CHECKs e índice único
+// parcial da vaga).
 const VAGA_UNICA = "produtos_destaque_vaga_unique";
 
 // A CTE `antes` e o UPDATE enxergam o mesmo snapshot e filtram pelo mesmo `versao`: se outra

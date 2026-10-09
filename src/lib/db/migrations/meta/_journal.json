@@ -15,6 +15,13 @@
       "when": 1791427236883,
       "tag": "0001_premium_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791521614781,
+      "tag": "0002_breezy_mentor",
+      "breakpoints": true
     }
   ]
 }

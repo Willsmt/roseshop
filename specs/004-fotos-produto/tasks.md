@@ -20,13 +20,19 @@
   check` (+ `npm run test:int` quando há `*.int.test.ts`) com **output real**, nunca simulado.
 - **Revisão TL ✅** (coluna do plan): a SF toca zona protegida (`src/lib/db/`, `src/lib/r2/`,
   `src/lib/ai/`, `wrangler.jsonc`, `.dev.vars.example`, `cloudflare/`, `tsconfig.json`). A
-  penúltima task dessas SFs é a revisão do diff pelo tech-lead (opus). Tasks que tocam zona
-  protegida levam o marcador **[TL✅]**. D18: a sessão principal implementa; o tech-lead só revisa.
+  penúltima task dessas SFs é a revisão do diff pelo tech-lead (opus). Tasks de implementação
+  que tocam zona protegida levam o marcador **[TL✅]**; testes escritos dentro de zona
+  protegida não levam o marcador e entram na revisão do diff da SF. D18: a sessão principal
+  implementa; o tech-lead só revisa.
 - **A última task de cada SF é o commit, executado pelo humano**, com a mensagem pronta
   (Conventional Commits, linhas ≤ 100 caracteres, **sem** `Co-Authored-By` e sem `Claude-Session`).
+  Nas SFs com Revisão TL ✅, o humano revisa o diff (já revisado pelo tech-lead) antes de
+  commitar: é a revisão humana da constitution III.7.
 - Agentes nunca leem, imprimem nem editam `.dev.vars*` reais (só `.dev.vars.example`); o humano
-  cria e edita o `.dev.vars`. Nenhuma task acessa produção ou o Neon dev a partir da máquina
-  local (constitution VIII); o que é verificado lá, o humano verifica pelo console/CI.
+  cria e edita o `.dev.vars`. Nenhuma task acessa o **banco** (Neon dev ou produção) a partir
+  da máquina local (constitution VIII); o que é verificado lá, o humano verifica pelo
+  console/CI. Exceção registrada no Constitution Check do plan (linha VIII): o **humano** opera
+  por `wrangler` sobre R2, secrets e logs do dev e de produção a partir da máquina local.
 - Nenhuma task usa `db.transaction()` (ADR-008): escritas de fotos são `db.batch` sob lock.
 - Nenhum `git push` sem confirmação do humano (comando e corpo do PR mostrados antes).
 
@@ -35,7 +41,8 @@
 `SF0 → aprovação dos ADRs → SF1` · `SF1 → SF2` · `SF1 → SF3` (SF2 e SF3 só dependem da SF1) ·
 `SF1 → SF4 → SF5` · `SF2 + SF3 + SF4 → SF6` · `SF5 → SF7` · `SF8` (sem dependência de banco) →
 `SF9` (depende também de SF6) · `SF6 + SF8 + SF9 → SF10` · `SF7 + SF10 → SF11` ·
-`SF4 → SF12` · `SF13 → SF14` (SF14 depende também de SF9) · `todas → SF15`.
+`SF3 + SF4 → SF12` · `SF3 + SF4 → SF13 → SF14` (SF14 depende também de SF9) ·
+`todas → SF15`.
 Entre a SF6 e a SF9 o cadastro fica sem tela funcional **no branch**; nada vai a `main` antes
 da SF15.
 
@@ -279,8 +286,8 @@ recusada pela URL, R1).
   `vars` `R2_S3_ENDPOINT` no nível de cima (`http://localhost:8787/cdn-cgi/local/r2/s3/
   roseshop-local`), `env.dev` e `env.production` com `https://<account>.r2.cloudflarestorage.com/
   roseshop-dev|prod` (`<account>` preenchido pelo humano na T038); `local_dev.
-  experimental_s3_credentials` com os valores falsos; **`FOTOS_VERIFICACAO: "registro"` apenas
-  em `env.dev`** (até a SF10; nunca no nível de cima nem em `env.production`);
+  experimental_s3_credentials` com os valores falsos; **sem `FOTOS_VERIFICACAO`** em nenhum
+  ambiente (entra no `env.dev` só na T094a, SF10);
   `.dev.vars.example` com `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (valores locais falsos) e
   `CRON_SECRET` (placeholder), **sem** `FOTOS_VERIFICACAO` — **principal**
 - [ ] T036 [P] **[TL✅]** `infra/r2/cors.dev.json` e `infra/r2/cors.production.json`: `PUT`,
@@ -305,7 +312,7 @@ recusada pela URL, R1).
 - [ ] T040 Rodar `npm run check` e colar o output real — **principal**
 - [ ] T041 Revisão do diff pelo tech-lead (opus): `assinatura.ts` (headers assinados, expiração),
   `bucket.ts`, `wrangler.jsonc`, `.dev.vars.example`, CORS, exceção do gitleaks, ausência de
-  `FOTOS_VERIFICACAO` fora de `env.dev` — **tech-lead**
+  `FOTOS_VERIFICACAO` em todos os ambientes — **tech-lead**
 - [ ] T042 Commit (humano), mensagem:
   ```text
   feat(r2): assina o envio direto ao R2 e acessa o bucket
@@ -412,7 +419,8 @@ alheia/não confirmada/expirada e duplo "Salvar".
   sem foto — **test-writer**
 - [ ] T054 **[TL✅]** Fixtures da 003: `src/test/db/produtos-fixtures.ts` passa a criar produtos
   **com 1 foto** (linha em `produto_fotos` com chave sintética que **case com a regex v4**, mais
-  `enviado_por` e `enviado_em`); estender o teste do SC-005 da 003 (destaque sempre com foto) e
+  `enviado_por` e `enviado_em`), **sem depender do `inserir` da 003** (removido na T067);
+  estender o teste do SC-005 da 003 (destaque sempre com foto) e
   conferir que os testes da 003 seguem verdes — **principal**
 - [ ] T055 **[TL✅]** `src/lib/db/fotos.ts`: `lerConjunto` e `substituirConjunto` conforme F§2.3
   (batch: lock → `UPDATE produtos` com `fotos_versao`, igualdade de `atuais` por `array_agg` e
@@ -488,7 +496,8 @@ SC-006.
   `ETag`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`;
   só `GET` — **test-writer**
 - [ ] T065 [P] **Teste primeiro** — conformidade (nega por padrão), `src/test/conformance/
-  fotos-acesso.test.ts`: fronteiras de F§1 (`src/lib/r2/` só importado por `src/lib/fotos/`,
+  fotos-acesso.test.ts` (mesmo escopo de arquivos de `produtos-acesso`): fronteiras de F§1
+  (`src/lib/r2/` só importado por `src/lib/fotos/`,
   `src/lib/produtos/`, `src/app/painel/fotos/`, `src/app/api/interno/`; `src/lib/db/fotos.ts` só
   por `src/lib/fotos/` e `src/lib/produtos/`; `src/lib/fotos/aparelho/` sem `server-only`, db, r2
   ou auth); **`insert(produtos)` só em `inserirComFotos`**; nenhum import de `aws4fetch` fora de
@@ -581,7 +590,9 @@ Spec: US2-AC1/AC2 (lado do aparelho), US2-AC3, US2-AC7, SC-005.
   (jpeg); confere `blob.type === pedido`, senão recodifica em JPEG; PNG nunca sai; fica na
   primeira qualidade que couber em 1 MB (1.048.576 bytes); estourou na última ⇒ `"grande"`.
   `prepararFoto` devolve `{ blob, formato }` ou `{ motivo: "formato" | "nao_abre" | "pequena" |
-  "grande" }` com as dependências injetadas; `abrirImagem` falha ⇒ `"nao_abre"`; `outro`/`heic`
+  "grande" }` com as dependências injetadas; `abrirImagem` chama `createImageBitmap` com
+  `{ imageOrientation: "from-image" }` (espião injetado, FR-017); `abrirImagem` falha ⇒
+  `"nao_abre"`; `outro`/`heic`
   não abrível ⇒ mensagem correta (US2-AC3, AC7); o arquivo original nunca é devolvido (FR-013)
   — **test-writer**
 - [ ] T081 Implementar `src/lib/fotos/aparelho/` até as T078–T080 ficarem verdes: `detectarTipo`,
@@ -680,6 +691,11 @@ fixtures, `src/lib/r2/verificacao/` (ajustes da lista), `wrangler.jsonc`,
 do R4 registrado na T007.
 **Revisão TL**: ✅.
 
+- [ ] T094a **[TL✅]** Ligar o modo registro **só para esta SF**: `FOTOS_VERIFICACAO: "registro"`
+  nas `vars` de `env.dev` em `wrangler.jsonc` (nunca no nível de cima nem em `env.production`;
+  a conformidade da T026 já permite o `env.dev`); `npm run check` com output real; revisão do
+  diff pelo tech-lead; commit pelo humano (`chore(wrangler): liga o modo registro no dev para a
+  prova com aparelhos`) e push confirmado para o deploy do dev, antes da T095 — **principal**
 - [ ] T095 **Humano executa — captura com aparelhos** (dev, `FOTOS_VERIFICACAO=registro`):
   em **Chrome Android** e **Safari iOS**, 1 foto tirada na hora e 1 da galeria com localização
   ativa; no iPhone, 1 HEIC; cadastrar um produto com elas. Em paralelo, `npx wrangler tail --env
@@ -870,7 +886,8 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
 - [ ] T126 [P] **Teste primeiro** — conformidade de acesso à IA (em `fotos-acesso` ou
   `ia-acesso`): `api.openai.com` e `OPENAI_API_KEY` só em `src/lib/ai/`; nada de `src/lib/ai/`
   importado por código de client; `consumirSugestao` e `src/lib/ai/` só importados por
-  `src/lib/produtos/sugestao.ts` — **test-writer**
+  `src/lib/produtos/sugestao.ts`; `sugerirProduto` só importado pelo passo Dados de
+  `/painel/produtos/novo` (FR-034) — **test-writer**
 - [ ] T127 **[TL✅]** `src/lib/ai/config.ts` (`MODELO`, `ESFORCO` provisórios,
   `TEMPO_LIMITE_MS = 20_000`, `MAX_SAIDA = 800`, `LIMITE_POR_PESSOA = 30`, `LIMITE_TOTAL = 100`),
   `sugestao.ts` (`pedirSugestao({ imagens, categorias })`), `index.ts` (barrel `server-only`) —
@@ -1055,6 +1072,6 @@ da observação).
 - Fixtures da 003 que inserem em `produto_fotos` podem quebrar na SF1 (colunas `NOT NULL`)
   — o plan só ajusta as fixtures na SF5 (T019, T054).
 - `inserir` da 003 foi mantido até a SF6 para o `check` ficar verde entre SF4 e SF6 (T047, T067).
-- `FOTOS_VERIFICACAO=registro` no `env.dev` foi posto na SF3 (T035); o plan não diz em que SF
-  a variável entra.
+- `FOTOS_VERIFICACAO=registro` entra no `env.dev` só no início da SF10 (T094a) e sai na T099
+  (decisão do analyze, 2026-10-08); da SF6 à SF9 o dev roda com a recusa ligada.
 - Nomes de arquivo marcados "sugerido" não estão no plan.

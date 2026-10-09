@@ -369,7 +369,7 @@ funciona; reserva em research D6).
 | `R2_S3_ENDPOINT` (`vars`) | `http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local` | `https://<account>.r2.cloudflarestorage.com/roseshop-dev` | `https://<account>.r2.cloudflarestorage.com/roseshop-prod` |
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | `.dev.vars`: `roseshop-local` / `roseshop-local-nao-secreto`, iguais a `local_dev.experimental_s3_credentials` | `wrangler secret --env dev` (token do bucket dev) | `wrangler secret --env production` (token do bucket prod) |
 | `CRON_SECRET` | `.dev.vars` (qualquer valor local) | `wrangler secret --env dev` | `wrangler secret --env production` |
-| `FOTOS_VERIFICACAO` (`vars`) | — | `registro` **só até a SF10** | **nunca** |
+| `FOTOS_VERIFICACAO` (`vars`) | — | `registro` **só durante a SF10** (entra na T094a, sai na T099) | **nunca** |
 | CORS | não precisa (mesma origem) | `infra/r2/cors.dev.json` | `infra/r2/cors.production.json` |
 
 `<account>` é o Account ID (não secreto) preenchido pelo humano. O CORS libera os headers

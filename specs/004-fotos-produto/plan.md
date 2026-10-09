@@ -67,12 +67,12 @@ Sem `NEEDS CLARIFICATION` (riscos R1–R5 tratados como provas da SF0/SF10, rese
 
 | Princípio | Verificação | Pré | Pós-design |
 |---|---|---|---|
-| I. Fonte de verdade | Spec com Given/When/Then e 7 clarificações; cada critério mapeado a teste ("Cobertura"); ADR-009 (fotos/R2) e ADR-010 (IA) registram provedor e decisões antes da implementação; emenda do ADR-008; nota na spec da 003 (FR-013/FR-014) | ✅ | ✅ |
+| I. Fonte de verdade | Spec com Given/When/Then e 9 clarificações (7 da sessão e 2 do plan); cada critério mapeado a teste ("Cobertura"); ADR-009 (fotos/R2) e ADR-010 (IA) registram provedor e decisões antes da implementação; emenda do ADR-008; nota na spec da 003 (FR-013/FR-014) | ✅ | ✅ |
 | II. Stack fechada | R2 e OpenAI já estão na tabela; `aws4fetch` e `react-easy-crop` não substituem nada (justificativa no commit); Zod em toda fronteira (entrada das actions, resposta da IA, config do R2) | ✅ | ✅ |
 | III.1 Segredos | `R2_*`, `CRON_SECRET`, `OPENAI_API_KEY` só em `wrangler secret`/`.dev.vars`; credenciais locais falsas por desenho; nada no log (ia.md §4) | ✅ | ✅ |
 | III.2 Allowlist | `requireAdminAction` em toda action; sessão na rota de imagem; segredo em tempo constante na rota interna | ✅ | ✅ |
 | III.3 Zod | entrada das actions, `FormData` de `criarProduto`, resposta da IA (forma + validadores da 003), config | ✅ | ✅ |
-| III.4 Upload | só `image/webp`/`image/jpeg` guardados (subconjunto da lista da III.4; PNG recusado, FR-012); teto 1 MB (definido no plan, como a spec permite); envio direto por URL pré-assinada de 5 min que só cria objeto (`if-none-match`) | ✅ | ✅ |
+| III.4 Upload | só `image/webp`/`image/jpeg` guardados (subconjunto da lista da III.4; PNG recusado, FR-012); teto 1 MB (1.048.576 bytes, FR-014 da spec); envio direto por URL pré-assinada de 5 min que só cria objeto (`if-none-match`) | ✅ | ✅ |
 | III.5 IA | auth + limite 30/pessoa e 100/dia; teto de gasto no provedor (quickstart §1) | ✅ | ✅ |
 | III.6 Ambientes | token R2 por bucket e por ambiente; chave OpenAI dev ≠ produção; `FOTOS_VERIFICACAO` nunca em produção (teste) | ✅ | ✅ |
 | III.7 Zonas protegidas | `src/lib/db/`, `src/lib/r2/`, `src/lib/ai/`, `wrangler.jsonc`, `.dev.vars.example` ⇒ tech-lead implementa ou revisa + humano | ✅ | ✅ |
@@ -80,7 +80,7 @@ Sem `NEEDS CLARIFICATION` (riscos R1–R5 tratados como provas da SF0/SF10, rese
 | V. UX | uma tarefa por passo; alvos ≥ 48 px; mensagens da spec; botões alternativos ao arrasto; confirmação só onde algo salvo é apagado | ✅ | ✅ |
 | VI. Qualidade | uma sub-fase = um commit, testes antes; Conventional Commits sem trailer | ✅ | ✅ |
 | VII. Plataforma | servidor **não decodifica nem converte**: só percorre a estrutura (1 passada linear, CPU medido no dev); binding `IMAGES`/`next/image` não usados; compressão no aparelho | ✅ | ✅ |
-| VIII. Ambientes | local usa só o R2 simulado (endpoint S3 experimental do wrangler) e o Postgres Docker; nada de produção acessado pelo local; deploy de produção só pelo CI | ✅ | ✅ |
+| VIII. Ambientes | local usa só o R2 simulado (endpoint S3 experimental do wrangler) e o Postgres Docker; nada de produção acessado pelo local; deploy de produção só pelo CI. **Interpretação registrada (analyze, 2026-10-08)**: a VIII rege o runtime local do app; comandos operacionais do **humano** por `wrangler` sobre R2 (bucket, CORS, objetos), secrets e logs (`tail`) do dev e de produção são permitidos a partir da máquina local (precedente: `deploy:dev`; a III.1 prescreve `wrangler secret`). **Banco** (Neon dev e produção) continua só pelo CI ou pelo console do Neon, como na 003. Emenda da VIII pendente (ver "Pendências fora da 004") | ✅ | ✅ |
 
 ## Project Structure
 
@@ -167,7 +167,7 @@ obrigatória.
 | **SF7** | `conjunto.ts` + actions `adicionarFoto`, `trocarFoto`, `removerFoto`, `moverFoto` | unitários: tabela de regras (limite, última, posições), `atual` em toda falha, versão nova no `ok`, apagar objeto antigo | `feat(fotos): adiciona, troca, remove e reordena fotos do produto` | sessão principal (testes: `test-writer`) | ✅ (usa `src/lib/r2`) |
 | **SF8** | Pipeline do aparelho (`src/lib/fotos/aparelho/`, telas.md §3) | unitários: `detectarTipo`, recorte (mín 400, máx 1200, quadrado), laço de qualidade e fallback JPEG com codificador injetado | `feat(fotos): trata a foto no aparelho antes do envio` | sessão principal (testes: `test-writer`) | — |
 | **SF9** | Telas do cadastro: passos Fotos → Dados, `escolher-foto`, `recorte-foto` (`react-easy-crop`), `lista-fotos` (arrasto + botões), `usar-envio` | componentes: US1-AC1–9, US2-AC3/7/8/10, edge cases de envio durante "Salvar" e expiração; `produtos-paginas-guard` verde | `feat(painel): cadastro de produto começando pelas fotos` | `ui-dev` (testes: `test-writer`) | — |
-| **SF10** | **Prova com aparelhos** (R4) no dev em modo registro; fixtures reais; fechar a lista de blocos e a do ICC (tags e limite); tirar `FOTOS_VERIFICACAO` do `env.dev`; conformidade passa a negar a variável em qualquer lugar | unitários com as fixtures reais; output do `exiftool` entregue pelo humano | `test(r2): fixtures reais de Chrome Android e Safari iOS` + `chore(wrangler): desliga o modo registro no dev` | humano + sessão principal | ✅ |
+| **SF10** | Liga `FOTOS_VERIFICACAO=registro` no `env.dev` (só nesta SF); **prova com aparelhos** (R4) no dev em modo registro; fixtures reais; fechar a lista de blocos e a do ICC (tags e limite); tirar `FOTOS_VERIFICACAO` do `env.dev`; conformidade passa a negar a variável em qualquer lugar | unitários com as fixtures reais; output do `exiftool` entregue pelo humano | `test(r2): fixtures reais de Chrome Android e Safari iOS` + `chore(wrangler): desliga o modo registro no dev` | humano + sessão principal | ✅ |
 | **SF11** | Tela `[id]/fotos`, fotos no detalhe, capa na lista (`loading="lazy"`), texto da remoção | componentes: US4-AC1–7, US5-AC1 (tela atualiza com `atual`), US6-AC2, FR-039/040 | `feat(painel): gerencia as fotos de um produto` | `ui-dev` (testes: `test-writer`) | — |
 | **SF12** | Limpeza: `limpeza.ts`, `expirarEnvios`/`chavesConhecidas` (statement único), rota interna (SHA-256, 404 sem corpo), `cloudflare/worker.ts` + `.d.ts` + `exclude` no `tsconfig` (TL-6), crons; **`npm run cf-typegen`** | int: US6-AC1/3–6 e SC-008 com bucket falso (inclusive limpeza concorrente com adoção); rota 404 sem corpo para segredo errado/ausente/método; `scheduled` lança em status ≠ 200; `typecheck` igual com e sem `.open-next/`; prova no dev (quickstart §5.2) | `feat(fotos): limpeza diária de fotos sem uso` | sessão principal (testes: `test-writer`) | ✅ |
 | **SF13** | IA: linha `ia-medicao/` no `.gitignore` (antes da pasta); `src/lib/ai/`, `consumirSugestao` (limites como parâmetro, CTE do dia), `sugerirProduto` (base64 nativo, TL-9), medição e escolha do modelo | unitários (fetch simulado): `store: false`, schema estrito, 20 s, HTTP≠200, recusa, JSON inválido, categoria fora da lista, campos inválidos ⇒ `null`, chave fora do log, base64 sem laço de `fromCharCode`; int: limites 30/100 sob concorrência; SC-009 (IA fora ⇒ cadastro manual); medição real e CPU no dev (humano) | `feat(ia): sugere nome, categoria e descrição a partir das fotos` | sessão principal (testes: `test-writer`) | ✅ |
@@ -176,7 +176,8 @@ obrigatória.
 
 **Ordem e dependências**: SF0 → aprovação dos ADRs → SF1. SF2 e SF3 só dependem da SF1 (podem
 alternar). SF4 → SF5. SF6 depende de SF2–SF4; SF7 de SF5. SF8 → SF9 (depende de SF6). SF10 exige
-SF6+SF8+SF9 no dev. SF11 depende de SF7 e SF10. SF12 depende de SF4. SF13 → SF14 (depende de SF9).
+SF6+SF8+SF9 no dev. SF11 depende de SF7 e SF10. SF12 depende de SF3 e SF4. SF13 (depende de SF3
+e SF4) → SF14 (depende de SF9).
 Entre a SF6 e a SF9 o cadastro fica sem tela funcional **no branch** (a criação já exige foto);
 nada vai a `main` antes da SF15. A limpeza dos produtos sem foto (quickstart §2) acontece antes
 do primeiro push que leva a SF6 ao deploy do dev (o dev é publicado a cada push no PR).
@@ -232,6 +233,16 @@ do primeiro push que leva a SF6 ao deploy do dev (o dev é publicado a cada push
 | Rota interna exposta (`/api/interno/limpeza`) | reaproveita o bundle do Next (db, binding) sem duplicar código no worker | lógica no `scheduled` esbarra no `server-only` fora do Next |
 | Token de operação (`fotos_operacao`) | com `neon-http` não há decisão entre statements; guardar por `fotos_versao = v+1` dá falso positivo | statement único com CTE não reordena posições únicas não adiáveis |
 | Duas dependências novas | assinatura SigV4 e recorte com pinça são as partes com mais risco de erro próprio | cripto e gesto de pinça próprios |
+
+## Pendências fora da 004
+
+Registradas no analyze (2026-10-08); resolvidas por humano via `/speckit-constitution`, em
+mudança própria, sem bloquear a 004:
+
+- **Emenda da VIII**: escrever na constitution a interpretação registrada no Constitution Check
+  (operação do humano por `wrangler` sobre R2, secrets e logs; banco só pelo CI/console).
+- **III.1 × `.dev.vars.example`**: a III.1 diz "lista as chaves sem valores"; a prática (desde
+  antes da 004, documentada no CLAUDE.md) põe valores locais não secretos. Alinhar o texto.
 
 ## Revisão do tech-lead
 

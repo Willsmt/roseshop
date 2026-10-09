@@ -118,9 +118,12 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 ### D6 — Limpeza: **Cron Trigger diário, `scheduled` chama o handler do Next em processo**
 - Worker próprio `cloudflare/worker.ts`: `fetch` reexportado; `scheduled` chama
   `handler.fetch(new Request("https://interno.invalid/api/interno/limpeza", { method: "POST",
-  headers: { authorization: "Bearer " + env.CRON_SECRET } }), env, ctx)` dentro de
-  `ctx.waitUntil` — **em processo, sem rede** [spike R3: confirmar que funciona; reserva: `fetch`
-  pelo `WORKER_SELF_REFERENCE`, que também não sai para a internet].
+  headers: { authorization: "Bearer " + env.CRON_SECRET } }), env, ctx)` com `await` direto
+  (sem `ctx.waitUntil`) e `throw` se o status não for 200, como no contracts/fotos.md §6 —
+  **em processo, sem rede** [spike R3: **confirmado**, local e online; a reserva `fetch` pelo
+  `WORKER_SELF_REFERENCE` foi descartada. Corrigido em 2026-10-09: o texto anterior dizia
+  "dentro de `ctx.waitUntil`"; o R3 mostrou o cron `Ok` mesmo com 503 quando o `scheduled` não
+  lança, por isso vale o `await` com `throw`].
 - Rota `POST /api/interno/limpeza`: compara SHA-256 do segredo recebido com SHA-256 do
   `CRON_SECRET` (mesmo comprimento sempre; mesmo código no Node e no workerd); ausente, errado ou
   outro método ⇒ **404 sem corpo**, igual em todos os casos (TL-16).
@@ -219,6 +222,257 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 | R3 | Cron no worker próprio do OpenNext não roda (local ou dev) | Local: `preview` com `--test-scheduled` e `curl /cdn-cgi/handler/scheduled`; dev: cron temporário `*/5 * * * *` + `wrangler tail --env dev` mostrando a rota executada; depois volta a `0 6 * * *` | Reserva do D6 (`WORKER_SELF_REFERENCE`); se nem isso, volta ao humano |
 | R4 | JPEG/WebP de canvas do Safari ou do Chrome traz bloco fora da lista | SF10 (D4) | Ajuste do pipeline no aparelho ou da lista, com aprovação do humano |
 | R5 | Modelos candidatos não aceitam imagem + structured output na Responses API | Doc confirmou ambos (F7); SF0 faz uma chamada real com a chave dev (imagem sintética, `store: false`) e registra o `usage` | Trocar candidato, decisão do humano |
+
+### Resultados das provas (SF0, T008)
+
+#### R1 — **aprovado** (2026-10-09, 00:32, bucket `roseshop-dev`, humano executou)
+
+Script `.spike/r1.mjs` (fora do repo): `aws4fetch` 1.0.20, `signQuery: true`,
+`allHeaders: true`, `X-Amz-Expires=300` posto antes de assinar, URL para N = 1000 bytes com
+`content-type: image/webp`, `content-length: 1000` e `if-none-match: *`; recusas testadas
+**antes** do PUT válido (se alguma criasse o objeto, o válido viria 412). Output real:
+
+```text
+chave: spike-r1/1791516739786-104cbb18.webp
+X-Amz-SignedHeaders: content-length;content-type;host;if-none-match
+X-Amz-Expires: 300
+Authorization na URL: não
+
+OK   PUT com N+1 bytes (1001)                     esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT com N-1 bytes (999)                      esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT sem if-none-match                        esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT com content-type image/jpeg              esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT válido com N bytes (1000)                esperado 200, veio 200
+OK   2º PUT válido na mesma URL                   esperado 412, veio 412 PreconditionFailed
+
+HEAD: 200, content-length 1000, content-type image/webp
+DELETE (limpeza): 204
+```
+
+Decisões destravadas:
+- O R2 impõe o `content-length` **exato** assinado (N+1 e N−1 recusados) e o `content-type`
+  assinado: o teto de 1 MB do D2 vale na própria URL.
+- O R2 impõe o `if-none-match: *` assinado: header ausente ⇒ 403; segundo PUT ⇒ **412**.
+  A URL não sobrescreve objeto existente.
+- **Reserva do `etag` descartada**: a SF1 **não** cria a coluna `etag`; as reservas (a)/(b) do
+  D2 não se aplicam. O ADR-009 registra a forma assinada como definitiva.
+- `X-Amz-SignedHeaders` confere com o teste previsto para `assinatura.ts` (F§7).
+
+#### R2 — **aprovado** (2026-10-09, ~00:38, local, humano executou)
+
+Worker mínimo em `.spike/r2-local/` (fora do repo; o `wrangler.jsonc` do projeto não foi
+tocado), wrangler **4.147.0** (o do `node_modules`), binding `PRODUCT_IMAGES` no bucket
+`roseshop-local` com as credenciais falsas do F§7. Script `.spike/r2.mjs`: mesma assinatura do
+R1 contra `http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local/…`, mais uma URL assinada
+com segredo errado; leitura e limpeza pelo binding. Output real:
+
+```text
+Terminal 1 (wrangler dev):
+ ⛅️ wrangler 4.147.0
+▲ [WARNING] Processing .spike/r2-local/wrangler.jsonc configuration:
+    - "local_dev.experimental_s3_credentials" fields are experimental and may change or break at any
+  time.
+Your Worker has access to the following bindings:
+env.PRODUCT_IMAGES (roseshop-local)      R2 Bucket      local
+[wrangler:info] Ready on http://localhost:8787
+[wrangler:info] GET /ler 200 OK (5ms)
+[wrangler:info] GET /apagar 200 OK (22ms)
+⎔ Shutting down local server...
+
+Terminal 2 (node .spike/r2.mjs):
+wrangler (node_modules): 4.147.0
+chave: spike-r2/1791517090789-23a2ce1f.webp
+X-Amz-SignedHeaders: content-length;content-type;host;if-none-match
+
+OK   PUT com assinatura errada (outro segredo)    esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT com N+1 bytes (1001)                     esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT com N-1 bytes (999)                      esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT sem if-none-match                        esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT com content-type image/jpeg              esperado 403, veio 403 SignatureDoesNotMatch
+OK   PUT válido com N bytes (1000)                esperado 200, veio 200
+OK   2º PUT válido na mesma URL                   esperado 412, veio 412 PreconditionFailed
+
+leitura pelo binding: 200 {"existe":true,"tamanho":1000,"bytesLidos":1000,"tipo":"image/webp"}
+limpeza pelo binding: 200 {"apagado":true}
+```
+
+Decisões destravadas:
+- `experimental_s3_credentials` funciona na versão fixada: a URL assinada grava no bucket local
+  e o objeto é lido pelo binding; assinatura errada ⇒ 403. O endpoint local reproduz as mesmas
+  recusas do R2 real (tamanho, tipo, `if-none-match`, 412).
+- **Reserva do D11 descartada** (sem rota de PUT só local).
+- **Correção do D11 (lugar da chave)**: no wrangler 4.147.0, `local_dev.experimental_s3_credentials`
+  fica **dentro do item de `r2_buckets`** do ambiente de cima (local), com `accessKeyId` e
+  `secretAccessKey` — não é chave na raiz do `wrangler.jsonc`. O caminho da URL usa o
+  `bucket_name` (`roseshop-local`). O wrangler emite o aviso "experimental" a cada carga
+  (esperado; o ADR-009 registra a dependência da versão fixada).
+- **Limite da prova**: rodou num worker mínimo, não no app completo do `preview`. O endpoint
+  `/cdn-cgi/local/r2/s3/` é servido pelo miniflare, o mesmo do `preview` na mesma versão; a
+  prova no app completo fica para o **quickstart §4, na SF3**.
+
+#### R3 — **aprovado, local e online** (2026-10-09, humano executou)
+
+Worker próprio `.spike/r3/worker.mjs` (fora do repo) na forma do F§6: `fetch` reexportado do
+`.open-next/worker.js`; `scheduled` chama `handler.fetch(new Request("https://interno.invalid/
+api/health", …), env, ctx)` com GET e POST (a rota da limpeza ainda não existe; `interno.invalid`
+não resolve, então status vindo do Next prova chamada sem rede). Config `.spike/r3/wrangler.jsonc`
+= nível de cima do `wrangler.jsonc` do projeto com `main` trocado e cron `0 6 * * *`; `.dev.vars`
+do projeto por `--env-file` (com config fora da raiz, o wrangler procura o `.dev.vars` ao lado do
+config).
+
+Build (`npx opennextjs-cloudflare build`), **resumo entregue pelo humano**: Next.js 16.3.8,
+`@opennextjs/cloudflare` 1.20.8, `compatibility_date` 2026-10-01; "Compiled successfully"; rota
+`ƒ /api/health` presente; "Worker saved in `.open-next/worker.js`"; "OpenNext build complete."
+
+Output real (`npx wrangler dev -c .spike/r3/wrangler.jsonc --env-file "$PWD/.dev.vars"
+--port 8787 --test-scheduled` e os dois `curl`):
+
+```text
+Terminal 1:
+ ⛅️ wrangler 4.147.0 (update available 4.149.0)
+Using secrets defined in .dev.vars
+env.PRODUCT_IMAGES (roseshop-local)            R2 Bucket     local
+env.WORKER_SELF_REFERENCE (roseshop-local)     Worker        local [connected]
+env.IMAGES                                     Images        local
+env.ASSETS                                     Assets        local
+[wrangler:info] ✨ Parsed 1 valid header rule.
+[wrangler:info] Ready on http://localhost:8787
+[wrangler:info] GET /api/health 200 OK (435ms)
+{"evento":"spike-r3","cron":"0 6 * * *","method":"GET","status":200,"ms":119,"corpo":"{\"db\":\"ok\"}"}
+{"evento":"spike-r3","cron":"0 6 * * *","method":"POST","status":405,"ms":3,"corpo":""}
+⎔ Shutting down local server...
+
+Terminal 2:
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8787/api/health  → 200
+curl -s "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"   → ok
+```
+
+(`ok` é a resposta desta versão do wrangler ao `/cdn-cgi/handler/scheduled`, no lugar de "Ran
+scheduled event".)
+
+Decisões destravadas (parte local):
+- O `fetch` reexportado serve o app (`/api/health` ⇒ 200) e o `scheduled` chama o handler do
+  Next **em processo, sem rede**: GET ⇒ 200 com `{"db":"ok"}` (119 ms), POST ⇒ 405 do Next.
+  O método chega à rota, como a limpeza (`POST`) vai precisar. A forma do F§6 vale localmente.
+- **Crons e deploy (para o ADR-009 e a SF12)**: o `wrangler deploy` só regrava os crons quando
+  o config declara `triggers.crons` (conferido no wrangler 4.147.0, `cli.js:160319`, `if (crons)`
+  antes do `PUT …/schedules`). Um deploy sem a chave **não remove** crons existentes. Por isso o
+  `wrangler.jsonc` da SF12 declara `triggers.crons` **em cada ambiente** (nível de cima,
+  `env.dev`, `env.production`), inclusive `"crons": []` onde não houver cron.
+
+Parte online (opção B do humano): worker descartável `roseshop-spike-r3` (config
+`.spike/r3/wrangler.dev-spike.jsonc`: mesmo `worker.mjs` e mesmo build, cron `*/5 * * * *`, sem
+secrets, sem banco, sem bucket, `workers_dev`/`preview_urls` falsos, sem
+`WORKER_SELF_REFERENCE`); `roseshop-dev` e `roseshop` não foram tocados. Output entregue pelo
+humano (checagem do bundle e deploy **resumidos** pelo humano; tail literal):
+
+```text
+Checagem do bundle antes do deploy (valores do .dev.vars dentro de .open-next/):
+OPENAI_API_KEY: 0 · AUTH_SECRET: 0 · AUTH_GOOGLE_SECRET: 0 · DATABASE_URL: 0
+
+Deploy: Uploaded roseshop-spike-r3; bindings só IMAGES e ASSETS;
+"Deployed roseshop-spike-r3 triggers — schedule: */5 * * * *";
+Version 505d2a2f-4c18-4f41-80e3-129a20a60fa4.
+
+Tail:
+"*/5 * * * *" @ 10/9/2026, 1:00:16 AM - Ok
+  (error) [health] configuração do banco ausente ou inválida
+  (log) {"evento":"spike-r3","cron":"*/5 * * * *","method":"GET","status":503,"ms":0,"corpo":"{\"db\":\"error\"}"}
+  (log) {"evento":"spike-r3","cron":"*/5 * * * *","method":"POST","status":405,"ms":0,"corpo":""}
+"*/5 * * * *" @ 10/9/2026, 1:05:16 AM - Ok
+  (error) [health] configuração do banco ausente ou inválida
+  (log) {"evento":"spike-r3","cron":"*/5 * * * *","method":"GET","status":503,"ms":0,"corpo":"{\"db\":\"error\"}"}
+  (log) {"evento":"spike-r3","cron":"*/5 * * * *","method":"POST","status":405,"ms":0,"corpo":""}
+```
+
+Decisões destravadas (parte online):
+- O Cron Trigger dispara o `scheduled` do worker próprio no Cloudflare (dois disparos, 01:00 e
+  01:05) e a chamada em processo chega ao Next: GET ⇒ 503 da própria rota (log `[health]` do
+  app, banco ausente por desenho do spike), POST ⇒ 405. **Reserva do D6
+  (`WORKER_SELF_REFERENCE`) descartada.**
+- O cron aparece como `Ok` mesmo com 503, porque o `scheduled` do spike não lança erro. Confirma
+  a necessidade do TL-16: o `scheduled` da SF12 **lança** quando o status não é 200, para o cron
+  aparecer como falha.
+- `ms: 0` é esperado no Workers: o relógio não avança durante execução sem I/O externo
+  (mitigação de timing). A duração da limpeza não pode ser medida por `Date.now()` no próprio
+  worker; o painel/tail é a fonte.
+- **Checagem do bundle**: nenhum valor de `OPENAI_API_KEY`, `AUTH_SECRET`, `AUTH_GOOGLE_SECRET`
+  ou `DATABASE_URL` do `.dev.vars` aparece em `.open-next/` (0 ocorrências de cada).
+- **Remoção do worker descartável**: feita pelo humano (`npx wrangler delete roseshop-spike-r3`).
+  Conferência, output real:
+
+  ```text
+  $ npx wrangler versions list --name roseshop-spike-r3 2>&1 | grep -iE "does not exist|10007|version id"
+    This Worker does not exist on your account. [code: 10007]
+  ```
+
+#### R4 — **adiado para a SF10** (T007)
+
+R4 (aparelhos reais, Chrome Android e Safari iOS) **adiado para a SF10**. Ponteiro: SF10,
+Q§5.4. **Critério de saída**: fixtures reais commitadas, lista de blocos e do ICC fechadas (tags
+e limite), `FOTOS_VERIFICACAO` fora do `env.dev` e `exiftool` sem EXIF/GPS/XMP/IPTC nos objetos
+baixados. Nenhum spike de R4 foi feito na SF0.
+
+#### R5 — `gpt-6-luna` **aprovado** na prova técnica; `gpt-5.4-mini` **acesso pendente** (2026-10-09)
+
+Script `.spike/r5.mjs` (fora do repo): pedido na forma do I§4 (`store: false`,
+`max_output_tokens: 800`, `json_schema` estrito com `enum` de `categoria_id` incluindo `null`,
+imagem WebP 512×512 sintética em base64 com `detail: low`, timeout de 20 s), categorias
+fictícias 1–4, esforços `none` e `low`; lê só `OPENAI_API_KEY` do `.dev.vars`, sem imprimi-la.
+
+Output real da **segunda rodada** (01:15), depois de liberar o `gpt-5.4-mini` no projeto da
+chave (`proj_bp4hqCbXxHCDzgscCQ7opNpr`, Project ID conferido pelo humano). A primeira rodada
+não foi entregue; segundo o humano, o `gpt-5.4-mini` também deu 403 nela.
+
+```text
+imagem sintética: webp 512x512, 3842 bytes
+
+gpt-6-luna / none: HTTP 200 · 1891 ms
+  model=gpt-6-luna · status=completed
+  usage={"input_tokens":524,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":47,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":571}
+  saída: CONFORME ao schema · chaves [categoria_id,descricao,nome] · categoria_id=1 · nome="Guarda-chuva vermelho" · descricao(78 car.)="Guarda-chuva de tamanho não especificado, com cobertura vermelha e cabo preto."
+
+gpt-6-luna / low: HTTP 200 · 2173 ms
+  model=gpt-6-luna · status=completed
+  usage={"input_tokens":524,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":55,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":579}
+  saída: CONFORME ao schema · chaves [categoria_id,descricao,nome] · categoria_id=1 · nome="Guarda-chuva vermelho" · descricao(102 car.)="Guarda-chuva vermelho com haste e cabo curvo pretos. Tamanho não informado; não há variações visíveis."
+
+gpt-5.4-mini / none: HTTP 403 · 858 ms
+  erro: type=invalid_request_error code=model_not_found param=
+  mensagem: Project `proj_bp4hqCbXxHCDzgscCQ7opNpr` does not have access to model `gpt-5.4-mini`
+
+gpt-5.4-mini / low: HTTP 403 · 598 ms
+  erro: type=invalid_request_error code=model_not_found param=
+  mensagem: Project `proj_bp4hqCbXxHCDzgscCQ7opNpr` does not have access to model `gpt-5.4-mini`
+```
+
+Observações: `reasoning_tokens` = 0 também com `low` (nesta imagem simples); 524 tokens de
+entrada para instruções + 4 categorias + 1 imagem 512 px em `detail: low`.
+
+Decisões (humano, 2026-10-09):
+- **`gpt-6-luna` aprovado na prova técnica** (imagem + structured output estrito, `store: false`).
+- **`gpt-5.4-mini`: acesso pendente** (provável restrição da organização ou do nível da conta).
+  A prova técnica dele vira a **primeira task da SF13 (T120a)**, antes da medição; sem acesso
+  até lá, a medição roda só com o `gpt-6-luna` ou o humano escolhe outro candidato.
+- **Limite de gasto do projeto OpenAI**: **configurado (US$ 5, alerta em 100%) mas NÃO
+  aplicado**; até aplicar, a constitution III.5 não está atendida no dev. **Aplicar o teto
+  (T014b) é condição de entrada da SF13** (decisão do humano, 2026-10-09). Se a conta não
+  permitir aplicar, o ADR-010 registra a limitação do provedor e o contador do app como
+  controle principal.
+
+#### Resumo do que as provas destravam (T008)
+
+| Item | Resultado | Onde pesa |
+|---|---|---|
+| Coluna `etag` em `fotos_envio` | **não** (R1: `if-none-match` imposto, 2º PUT ⇒ 412) | SF1, ADR-009 |
+| Teto de tamanho na URL | `content-length` exato imposto (R1) | SF3, ADR-009 |
+| R2 local | `experimental_s3_credentials` **dentro do item de `r2_buckets`**; reserva do D11 descartada (R2) | SF3, ADR-009 |
+| Cron | `scheduled` → handler em processo, local e online; reserva do D6 descartada (R3) | SF12, ADR-009 |
+| Crons em cada ambiente | `triggers.crons` declarado em todos (inclusive `[]`), pois deploy sem a chave não remove cron (R3) | SF12, ADR-009 |
+| `scheduled` lança erro se ≠ 200 | confirmado necessário: o cron aparece `Ok` com 503 se não lançar (R3) | SF12 |
+| Modelos da SF13 | `gpt-6-luna` aprovado; `gpt-5.4-mini` com acesso pendente (T120a) (R5) | SF13, ADR-010 |
+| Teto de gasto OpenAI | configurado, **não aplicado**; aplicar (T014b) é condição de entrada da SF13 | SF13, ADR-010 |
+| R4 | adiado para a SF10 | SF10 |
 
 ## 4. Consequências registradas
 

@@ -59,12 +59,15 @@ são registrados) e research D2/D6. Nenhum código de produção é escrito nest
 **Fecha**: provas de R1, R2, R3 e R5; R4 registrado como adiado. Habilita SF1.
 **Revisão TL**: ✅ (ADRs).
 
-- [ ] T001 **Humano executa** — pré-requisitos dos spikes (Q§1 itens 1 e 5, só dev): criar o
+- [X] T001 (feito em 2026-10-09; o limite de gasto OpenAI ficou configurado mas **não
+  aplicado**, ver T014b) **Humano executa** — pré-requisitos dos spikes (Q§1 itens 1 e 5, só dev): criar o
   token R2 **Object Read & Write** com escopo só no bucket `roseshop-dev`; criar/conferir a
   chave OpenAI **dev** com **limite de gasto mensal** (sugestão US$ 5) e alerta por e-mail;
   guardar os valores só em variáveis do shell da sessão do spike, nunca em arquivo versionado —
   **humano**
-- [ ] T002 Escrever os scripts de spike **fora do repo** (no diretório de rascunho da sessão),
+- [X] T002 (feito em 2026-10-09; por decisão do humano, os scripts ficaram em `.spike/`, excluído
+  pelo `.git/info/exclude`, e leem credenciais só do `.dev.vars`) Escrever os scripts de spike
+  **fora do repo** (no diretório de rascunho da sessão),
   sem credenciais embutidas, lendo tudo de variáveis de ambiente: (a) R1 — assina com `aws4fetch`
   (`signQuery: true`, `allHeaders: true`, `X-Amz-Expires=300`) um `PUT` com `content-type`,
   `content-length` e `if-none-match: *`; (b) R2 — mesmo `PUT` contra o endpoint S3 simulado do
@@ -72,49 +75,49 @@ são registrados) e research D2/D6. Nenhum código de produção é escrito nest
   com `fetch` + `scheduled` que chama o handler gerado em processo; (d) R5 — chamada à Responses
   API com imagem sintética (I§4: `store: false`, `json_schema` estrito, `detail: low`) para
   `gpt-6-luna` e `gpt-5.4-mini` — **principal**
-- [ ] T003 **Humano executa R1** (bucket dev): `PUT` com exatamente N bytes ⇒ 200; com N±1
+- [X] T003 **Humano executa R1** (bucket dev): `PUT` com exatamente N bytes ⇒ 200; com N±1
   bytes ⇒ 403; **segundo `PUT` na mesma URL ⇒ 412**; `PUT` sem `if-none-match` ⇒ 403;
   `PUT` com `content-type` diferente ⇒ 403. Entregar o output real. Se o R2 **não** impuser
   `if-none-match`, registrar que vale a reserva do research D2 (coluna `etag` na SF1) — **humano**
-- [ ] T004 **Humano executa R2**: no `preview` (wrangler fixado no `package.json`), `PUT` pela
+- [X] T004 **Humano executa R2**: no `preview` (wrangler fixado no `package.json`), `PUT` pela
   URL assinada contra `http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local/...` e leitura do
   objeto pelo binding; confirmar `experimental_s3_credentials` aceita na versão fixada. Entregar
   o output real; se falhar, registrar a reserva do research D2/ADR-009 — **humano**
-- [ ] T005 **Humano executa R3**: (local) `npx opennextjs-cloudflare build && npx wrangler dev
+- [X] T005 **Humano executa R3**: (local) `npx opennextjs-cloudflare build && npx wrangler dev
   --test-scheduled` e `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"`
   ⇒ o `scheduled` chama o handler em processo e a rota responde; (dev) cron temporário
   `*/5 * * * *` e `npx wrangler tail --env dev` mostrando a chamada. Entregar os outputs;
   se a chamada em processo falhar, registrar a reserva do research D6 — **humano**
-- [ ] T006 **Humano executa R5**: rodar o script de T002(d) para os dois modelos, `none` e
+- [X] T006 **Humano executa R5**: rodar o script de T002(d) para os dois modelos, `none` e
   `low` de esforço; entregar status HTTP, duração, `usage` e a forma da saída (JSON do
   schema estrito). Sem imprimir a chave — **humano**
-- [ ] T007 **R4 (adiado)** — registrar em `research.md` §3, junto com os outputs de R1/R2/R3/R5:
+- [X] T007 **R4 (adiado)** — registrar em `research.md` §3, junto com os outputs de R1/R2/R3/R5:
   "R4 (aparelhos reais, Chrome Android e Safari iOS) **adiado para a SF10**". Ponteiro: SF10,
   Q§5.4. **Critério de saída**: fixtures reais commitadas, lista de blocos e do ICC fechadas
   (tags e limite), `FOTOS_VERIFICACAO` fora do `env.dev` e `exiftool` sem EXIF/GPS/XMP/IPTC nos
   objetos baixados. Nenhum spike deve ser feito agora para R4 — **principal**
-- [ ] T008 Registrar em `research.md` §3 os outputs reais de R1, R2, R3 e R5 (entregues pelo
+- [X] T008 Registrar em `research.md` §3 os outputs reais de R1, R2, R3 e R5 (entregues pelo
   humano) e as decisões que eles destravam: coluna `etag` sim/não (SF1), reserva do R2 local,
   reserva do cron, modelos candidatos da SF13 — **principal**
-- [ ] T009 Rascunhar `specs/adr/009-fotos-r2.md` com o conteúdo da seção "ADRs" do plan
+- [X] T009 Rascunhar `specs/adr/009-fotos-r2.md` com o conteúdo da seção "ADRs" do plan
   (envio direto por URL pré-assinada, `aws4fetch`, token por bucket, 5 min, `content-type` +
   `content-length` + `if-none-match: *` ou as reservas conforme R1, CORS versionado,
   constraints novas em `produto_fotos` (D16), só JPEG/WebP quadrados de 400 a 1200 px, regra do
   ICC, chave única sem mover + `fotos_envio`, verificação por lista de permitidos sem decodificar,
   modo registro só no dev, rota com sessão, worker próprio + Cron Trigger, R2 local por
   `experimental_s3_credentials` ou reserva conforme R2/R3) **[TL✅]** — **principal**
-- [ ] T010 [P] Rascunhar `specs/adr/010-ia-openai.md` (Responses API por `fetch`, `store: false`,
+- [X] T010 [P] Rascunhar `specs/adr/010-ia-openai.md` (Responses API por `fetch`, `store: false`,
   structured output estrito, base64 com `detail: low`, 20 s, modelo/esforço **a definir pela
   medição da SF13**, contador no Postgres 30/pessoa e 100/dia, resposta tratada como entrada
   não confiável, teto de gasto no provedor) **[TL✅]** — **principal**
-- [ ] T011 [P] Rascunhar a emenda do ADR-008 em `specs/adr/008-*.md`: chaves de lock `4_001` e
+- [X] T011 [P] Rascunhar a emenda do ADR-008 em `specs/adr/008-*.md`: chaves de lock `4_001` e
   `4_002`; forma "lock global + `UPDATE` com pré-condições e token + statements guardados pelo
   token"; adoção por `DELETE … RETURNING` em CTE; reordenação por apagar e reinserir; convenção
   "writer de campos/status/destaque incrementa `versao`" **[TL✅]** — **principal**
-- [ ] T012 Revisão dos três rascunhos pelo tech-lead (opus): coerência com a constitution,
+- [X] T012 Revisão dos três rascunhos pelo tech-lead (opus): coerência com a constitution,
   com os outputs de T008 e com o plan; reservas escritas onde algum risco falhou —
   **tech-lead**
-- [ ] T013 **GATE — aprovação do humano**: ler e aprovar ADR-009, ADR-010 e a emenda do ADR-008.
+- [X] T013 (aprovado em 2026-10-09, com ajustes) **GATE — aprovação do humano**: ler e aprovar ADR-009, ADR-010 e a emenda do ADR-008.
   **A SF1 não começa sem esta aprovação.** (Os campos "modelo/esforço" do ADR-010 ficam
   provisórios até a SF13.) — **humano**
 - [ ] T014 Commit (humano), mensagem:
@@ -126,6 +129,14 @@ são registrados) e research D2/D6. Nenhum código de produção é escrito nest
   spikes R1, R2, R3 e R5. R4 segue para a SF10.
   ```
   — **humano**
+- [X] T014a **Humano executa** — depois do R1, remover do `.dev.vars` as três linhas
+  `SPIKE_R2_DEV_ENDPOINT`, `SPIKE_R2_DEV_ACCESS_KEY_ID` e `SPIKE_R2_DEV_SECRET_ACCESS_KEY`; o
+  token do bucket dev passa a viver só no `wrangler secret --env dev` (SF3) — **humano**
+- [ ] T014b **Humano executa — condição de entrada da SF13**: aplicar o limite de gasto do
+  projeto OpenAI dev (configurado em US$ 5 com alerta em 100%, ainda **não aplicado**; research
+  §3, R5; constitution III.5). Se a conta não permitir aplicar, emendar o ADR-010 registrando a
+  limitação do provedor e o contador do app como controle principal. **A SF13 não começa sem
+  esta task fechada** — **humano**
 
 ---
 
@@ -145,12 +156,13 @@ Registro de locks, Invariantes, Migration `0002`). Plan: linha SF1.
   `CHECK ((estado = 'confirmado') = (confirmado_em IS NOT NULL))` (`fotos_envio_confirmacao`);
   coluna gerada `chave` = `'fotos/' || id::text || '.webp'` ou `'.jpg'` (`STORED`), `UNIQUE`
   (`fotos_envio_chave_unique`), nenhum writer a informa (insert com `chave` ⇒ erro);
-  `produto_fotos`: `UNIQUE (chave_objeto)` (`produto_fotos_chave_unique`) e `CHECK` da regex
+  `produto_fotos`: `UNIQUE (chave_objeto)` (`produto_fotos_objeto_unique`) e `CHECK` da regex
   `^fotos/[0-9a-f]{8}-…-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(webp|jpg)$`
-  (`produto_fotos_chave_formato`; chave fora do padrão ⇒ `23514`); `enviado_por` e `enviado_em`
+  (`produto_fotos_objeto_formato`; chave fora do padrão ⇒ `23514`); `enviado_por` e `enviado_em`
   `NOT NULL`; `produtos.fotos_versao` `NOT NULL DEFAULT 1`; `produtos.fotos_operacao` `NULL`;
   `ia_uso`: PK `(dia, email)` e `CHECK (n >= 1)`. Vermelho até a T017 — **test-writer**
-- [ ] T016 Se o R1 provou que o R2 **não** impõe `if-none-match` (T008), a coluna `etag` entra:
+- [X] T016 **Não se aplica (R1 provou que o R2 impõe if-none-match)**; sem coluna `etag`
+  (research §3, ADR-009). Texto original: Se o R1 provou que o R2 **não** impõe `if-none-match` (T008), a coluna `etag` entra:
   `fotos_envio.etag text NULL` e a mesma coluna em `produto_fotos`, copiada na adoção. Caso
   contrário, **nenhuma** coluna `etag` (decisão registrada no ADR-009). Anotar a decisão no topo
   da T017 antes de gerar a migration — **principal**
@@ -297,7 +309,8 @@ recusada pela URL, R1).
   (regex dos valores), nunca pelo arquivo `wrangler.jsonc` inteiro (TL-21); depois
   `npm run cf-typegen` para o `CloudflareEnv` tipar `R2_S3_ENDPOINT` e demais — **principal**
 - [ ] T038 **Humano executa** (dev; Q§1 itens 2–4): `npx wrangler secret put R2_ACCESS_KEY_ID
-  --env dev` e `R2_SECRET_ACCESS_KEY --env dev` (token do T001); preencher o Account ID em
+  --env dev` e `R2_SECRET_ACCESS_KEY --env dev` (token do T001; **já gravados em 2026-10-09
+  na T014a**, não recriar); preencher o Account ID em
   `R2_S3_ENDPOINT` de `env.dev`/`env.production` e a origem exata do dev em
   `infra/r2/cors.dev.json`; aplicar `npx wrangler r2 bucket cors set roseshop-dev --file
   infra/r2/cors.dev.json` e conferir com `npx wrangler r2 bucket cors list roseshop-dev`;
@@ -350,7 +363,9 @@ alheia/não confirmada/expirada e duplo "Salvar".
   (segunda tentativa não adota); `foto_expirada` com os ids exatos que não são válidos (precedência
   depois de "nome repetido"); **duplo "Salvar" ⇒ `nome_repetido`** (segundo pega o lock depois
   do primeiro); **TL-4**: mesmo nome com envios válidos diferentes ⇒ `nome_repetido` vindo do
-  `23505` de `produtos_chave_unique`; `23505` de **outra** constraint propaga; categoria
+  `23505` de `produtos_chave_unique`; `23505` de **outra** constraint propaga, **inclusive
+  `produto_fotos_objeto_unique`** (só `produtos_chave_unique`, por comparação exata do nome,
+  vira `nome_repetido`); categoria
   removida ⇒ `categoria_ausente` vindo do `23503`; **TL-3**: `uuid[]`, `text[]` e
   `timestamptz[]` de `Date[]` passam como **um** parâmetro (`sql.param`); nenhum produto fica
   sem foto nem com fotos órfãs quando o `INSERT produtos` não ocorre — **test-writer**
@@ -366,7 +381,8 @@ alheia/não confirmada/expirada e duplo "Salvar".
 - [ ] T047 **[TL✅]** `src/lib/db/produtos.ts`: `inserirComFotos(db, sessao, campos, envioIds)`
   conforme F§2.2 (batch: lock → `INSERT produtos … WHERE count = n` com `fotos_operacao`=token →
   CTE `DELETE fotos_envio … VALIDO` **repetindo o VALIDO (TL-11)** → `INSERT produto_fotos`);
-  mapeamento de erros (`produtos_chave_unique` ⇒ `nome_repetido`; outra `23505` propaga; `23503` ⇒
+  mapeamento de erros (`produtos_chave_unique`, comparação exata do nome, ⇒ `nome_repetido`;
+  outra `23505`, inclusive de `produto_fotos`, propaga; `23503` ⇒
   `categoria_ausente`) via `nomeConstraint` de `erros-pg.ts`; 0 linhas ⇒ leitura posterior com
   a precedência de F§2.2. **O `inserir` da 003 permanece exportado até a SF6** (a action
   `criarProduto` ainda o usa; a remoção é a T067) — **principal**
@@ -859,6 +875,11 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
 **Fecha**: US3-AC1–8 (servidor), SC-003, SC-004, SC-009.
 **Revisão TL**: ✅.
 
+- [ ] T120a **Primeira task da SF13 — humano executa**: prova técnica do `gpt-5.4-mini` com o
+  script do R5 (`.spike/r5.mjs`, imagem + structured output estrito, `store: false`, esforços
+  `none` e `low`), depois de resolver o acesso (403 `model_not_found` na SF0; research §3, R5).
+  Sem acesso, a medição (T132) roda só com o `gpt-6-luna` ou o humano escolhe outro candidato —
+  **humano**
 - [ ] T121 **Primeiro de tudo** (antes de criar a pasta): linha `ia-medicao/` no `.gitignore`
   (TL-21) — **principal**
 - [ ] T122 **Humano executa — chave dev**: `npx wrangler secret put OPENAI_API_KEY --env dev`

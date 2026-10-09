@@ -57,6 +57,72 @@ geral, sem mudar a Decisão (origem: D1, D4 e D9 de `specs/003-produtos/research
   no deploy do `main`): mesmo revertido, o insert consome valores das identities.
   Verificado em 2026-10-07: o probe está só em `.github/workflows/pull-request.yml`
   (environment `dev`); `main.yml` não o executa.
+**Emenda (2026-10-09, SF0 da feature 004, aceita em 2026-10-09, aprovada pelo humano na
+T013):** aplicações da regra geral às fotos e à IA, sem mudar a Decisão (origem: D5 e D7 de
+`specs/004-fotos-produto/research.md` §2 e §4, data-model da 004 "Registro de locks" e
+"Invariantes", contracts/fotos.md §2 e contracts/ia.md §3, plan "Complexity Tracking").
+- **Chaves novas** no registro único de `src/lib/db/locks.ts`: `4_001` (`LOCK_FOTOS`) — toda
+  escrita em `produto_fotos` e todo **consumo** de `fotos_envio` (cadastro com fotos, ações de
+  fotos, remoção de produto, limpeza); `4_002` (`LOCK_IA_USO`) — consumo do limite de
+  sugestões. Emissão, confirmação e descarte de `fotos_envio` ficam **fora** do lock (não
+  consomem envio nem tocam `produto_fotos`).
+- **Lock de fotos global** (não por produto): com ele, nenhum writer de fotos intercala com
+  outro nem com a limpeza, e a pré-condição avaliada no primeiro statement que decide continua
+  verdadeira até o fim do batch (D5); a disputa é desprezível com 3 administradoras e a lista
+  de chaves a apagar no R2 na remoção é exata (research §4). Um lock por produto não serviria:
+  no cadastro o produto ainda não existe, e `fotos_envio` e a limpeza não pertencem a um
+  produto (contracts/fotos.md §2.2 e §6).
+- **Token de operação**: `produtos.fotos_versao integer NOT NULL DEFAULT 1` e
+  `produtos.fotos_operacao uuid NULL`; cada chamada gera um `tok` (uuid novo). Os statements
+  depois do que decide só agem com a guarda `G(tok) = EXISTS (SELECT 1 FROM produtos WHERE
+  id = $p AND fotos_operacao = $tok)`. O token evita o falso positivo de guardar por
+  `fotos_versao = $v + 1` quando outra pessoa já tinha chegado a `v + 1` antes do lock (D5;
+  "Complexity Tracking"). 0 linhas no statement que decide ⇒ a guarda é falsa, nada mais muda,
+  e uma leitura posterior só escolhe a mensagem.
+- **Formas por writer** (contracts/fotos.md §2):
+  - *Ações do conjunto* (`substituirConjunto`: adicionar, trocar, remover, mover):
+    `db.batch([ lock 4_001, UPDATE produtos SET fotos_versao = fotos_versao + 1,
+    fotos_operacao = $tok, atualizado_por, atualizado_em WHERE id = $p AND fotos_versao = $v
+    AND <conjunto atual = o lido> AND <envio VALIDO, se houver> RETURNING fotos_versao,
+    DELETE FROM fotos_envio WHERE id = $envio AND G(tok) (só em adicionar/trocar),
+    DELETE FROM produto_fotos WHERE produto_id = $p AND G(tok), INSERT INTO produto_fotos …
+    FROM unnest(…) WHERE G(tok) ])`. `VALIDO` = da própria pessoa, `confirmado` e com menos
+    de 24 h; é checado no `UPDATE`, e os valores inseridos vêm da leitura anterior, garantidos
+    pela igualdade do conjunto no `UPDATE`.
+  - *Cadastro com fotos* (`inserirComFotos`): `lock 4_001` + `INSERT INTO produtos … SELECT …
+    WHERE (count dos envios VALIDO) = $n` gravando `fotos_operacao = $tok` (sem `UPDATE` nem
+    `fotos_versao`), seguido da **adoção por `DELETE FROM fotos_envio … RETURNING` numa CTE**
+    que alimenta o `INSERT INTO produto_fotos`, com `VALIDO` **repetido** no `DELETE` (TL-11) e
+    guarda pelo token. O envio é adotado no máximo uma vez (a linha deixa de existir).
+  - *Remoção de produto*: `lock 4_001` + CTE que captura as chaves e faz `DELETE FROM produtos
+    WHERE id = $id AND versao = $v` (otimista da 003, sem token).
+  - *Limpeza*: `lock 4_001` + `DELETE FROM fotos_envio WHERE criado_em <= now() - 24 h
+    RETURNING chave`. Como a adoção exige `criado_em > now() - 24 h`, as duas não disputam o
+    mesmo envio.
+- **Toda mudança de conjunto = apagar todas as linhas do produto e reinserir a lista nova**
+  (posições 1..n sem buraco), em vez de atualizar posições: `UNIQUE (produto_id, posicao)` é
+  **não adiável** e o Postgres o confere linha a linha (research F10), então um statement que
+  troca posições colidiria no meio (plan, "Complexity Tracking"). Consequência: o `id` e o
+  `criado_em` da linha da foto mudam a cada mudança de conjunto; nada referencia o `id`.
+- **Emenda da convenção da 003**: "todo writer de `produtos` incrementa `versao`" passa a ser
+  "todo writer que altera **campos, status ou destaque** incrementa `versao`; o writer de fotos
+  altera **só** `fotos_versao`, `fotos_operacao`, `atualizado_por` e `atualizado_em`, e nunca
+  `versao`" (FR-026). Seguro porque `saiuDoDestaque` (CTE `antes`) e a precedência após 0
+  linhas leem só `versao`, `esgotado` e `destaque_vaga`, que o writer de fotos não toca; um
+  `UPDATE` da 003 que espera o lock de linha de um writer de fotos reavalia `versao = $v`
+  (inalterada) e segue. O data-model da 003 e o comentário de `src/lib/db/produtos.ts:177-179`
+  são atualizados na SF5.
+- **READ COMMITTED aplicado às fotos**:
+  - `chavesConhecidas` (limpeza) é **um único statement** (`UNION ALL` das duas tabelas, um só
+    snapshot); dividir em duas consultas abriria janela durante uma adoção (TL-12).
+  - `23505` dentro do batch do cadastro só vira `nome_repetido` se a constraint for
+    `produtos_chave_unique` (comparação exata do nome); qualquer outra propaga, inclusive as de
+    `produto_fotos` (`produto_fotos_objeto_unique`) (ressalva da 003).
+- **Limite de sugestões**: `consumirSugestao` é `db.batch([ lock 4_002, INSERT INTO ia_uso …
+  ON CONFLICT (dia, email) DO UPDATE … WHERE n < $pessoa AND total do dia < $total RETURNING
+  n ])`, com o dia de Brasília calculado uma vez numa CTE; o lock torna os dois limites exatos
+  (contracts/ia.md §3).
+- Continua valendo: nenhum código usa `db.transaction()`.
 
 ## Contexto
 

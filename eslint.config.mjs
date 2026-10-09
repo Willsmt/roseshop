@@ -26,6 +26,13 @@ const proibirPainel = {
   message: `${MSG} A leitura do painel só é importada por src/app/painel/ e src/lib/categorias/.`,
 };
 
+// Feature 004 (contracts/fotos.md §1/§7): só o barrel "@/lib/r2" tem `server-only`; um import
+// direto de submódulo o contornaria. Segunda camada de src/test/conformance/fotos-acesso.test.ts.
+const proibirSubmoduloR2 = {
+  group: ["@/lib/r2/*", "**/lib/r2/*"],
+  message: 'R2 fora da fronteira (contracts/fotos.md §1). Importe só o barrel "@/lib/r2".',
+};
+
 const restringir = (...patterns) => ({
   "no-restricted-imports": ["error", { patterns }],
 });
@@ -35,21 +42,36 @@ export default defineConfig([
   ...nextTs,
   {
     files: [SRC],
-    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel),
+    rules: restringir(
+      proibirDbCategorias,
+      proibirSchemaCategorias,
+      proibirActions,
+      proibirPainel,
+      proibirSubmoduloR2,
+    ),
   },
   {
     files: ["src/app/painel/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir(proibirDbCategorias, proibirSchemaCategorias),
+    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirSubmoduloR2),
   },
   {
     // Dentro do próprio módulo o import costuma ser relativo ("./actions"), que o
     // padrão "**/categorias/actions" não alcança.
     files: ["src/lib/categorias/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir({ ...proibirActions, group: [...proibirActions.group, "./actions", "./actions.*"] }),
+    rules: restringir(
+      { ...proibirActions, group: [...proibirActions.group, "./actions", "./actions.*"] },
+      proibirSubmoduloR2,
+    ),
   },
   {
     files: ["src/lib/db/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir(proibirActions, proibirPainel),
+    rules: restringir(proibirActions, proibirPainel, proibirSubmoduloR2),
+  },
+  {
+    // Dentro do módulo R2 os submódulos se importam entre si (relativos); as demais proibições
+    // valem como no resto do src/.
+    files: ["src/lib/r2/**/*.{ts,tsx,js,jsx,mjs}"],
+    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel),
   },
   {
     // Mesma exceção, por arquivo, do teste de conformidade: os testes unitários das

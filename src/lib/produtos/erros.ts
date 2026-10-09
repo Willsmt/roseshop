@@ -18,6 +18,7 @@ export type Falha = {
   mensagem: string;
   campo?: CampoProduto;
   codigoExistente?: number;
+  envioIds?: string[]; // foto_expirada: os envios que precisam ser refeitos
   valores?: ValoresFormulario;
 };
 

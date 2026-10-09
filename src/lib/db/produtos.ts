@@ -133,32 +133,12 @@ async function ausenteOuVersaoDiferente(db: Db, id: number): Promise<Ausente | V
 }
 
 /**
- * `campos` chega normalizado e validado pelo domínio (src/lib/produtos/validacao.ts).
- * Substituído por `inserirComFotos`; continua exportado só até a SF6 da 004 (T067), enquanto
- * a action `criarProduto` o usa.
- */
-export async function inserir(
-  db: Db,
-  sessao: AdminSession,
-  campos: CamposProduto,
-): Promise<ResultadoInserir> {
-  try {
-    const [linha] = await db
-      .insert(produtos)
-      .values({ ...valores(campos), criadoPor: sessao.email, atualizadoPor: sessao.email })
-      .returning({ id: produtos.id });
-    return { tipo: "ok", id: linha.id };
-  } catch (erro) {
-    return traduzirErroDeEscrita(db, campos.nome, erro);
-  }
-}
-
-/**
- * Cadastro com fotos (contracts/fotos.md §2.2). Batch sob LOCK_FOTOS: o INSERT de `produtos`
- * só ocorre se os N envios são `VALIDO` e grava o token; a adoção é um DELETE … RETURNING de
- * `fotos_envio` (VALIDO repetido, TL-11, e guarda pelo token) que alimenta o INSERT de
- * `produto_fotos` nas posições 1..N, na ordem de `envioIds`. Sem o INSERT de `produtos` nada
- * mais muda; um erro aborta o batch inteiro.
+ * Cadastro com fotos (contracts/fotos.md §2.2); substituiu o `inserir` da 003. `campos` chega
+ * normalizado e validado pelo domínio (src/lib/produtos/validacao.ts). Batch sob LOCK_FOTOS:
+ * o INSERT de `produtos` só ocorre se os N envios são `VALIDO` e grava o token; a adoção é um
+ * DELETE … RETURNING de `fotos_envio` (VALIDO repetido, TL-11, e guarda pelo token) que
+ * alimenta o INSERT de `produto_fotos` nas posições 1..N, na ordem de `envioIds`. Sem o INSERT
+ * de `produtos` nada mais muda; um erro aborta o batch inteiro.
  */
 export async function inserirComFotos(
   db: Db,

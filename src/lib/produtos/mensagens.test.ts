@@ -22,6 +22,8 @@ const TEXTOS: Record<Motivo, string> = {
   vaga_disputada: "Outra pessoa destacou um produto ao mesmo tempo. Tente de novo.",
   esgotado_nao_destaca: "Produto esgotado não pode ficar em destaque.",
   ja_em_destaque: "Este produto já está em destaque.",
+  sem_foto: "Coloque pelo menos 1 foto do produto.",
+  foto_expirada: "Uma das fotos expirou. Envie de novo.",
   falha_geral: "Não foi possível concluir agora. Tente de novo em instantes.",
 };
 

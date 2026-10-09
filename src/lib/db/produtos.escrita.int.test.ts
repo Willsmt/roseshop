@@ -6,12 +6,16 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AdminSession } from "@/lib/auth";
 import { createDb } from "@/lib/db/client";
 import { resetCategorias } from "@/test/db/categorias-fixtures";
+import { inserirEnvio, limparEnvios } from "@/test/db/fotos-fixtures";
 import { inserirProduto, limparProdutos, nomeUnicoProduto } from "@/test/db/produtos-fixtures";
 
-import { editar, inserir, remover } from "./produtos";
+import { editar, inserirComFotos, remover } from "./produtos";
 
 // Feature 003, T023 (SF4): US1-AC1/4/7/8, US4-AC1-5, US6-AC3-6, SC-005. Integração com o banco local.
 // A camada db recebe os campos JÁ normalizados pelo domínio (ADR-008: um statement por função).
+// T063 (004): `inserir` deixou de existir; o cadastro é `inserirComFotos` e exige >= 1 envio
+// confirmado da mesma sessão. O helper `inserir` abaixo cria 1 envio e delega (a cobertura das
+// fotos em si está em produtos.com-fotos.int.test.ts).
 const db = createDb({
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   NEON_FETCH_ENDPOINT: process.env.NEON_FETCH_ENDPOINT,
@@ -36,7 +40,16 @@ type Linha = {
 let cat1 = 0;
 let cat2 = 0;
 
-function campos(extra: Partial<Parameters<typeof inserir>[2]> = {}) {
+async function inserir(
+  d: typeof db,
+  quem: AdminSession,
+  c: Parameters<typeof inserirComFotos>[2],
+) {
+  const envio = await inserirEnvio(d, { enviadoPor: quem.email, estado: "confirmado" });
+  return inserirComFotos(d, quem, c, [envio.id]);
+}
+
+function campos(extra: Partial<Parameters<typeof inserirComFotos>[2]> = {}) {
   return {
     nome: nomeUnicoProduto(),
     categoriaId: cat1,
@@ -67,8 +80,14 @@ beforeAll(async () => {
   const r = await db.execute(sql`SELECT id FROM categorias ORDER BY id LIMIT 2`);
   [cat1, cat2] = (r.rows as { id: number }[]).map((x) => x.id);
 });
-beforeEach(() => limparProdutos(db));
-afterAll(() => resetCategorias(db));
+beforeEach(async () => {
+  await limparProdutos(db);
+  await limparEnvios(db);
+});
+afterAll(async () => {
+  await limparEnvios(db);
+  await resetCategorias(db);
+});
 
 describe("inserir (US1)", () => {
   it("US1-AC1: ok com id numérico; versao 1 e criado_por = atualizado_por = e-mail da sessão", async () => {
@@ -111,7 +130,10 @@ describe("inserir (US1)", () => {
   it("US1-AC8/SC-005: código (id) nunca reaproveitado após remover", async () => {
     const a = await inserir(db, sessao, campos());
     if (a.tipo !== "ok") throw new Error("setup");
-    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido", chaves: [] });
+    expect(await remover(db, sessao, a.id, 1)).toEqual({
+      tipo: "removido",
+      chaves: [expect.stringMatching(/^fotos\/.+\.webp$/)],
+    });
     const b = await inserir(db, sessao, campos());
     if (b.tipo !== "ok") throw new Error("setup");
     expect(b.id).toBeGreaterThan(a.id);

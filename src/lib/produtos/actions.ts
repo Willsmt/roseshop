@@ -11,10 +11,12 @@ import {
   disponibilizar,
   editar,
   esgotar,
-  inserir,
+  inserirComFotos,
   remover,
   tirarDoDestaque,
 } from "@/lib/db/produtos";
+import { envioIdsCadastro } from "@/lib/fotos/validacao";
+import { apagarObjetos } from "@/lib/r2";
 
 import { type Falha, type ValoresFormulario, falhaDoResultado } from "./erros";
 import { mensagemDoMotivo } from "./mensagens";
@@ -22,8 +24,10 @@ import { idProduto, validarCamposProduto, versaoProduto } from "./validacao";
 
 // Server Actions do painel de produtos (contrato §3). Ordem fixa em cada uma: guard antes de
 // tudo, validação antes de qualquer SQL, `exigirCategoriaValida` antes de inserir/editar, só
-// então banco. Sem sessão, `UnauthorizedError` propaga. Arquivo "use server": só funções
-// async exportadas (e tipos). A action nunca redireciona: o destino de um sucesso é da UI.
+// então banco. Feature 004 (contracts/fotos.md §3): o cadastro exige 1..3 fotos e a remoção
+// apaga os objetos no R2 depois do banco. Sem sessão, `UnauthorizedError` propaga. Arquivo
+// "use server": só funções async exportadas (e tipos). A action nunca redireciona: o destino
+// de um sucesso é da UI.
 
 export type ResultadoAction<T = object> = ({ ok: true } & T) | ({ ok: false } & Falha);
 
@@ -68,6 +72,17 @@ async function categoriaValida(categoriaId: number): Promise<Falha | null> {
   }
 }
 
+// `fotos` chega repetido no FormData, na ordem. Nenhum ⇒ `sem_foto`; fora de 1..3 ids
+// distintos é adulteração do formulário ⇒ `falha_geral`.
+function lerFotos(formData: FormData): Falha | string[] {
+  const recebidas = formData.getAll("fotos");
+  if (recebidas.length === 0) return falhaDoMotivo("sem_foto");
+  const r = envioIdsCadastro.safeParse(recebidas);
+  return r.success ? r.data : falhaGeral();
+}
+
+const falhaDoMotivo = (motivo: "sem_foto"): Falha => ({ motivo, mensagem: mensagemDoMotivo(motivo) });
+
 export async function criarProduto(
   _anterior: ResultadoAction<{ id: number }> | null,
   formData: FormData,
@@ -77,12 +92,23 @@ export async function criarProduto(
   const v = validarCamposProduto(valores, "cadastro");
   if (!v.ok) return falharComValores(v.falhas[0], valores);
 
+  const fotos = lerFotos(formData);
+  if (!Array.isArray(fotos)) return falharComValores(fotos, valores);
+
   const recusaCategoria = await categoriaValida(v.campos.categoriaId);
   if (recusaCategoria) return falharComValores(recusaCategoria, valores);
 
   let id: number;
   try {
-    const r = await inserir(await dbDoContexto(), sessao, v.campos);
+    const r = await inserirComFotos(await dbDoContexto(), sessao, v.campos, fotos);
+    if (r.tipo === "foto_expirada") {
+      // Lista vazia: um envio foi confirmado entre o batch e a releitura (F§2.2).
+      if (r.envioIds.length === 0) return falharComValores(falhaGeral(), valores);
+      return falharComValores(
+        { motivo: "foto_expirada", mensagem: mensagemDoMotivo("foto_expirada"), envioIds: r.envioIds },
+        valores,
+      );
+    }
     if (r.tipo !== "ok") return falharComValores(falhaDoResultado(r), valores);
     id = r.id;
   } catch {
@@ -195,10 +221,26 @@ export async function tirarProdutoDoDestaque(
   return mudarProduto(await requireAdminAction(), formData, tirarDoDestaque);
 }
 
-// A confirmação é da UI (tela própria): a action só é chamada depois dela.
+// A confirmação é da UI (tela própria): a action só é chamada depois dela. Os objetos das
+// fotos saem do R2 depois do banco, em melhor esforço (FR-035): falha do R2 não desfaz a
+// remoção; o órfão sai na limpeza diária.
 export async function removerProduto(
   _anterior: ResultadoAction | null,
   formData: FormData,
 ): Promise<ResultadoAction> {
-  return mudarProduto(await requireAdminAction(), formData, remover);
+  const sessao = await requireAdminAction();
+  let chaves: string[] = [];
+  const resultado = await mudarProduto(sessao, formData, async (db, s, id, versao) => {
+    const r = await remover(db, s, id, versao);
+    if (r.tipo === "removido") chaves = r.chaves;
+    return r;
+  });
+  if (resultado.ok && chaves.length > 0) {
+    try {
+      await apagarObjetos(chaves);
+    } catch {
+      console.warn("produtos.remocao.objetos_nao_apagados", { quantidade: chaves.length });
+    }
+  }
+  return resultado;
 }

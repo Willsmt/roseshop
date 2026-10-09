@@ -21,6 +21,23 @@ export async function lerObjeto(chave: string): Promise<ObjetoLido | null> {
   };
 }
 
+export type ObjetoServido = { etag: string; tamanho: number; corpo: ReadableStream | null };
+
+// Exibição (contracts/fotos.md §5): com `If-None-Match`, o R2 devolve o objeto sem `body`
+// quando a condição falha (o etag casa) ⇒ `corpo: null`, a rota responde 304 (TL-19).
+export async function servirObjeto(
+  chave: string,
+  ifNoneMatch: string | null,
+): Promise<ObjetoServido | null> {
+  const alvo = await bucket();
+  const objeto = ifNoneMatch
+    ? await alvo.get(chave, { onlyIf: new Headers({ "if-none-match": ifNoneMatch }) })
+    : await alvo.get(chave);
+  if (!objeto) return null;
+  const corpo = "body" in objeto ? (objeto as R2ObjectBody).body : null;
+  return { etag: objeto.httpEtag, tamanho: objeto.size, corpo };
+}
+
 // Chave inexistente não é erro no R2.
 export async function apagarObjetos(chaves: string[]): Promise<void> {
   if (chaves.length === 0) return;

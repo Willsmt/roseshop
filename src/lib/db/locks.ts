@@ -15,3 +15,14 @@ export const LOCK_PROBE_BATCH = 2_001;
  * D3-B). Usado só por `remover` em `categorias.ts`.
  */
 export const LOCK_REMOCAO_CATEGORIAS = 2_002;
+
+/**
+ * Serializa as fotos (feature 004, ADR-008 emenda de 2026-10-09). Global, não por produto:
+ * toda escrita em `produto_fotos` e todo consumo de `fotos_envio` (cadastro com fotos,
+ * ações do conjunto, remoção de produto, limpeza). Emissão, confirmação e descarte de
+ * `fotos_envio` ficam fora.
+ */
+export const LOCK_FOTOS = 4_001;
+
+/** Torna exatos os limites de sugestões da IA (feature 004, contracts/ia.md §3). */
+export const LOCK_IA_USO = 4_002;

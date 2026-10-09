@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { sql, type SQL } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -185,7 +187,7 @@ describe("invariantes de produtos", () => {
 describe("tabela produto_fotos", () => {
   async function foto(produtoId: number, posicao: number) {
     return db.execute(
-      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto) VALUES (${produtoId}, ${posicao}, ${`zt/${produtoId}/${posicao}`})`,
+      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em) VALUES (${produtoId}, ${posicao}, ${`fotos/${randomUUID()}.jpg`}, 'zt@example.com', now())`,
     );
   }
 

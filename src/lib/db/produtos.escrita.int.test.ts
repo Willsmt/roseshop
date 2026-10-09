@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -194,7 +196,7 @@ describe("remover (US6)", () => {
   it("US6-AC3: remove a linha ⇒ removido; fotos saem em cascata", async () => {
     const id = await inserirProduto(db, cat1);
     await db.execute(
-      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto) VALUES (${id}, 1, 'a/1.jpg'), (${id}, 2, 'a/2.jpg')`,
+      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em) VALUES (${id}, 1, ${`fotos/${randomUUID()}.jpg`}, 'zt@example.com', now()), (${id}, 2, ${`fotos/${randomUUID()}.jpg`}, 'zt@example.com', now())`,
     );
     expect(await remover(db, sessao, id, 1)).toEqual({ tipo: "removido" });
     expect(await linha(id)).toBeUndefined();

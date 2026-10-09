@@ -149,7 +149,7 @@ Registro de locks, Invariantes, Migration `0002`). Plan: linha SF1.
 **Fecha**: invariantes de banco (FR-003 só a parte de banco, FR-015, FR-016, D12, D16).
 **Revisão TL**: ✅.
 
-- [ ] T015 **Teste primeiro** — `src/lib/db/fotos.schema.int.test.ts`, uma prova por linha:
+- [X] T015 **Teste primeiro** — `src/lib/db/fotos.schema.int.test.ts`, uma prova por linha:
   `fotos_envio`: `id` v4 (`uuid_extract_version(id) = 4`, `fotos_envio_id_v4`; v7 ⇒ `23514`);
   `formato IN ('webp','jpeg')` (`fotos_envio_formato`); `tamanho BETWEEN 1 AND 1048576`
   (`fotos_envio_tamanho`; 0 e 1048577 ⇒ `23514`); `estado IN ('emitido','confirmado')`;
@@ -166,7 +166,7 @@ Registro de locks, Invariantes, Migration `0002`). Plan: linha SF1.
   `fotos_envio.etag text NULL` e a mesma coluna em `produto_fotos`, copiada na adoção. Caso
   contrário, **nenhuma** coluna `etag` (decisão registrada no ADR-009). Anotar a decisão no topo
   da T017 antes de gerar a migration — **principal**
-- [ ] T017 **[TL✅]** `src/lib/db/schema.ts` e `npm run db:generate` (migration `0002`):
+- [X] T017 **[TL✅]** `src/lib/db/schema.ts` e `npm run db:generate` (migration `0002`):
   `generatedAlwaysAs` da `chave` com **nomes de coluna crus** no `sql` (sem `${t.formato}`) e
   mantendo o `id::text` (para o `||` resolver para `textcat`, IMMUTABLE); coluna **`STORED`**;
   `\\.` na regex do `CHECK`; nomes das constraints como na T015; `produtos.fotos_versao`,
@@ -174,14 +174,14 @@ Registro de locks, Invariantes, Migration `0002`). Plan: linha SF1.
   `enviado_por` e `enviado_em` `NOT NULL` **sem default**; `ia_uso`. Conferir no SQL gerado
   (sem editar à mão): expressão da `chave`, regex, nomes das constraints. Segunda geração
   ⇒ "No schema changes" — **principal**
-- [ ] T018 **[TL✅]** `src/lib/db/locks.ts`: acrescentar `LOCK_FOTOS = 4_001` e
+- [X] T018 **[TL✅]** `src/lib/db/locks.ts`: acrescentar `LOCK_FOTOS = 4_001` e
   `LOCK_IA_USO = 4_002` ao registro existente, com comentário de uso (DM: Registro de locks) —
   **principal**
-- [ ] T019 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
+- [X] T019 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
   colar o output real; conferir "No schema changes". **Se algum teste da 003 que insere em
   `produto_fotos` quebrar pelas colunas `NOT NULL` novas, parar e reportar ao humano** (as
   fixtures da 003 só são ajustadas na SF5; ver "Pontos de atenção") — **principal**
-- [ ] T020 Revisão do diff pelo tech-lead (opus): `schema.ts`, migration `0002`, `locks.ts`;
+- [X] T020 Revisão do diff pelo tech-lead (opus): `schema.ts`, migration `0002`, `locks.ts`;
   checar `STORED`, `textcat`, regex, ausência de default nas colunas novas e de
   `db.transaction()` — **tech-lead**
 - [ ] T021 Commit (humano), mensagem:
@@ -438,6 +438,10 @@ alheia/não confirmada/expirada e duplo "Salvar".
   `enviado_por` e `enviado_em`), **sem depender do `inserir` da 003** (removido na T067);
   estender o teste do SC-005 da 003 (destaque sempre com foto) e
   conferir que os testes da 003 seguem verdes — **principal**
+  *Já feito na SF1 (T019, decisão do humano em 2026-10-09)*: só os **dados** dos INSERTs em
+  `produto_fotos` de `src/lib/db/produtos.schema.int.test.ts` e
+  `src/lib/db/produtos.escrita.int.test.ts` (`enviado_por`, `enviado_em` e chaves
+  `fotos/<uuid v4>.jpg`), sem mudar o que cada teste verifica. As fixtures continuam para cá.
 - [ ] T055 **[TL✅]** `src/lib/db/fotos.ts`: `lerConjunto` e `substituirConjunto` conforme F§2.3
   (batch: lock → `UPDATE produtos` com `fotos_versao`, igualdade de `atuais` por `array_agg` e
   `VALIDO($envio)` → `DELETE fotos_envio` guardado por token → `DELETE produto_fotos` guardado →

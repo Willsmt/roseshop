@@ -1,7 +1,8 @@
 # Arquitetura
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
-> e 003 (produtos) implementadas**. Este documento descreve apenas o que existe hoje
+> e 003 (produtos) implementadas; feature 004 (fotos) em andamento, só a base
+> de servidor (`src/lib/r2/`) existe**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -46,9 +47,15 @@ Autenticação (feature 001), dependências de runtime:
 | `server-only` | `0.0.1` (**exata**) | Faz o build falhar se um módulo de servidor for importado no cliente. |
 | `zod` | `^4.6.5` | Validação de e-mail da allowlist e de entradas da action de login. |
 
-Não há ainda no `package.json`: SDK da OpenAI nem nenhuma lib de upload para R2
-— essas entram nas dependências quando as features correspondentes (ver
-`specs/`) forem implementadas.
+Fotos de produto (feature 004, em andamento), dependências de runtime e de build:
+
+| Pacote | Versão | Observação |
+|---|---|---|
+| `aws4fetch` | `1.0.20` (**exata**) | Assinatura SigV4 (`AwsV4Signer`) da URL pré-assinada de envio ao R2. Sem dependências próprias (ADR-009 D1). |
+| `wrangler` (dev) | `4.147.0` (**exata**, sem `^`) | O endpoint S3 local do R2 é experimental e depende da versão; ver [operacao.md, "wrangler fixado"](./operacao.md#wrangler-fixado-em-41470-devdependency). |
+
+Não há ainda no `package.json`: SDK da OpenAI (a feature 004 prevê `fetch` direto). A IA
+entra nas dependências quando for implementada (ver `specs/`).
 
 ### Estrutura de código atual
 
@@ -67,6 +74,8 @@ src/components/ui/   # componentes base: button, campo-texto, area-texto, seleca
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/produtos/     # módulo de domínio de produtos (actions, painel, validacao, preco, codigo, erros, mensagens)
+src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
+infra/r2/     # CORS dos buckets, versionado (cors.dev.json, cors.production.json)
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
@@ -208,8 +217,14 @@ graph LR
     [docs do OpenNext](https://opennext.js.org/cloudflare/caching)).
   - `observability.enabled: true` e `upload_source_maps: true`.
   - `r2_buckets` — binding `PRODUCT_IMAGES` (local `roseshop-local`, simulado;
-    dev `roseshop-dev`; produção `roseshop-prod`). Declarado, mas **nenhum
-    código o usa ainda**.
+    dev `roseshop-dev`; produção `roseshop-prod`). Usado por
+    `src/lib/r2/bucket.ts` (ainda sem rota ou action que o chame). O item local
+    traz `local_dev.experimental_s3_credentials` com credenciais **falsas e fixas**
+    (não são segredo), que ligam o endpoint S3 do `preview`.
+  - `vars.R2_S3_ENDPOINT` — endpoint S3 do bucket do ambiente (local
+    `http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local`; dev e produção
+    `https://<id da conta>.r2.cloudflarestorage.com/<bucket>`). `vars` não são
+    herdadas: cada env redeclara.
   - `compatibility_date: "2026-10-01"` e flag `global_fetch_strictly_public`.
 - `public/_headers` aplica cache imutável de 1 ano para `/_next/static/*`
   (arquivo lido pelo asset handler do Workers, não pelo Next).
@@ -329,9 +344,60 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   leitores de tela e SEO. Também permanecem `title`/`description` genéricos
   ("Create Next App") em `metadata`. Corrigir ao implementar a primeira tela.
 
+### Módulo R2 (feature 004, SF2 e SF3)
+
+> Estado: só a base de servidor. **Não existem** rotas, Server Actions, UI de fotos,
+> IA nem cron; nada fora de `src/lib/r2/` e dos testes chama o módulo ainda.
+
+**Visão leiga**: a foto do produto não passa pelo servidor do site. A administradora
+pede uma "autorização de envio" (uma URL temporária, válida por 5 minutos), o aparelho
+manda o arquivo direto ao armazenamento (R2) e o servidor depois confere o que chegou.
+Esta base entrega as peças: conferir o arquivo, gerar a autorização e ler/apagar objetos.
+
+**Aprofundamento técnico** (zona protegida: `src/lib/r2/`; contrato em
+`specs/004-fotos-produto/contracts/fotos.md`, decisões no ADR-009):
+
+| Arquivo | Papel |
+|---|---|
+| `src/lib/r2/index.ts` | Barrel `server-only`: única porta de entrada para actions e rotas; reexporta `verificacao/`. |
+| `src/lib/r2/verificacao/` | SF2. Verificação por lista de permitidos de JPEG e WebP (`verificarImagem`): lê o arquivo inteiro sem decodificar, lado entre `LADO_MINIMO` (400) e `LADO_MAXIMO` (1200), recusa animação e metadados fora da lista. Modo `registro` relaxa só o metadado (`modo.ts`). |
+| `src/lib/r2/config.ts` | `configR2()`: valida com Zod `R2_S3_ENDPOINT` (https, exceto `localhost`/`127.0.0.1`; sem `/` final), `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY` lidos de `process.env` a cada uso. O erro cita só os nomes. |
+| `src/lib/r2/chaves.ts` | Chave do objeto `fotos/<uuid v4>.<webp\|jpg>`; `ARQUIVO_VALIDO` é a mesma regex da rota de exibição e do CHECK de `produto_fotos`. |
+| `src/lib/r2/assinatura.ts` | `assinarEnvio({ chave, formato, tamanho })`: URL pré-assinada de PUT (SigV4, `AwsV4Signer`), expira em 300 s, com `content-length`, `content-type` e `if-none-match: *` assinados; tamanho de 1 a 1 MB. |
+| `src/lib/r2/bucket.ts` | Acesso pelo binding `PRODUCT_IMAGES`: `lerObjeto` (tamanho vem dos metadados), `apagarObjetos` (lotes de 1000; chave inexistente não é erro) e `listarObjetos` (paginado por cursor). |
+
+```mermaid
+sequenceDiagram
+  participant C as Chamador (action futura, SF6)
+  participant M as src/lib/r2
+  participant R as R2 (endpoint S3)
+  C->>M: assinarEnvio(chave, formato, tamanho)
+  M-->>C: URL assinada (5 min) + headers
+  C->>R: PUT assinado pelo aparelho
+  R-->>C: 200 (outro tamanho: 403; segundo PUT: 412)
+  C->>M: lerObjeto(chave) + verificarImagem
+```
+
+O chamador (action de envio e confirmação) ainda **não existe**: o diagrama mostra o
+uso do módulo, comprovado só em teste e na prova local. Detalhes de operação (segredos, CORS, endpoint local) em
+[operacao.md, "R2: segredos, endpoint e CORS"](./operacao.md#r2-segredos-endpoint-e-cors).
+
+Pegadinhas:
+
+- **Tamanho e `if-none-match` são impostos pelo R2**: PUT com tamanho diferente do
+  assinado recebe 403; segundo PUT na mesma chave recebe 412 (prova local T039 em
+  `specs/004-fotos-produto/research.md`, seção 3).
+- **`AwsV4Signer` direto, não `AwsClient.sign`**: o signer só calcula a URL; montar um
+  `Request` com `content-length` poderia ser recusado pelo workerd. `X-Amz-Expires` é
+  posto **antes** de assinar (senão a lib usa 24 h).
+- **Endpoint S3 local é experimental** e por isso o `wrangler` está fixado; valide
+  envio no `preview`, nunca no `dev` (o binding só existe no worker).
+- **Credenciais no `process.env`**: como os demais secrets, só existem durante o
+  request do Worker; não leia no escopo do módulo.
+
 ### Planejado, não implementado
 
-Catálogo público, sacola, upload de imagens via R2 (URL pré-assinada) e integração de IA (OpenAI) são
+Catálogo público, sacola, rotas e telas de fotos (nenhuma action emite a URL de envio ainda) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

@@ -11,8 +11,10 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > administradoras)**: login com Google, allowlist e painel protegido, sem
 > middleware, **feature 002 (categorias)**: primeira tabela do banco e
 > telas de categorias no painel, e **feature 003 (produtos)**: cadastro,
-> lista, busca, status e destaque de produtos no painel, ainda sem fotos.
-> Catálogo público, sacola, upload de imagem e IA ainda não existem; por isso este índice é deliberadamente curto: só existem
+> lista, busca, status e destaque de produtos no painel, ainda sem fotos. A
+> **feature 004 (fotos)** está em andamento: existe só a base de servidor
+> (schema, verificação do arquivo e módulo R2 em `src/lib/r2/`).
+> Catálogo público, sacola, telas de upload de imagem e IA ainda não existem; por isso este índice é deliberadamente curto: só existem
 > documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
@@ -22,12 +24,13 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    camadas de ambiente. Seções numeradas em algarismos romanos (I a VIII).
 2. **[architecture.md](./architecture.md)** — como o código atual (scaffold
    Next.js + OpenNext) builda e viraria um Worker Cloudflare: stack, estrutura
-   de pastas, pipeline de build/deploy, bindings já configurados.
+   de pastas, pipeline de build/deploy, bindings já configurados e o módulo R2
+   (`src/lib/r2/`, feature 004 em andamento).
 3. **[operacao.md](./operacao.md)** — comandos do dia a dia (`dev`, `preview`,
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
-   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations (fluxo `db:up` → `db:migrate` → `test:int`), testes unitários, de integração e de desempenho (`test:perf`; inclui recuperação de execução interrompida e o probe do CI, que cobre também a FK de produtos), auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`,
-   `allowScripts`), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
+   instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations (fluxo `db:up` → `db:migrate` → `test:int`), testes unitários, de integração e de desempenho (`test:perf`; inclui recuperação de execução interrompida e o probe do CI, que cobre também a FK de produtos), auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`, `wrangler` e `aws4fetch` fixados,
+   `allowScripts`), R2 (chaves, endpoint e CORS), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
 4. **[features/F01-autenticacao.md](./features/F01-autenticacao.md)** — login
    das administradoras: rotas, como a proteção funciona sem middleware (guards e
    teste de conformidade), módulos de `src/lib/auth/` e pegadinhas.

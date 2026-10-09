@@ -88,10 +88,14 @@ INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, envia
   FROM e JOIN unnest($ids::uuid[]) WITH ORDINALITY AS o(id, ord) ON o.id = e.id;
 ```
 
+- `envioIds` é normalizado para minúsculas na entrada (o Postgres devolve o uuid em
+  minúsculas; sem isso um id válido em maiúsculas sairia em `foto_expirada` e o mesmo uuid em
+  duas grafias passaria pela checagem de repetidos). A action também normaliza no Zod (SF6).
 - `23505` aborta o batch inteiro: só vira `nome_repetido` se a constraint for
   `produtos_chave_unique` (campo `constraint` do `NeonDbError`, já lido por `nomeConstraint`
   em `erros-pg.ts`); qualquer outra ⇒ propaga (ADR-008, ressalva da 003).
-  `23503` na FK de categoria ⇒ `categoria_ausente`.
+  `23503` só vira `categoria_ausente` se a constraint for exatamente a FK de categoria
+  (`produtos_categoria_id_categorias_id_fk`); qualquer outra ⇒ propaga.
 - **Testes obrigatórios (TL-4)**: mesmo nome com envios válidos diferentes ⇒ `nome_repetido`
   vindo do `23505` do batch; `23505` de outra constraint ⇒ propaga, **inclusive as de
   `produto_fotos`** (`produto_fotos_objeto_unique`); só `produtos_chave_unique`, por
@@ -104,6 +108,14 @@ INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, envia
      resultado para a pessoa é o mesmo da spec (recusa por nome repetido);
   2. senão, lista quais `envioIds` não são `VALIDO` ⇒ `foto_expirada` com esses ids (a tela marca
      as fotos que faltam).
+     **Lista vazia** (`foto_expirada` com `envioIds: []`) é corrida: algum envio estava
+     `emitido` no batch e foi confirmado entre o batch e a leitura. Não há foto a marcar; a
+     action responde `falha_geral` ("Tente de novo em instantes", da 003), com `valores`.
+     **Nome em conflito sumido**: se o produto com o mesmo nome é removido ou renomeado entre o
+     batch e a leitura do passo 1, a leitura não o acha e o resultado cai no passo 2. No duplo
+     "Salvar" os envios já foram adotados pelo primeiro, então todos os ids saem em
+     `foto_expirada`. Reação esperada: a tela marca essas fotos e a pessoa as envia de novo e
+     salva outra vez (nada é gravado pela segunda chamada; benigno, sem tratamento próprio).
 
 ### 2.3 Conjunto de fotos de produto existente
 
@@ -243,7 +255,9 @@ atualizar (FR-024).
 **`criarProduto`** (003, alterada): `FormData` ganha `fotos` (repetido, envioIds em ordem).
 Zod: 1..3 uuids únicos; 0 ⇒ falha `sem_foto` (mensagem do US1-AC8, sem `campo`). Ordem: guard
 → campos (003) → fotos → `exigirCategoriaValida` → `inserirComFotos`. `foto_expirada` traz
-`envioIds` expirados. `valores` continua em toda falha (003).
+`envioIds` expirados; com `envioIds` vazio (corrida, §2.2) a action responde `falha_geral`.
+Os uuids de `fotos` são normalizados para minúsculas no Zod. `valores` continua em toda falha
+(003).
 
 **`removerProduto`** (003, alterada): `remover` devolve `chaves` ⇒ `apagarObjetos(chaves)` em
 melhor esforço depois do sucesso (FR-035).

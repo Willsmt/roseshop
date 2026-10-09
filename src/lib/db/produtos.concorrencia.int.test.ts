@@ -93,7 +93,7 @@ describe("cadastro concorrente (US1)", () => {
   it("SC-005: código de produto removido não volta", async () => {
     const a = await inserir(db, sessao, campos());
     if (a.tipo !== "ok") throw new Error("setup");
-    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido" });
+    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido", chaves: [] });
     const rs = await Promise.all([inserir(db, sessao, campos()), inserir(db, sessao, campos())]);
     for (const r of rs) {
       expect(r.tipo).toBe("ok");

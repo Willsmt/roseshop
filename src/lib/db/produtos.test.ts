@@ -1,9 +1,10 @@
+import { NeonDbError } from "@neondatabase/serverless";
 import { describe, expect, it } from "vitest";
 
 import type { AdminSession } from "@/lib/auth";
 import type { Db } from "@/lib/db/client";
 
-import { destacar, editar, inserir } from "./produtos";
+import { destacar, editar, inserir, inserirComFotos } from "./produtos";
 
 // Feature 003, T023 (SF4), unitário com db simulado: 23505 seguido de lookup vazio (a linha
 // conflitante foi removida ou renomeada no meio) ⇒ nome_repetido SEM codigoExistente.
@@ -111,5 +112,43 @@ describe("destacar: tradução do 23505 pela constraint", () => {
       cause: Object.assign(new Error("dup"), { code: "23505" }),
     });
     await expect(destacar(dbQueFalha(erro), sessao, 7, 1)).rejects.toBe(erro);
+  });
+});
+
+// R3: no batch de inserirComFotos o NeonDbError chega sem embrulho; 23503 só vira
+// categoria_ausente pela FK da categoria (comparação exata do nome da constraint).
+function violacaoDeFk(constraint: string) {
+  const e = new NeonDbError("insert or update violates foreign key constraint");
+  e.code = "23503";
+  e.constraint = constraint;
+  return e;
+}
+
+function dbComBatchQueFalha(erro: unknown) {
+  return {
+    execute: () => ({}),
+    batch: () => Promise.reject(erro),
+  } as unknown as Db;
+}
+
+const envioId = "11111111-1111-4111-8111-111111111111";
+
+describe("inserirComFotos: tradução do 23503 pela constraint (R3)", () => {
+  it("23503 de outra FK (outra_fk) ⇒ erro propaga", async () => {
+    const erro = violacaoDeFk("outra_fk");
+    await expect(inserirComFotos(dbComBatchQueFalha(erro), sessao, campos, [envioId])).rejects.toBe(erro);
+  });
+
+  it("23503 sem nome de constraint ⇒ erro propaga", async () => {
+    const erro = new NeonDbError("fk");
+    erro.code = "23503";
+    await expect(inserirComFotos(dbComBatchQueFalha(erro), sessao, campos, [envioId])).rejects.toBe(erro);
+  });
+
+  it("23503 de produtos_categoria_id_categorias_id_fk ⇒ categoria_ausente", async () => {
+    const erro = violacaoDeFk("produtos_categoria_id_categorias_id_fk");
+    expect(await inserirComFotos(dbComBatchQueFalha(erro), sessao, campos, [envioId])).toEqual({
+      tipo: "categoria_ausente",
+    });
   });
 });

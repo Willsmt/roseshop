@@ -351,13 +351,13 @@ um helper de envio for necessário.
 alheia/não confirmada/expirada e duplo "Salvar".
 **Revisão TL**: ✅.
 
-- [ ] T043 **Teste primeiro** — `fotos.envios.int.test.ts`: `emitirEnvio` insere e devolve a
+- [X] T043 **Teste primeiro** — `fotos.envios.int.test.ts`: `emitirEnvio` insere e devolve a
   `chave`; com 20 envios nas últimas 24 h da mesma pessoa o 21º ⇒ `muitos_pendentes` (teto
   aproximado, D13); outra pessoa não é afetada; `obterEnvio` filtra por `enviado_por`;
   `marcarConfirmado` só de `emitido` para `confirmado` e preenche `confirmado_em`;
   `descartarEnvio` só apaga `emitido` e devolve a chave; `enviosValidos` devolve só os ids da
   pessoa, confirmados e com < 24 h — **test-writer**
-- [ ] T044 **Teste primeiro** — `produtos.com-fotos.int.test.ts`: `inserirComFotos` cria
+- [X] T044 **Teste primeiro** — `produtos.com-fotos.int.test.ts`: `inserirComFotos` cria
   produto com 1, 2 e 3 fotos nas posições 1..N na ordem dos `envioIds`, consome os envios e
   grava `enviado_por`/`enviado_em`; adoção só pela dona, só `confirmado`, só `< 24 h`, uma vez
   (segunda tentativa não adota); `foto_expirada` com os ids exatos que não são válidos (precedência
@@ -369,30 +369,31 @@ alheia/não confirmada/expirada e duplo "Salvar".
   removida ⇒ `categoria_ausente` vindo do `23503`; **TL-3**: `uuid[]`, `text[]` e
   `timestamptz[]` de `Date[]` passam como **um** parâmetro (`sql.param`); nenhum produto fica
   sem foto nem com fotos órfãs quando o `INSERT produtos` não ocorre — **test-writer**
-- [ ] T045 **Teste primeiro** — remoção e leitura: `remover` (batch com lock 4_001) devolve as
+- [X] T045 **Teste primeiro** — remoção e leitura: `remover` (batch com lock 4_001) devolve as
   chaves das fotos e apaga o produto (e as linhas por CASCADE); versão errada ou inexistente ⇒
   `ausenteOuVersaoDiferente` (003) e **não** devolve chaves; `listar` devolve `capa` (chave da
   posição 1); `obterPorId` devolve `fotosVersao` e `fotos` em ordem. Em
   `src/lib/db/produtos.com-fotos.int.test.ts` ou arquivo próprio — **test-writer**
-- [ ] T046 **[TL✅]** `src/lib/db/fotos.ts`: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`,
+- [X] T046 **[TL✅]** `src/lib/db/fotos.ts`: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`,
   `descartarEnvio`, `enviosValidos` (F§2.1). Todo array como **um** parâmetro
   `${sql.param(...)}::tipo[]`; `pg_advisory_xact_lock(${LOCK_FOTOS}::bigint)` no padrão atual —
   **principal**
-- [ ] T047 **[TL✅]** `src/lib/db/produtos.ts`: `inserirComFotos(db, sessao, campos, envioIds)`
+- [X] T047 **[TL✅]** `src/lib/db/produtos.ts`: `inserirComFotos(db, sessao, campos, envioIds)`
   conforme F§2.2 (batch: lock → `INSERT produtos … WHERE count = n` com `fotos_operacao`=token →
   CTE `DELETE fotos_envio … VALIDO` **repetindo o VALIDO (TL-11)** → `INSERT produto_fotos`);
   mapeamento de erros (`produtos_chave_unique`, comparação exata do nome, ⇒ `nome_repetido`;
-  outra `23505`, inclusive de `produto_fotos`, propaga; `23503` ⇒
-  `categoria_ausente`) via `nomeConstraint` de `erros-pg.ts`; 0 linhas ⇒ leitura posterior com
-  a precedência de F§2.2. **O `inserir` da 003 permanece exportado até a SF6** (a action
-  `criarProduto` ainda o usa; a remoção é a T067) — **principal**
-- [ ] T048 **[TL✅]** `src/lib/db/produtos.ts`: `remover` vira batch com lock 4_001 e CTE
+  outra `23505`, inclusive de `produto_fotos`, propaga; `23503` só pela FK
+  `produtos_categoria_id_categorias_id_fk` ⇒ `categoria_ausente`, outra propaga (R3)) via
+  `nomeConstraint` de `erros-pg.ts`; 0 linhas ⇒ leitura posterior com a precedência de F§2.2.
+  **O `inserir` da 003 permanece exportado até a SF6** (a action `criarProduto` ainda o usa;
+  a remoção é a T067) — **principal**
+- [X] T048 **[TL✅]** `src/lib/db/produtos.ts`: `remover` vira batch com lock 4_001 e CTE
   devolvendo `chaves` (F§2.5); `listar` com `LEFT JOIN produto_fotos f ON … f.posicao = 1` ⇒
   `capa: string | null`; `obterPorId` com `fotosVersao` e `fotos` (F§2.4). Atualizar os chamadores
   da 003 só no que o tipo exigir para o `typecheck` (a action usa `chaves` na SF6) — **principal**
-- [ ] T049 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
+- [X] T049 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
   colar o output real — **principal**
-- [ ] T050 Revisão do diff pelo tech-lead (opus): SQL de `fotos.ts` e `produtos.ts`,
+- [X] T050 Revisão do diff pelo tech-lead (opus): SQL de `fotos.ts` e `produtos.ts`,
   repetição do VALIDO, `sql.param`, mapeamento de `23505`/`23503`, ausência de
   `db.transaction()` — **tech-lead**
 - [ ] T051 Commit (humano), mensagem:
@@ -493,7 +494,9 @@ SC-006.
   `SELECT count(*) FROM produtos;` ⇒ esperado `0`. A máquina local nunca acessa produção — **humano**
 - [ ] T062 [P] **Teste primeiro** — `src/lib/fotos/actions.test.ts` (sugerido), `pedirEnvio` e
   `confirmarEnvio` com mocks de db e r2: guard (`requireAdminAction`) **primeiro**, sem sessão
-  nada é emitido/lido (US2-AC6); Zod antes de SQL; `tamanho > 1_048_576` ⇒ `grande` sem SQL;
+  nada é emitido/lido (US2-AC6); Zod antes de SQL; o Zod normaliza os uuids para minúsculas
+  (R1 da revisão da SF4) e exige o formato com hífens (recusa `{…}` e sem hífen);
+  `tamanho > 1_048_576` ⇒ `grande` sem SQL;
   `muitos_pendentes`; `confirmarEnvio`: inexistente ⇒ `falha_geral`, já `confirmado` ⇒ `ok`
   idempotente sem reverificar, objeto ausente ⇒ `nao_enviada` (linha fica), tamanho do objeto
   ≠ assinado ⇒ `grande` **sem ler o corpo**, formato detectado ≠ declarado ⇒ `formato`; **cada
@@ -508,7 +511,8 @@ SC-006.
 - [ ] T063 [P] **Teste primeiro** — `src/lib/produtos/actions.test.ts` (ajuste dos testes da
   003, sugerido): `criarProduto` aceita `fotos` repetido (1..3 uuids únicos); 0 fotos ⇒ falha
   `sem_foto` (mensagem do US1-AC8, sem `campo`); ordem guard → campos → fotos →
-  `exigirCategoriaValida` → `inserirComFotos`; `foto_expirada` traz `envioIds`; `valores`
+  `exigirCategoriaValida` → `inserirComFotos`; `foto_expirada` traz `envioIds`;
+  `foto_expirada` com `envioIds` vazio (corrida, F§2.2) ⇒ `falha_geral` com `valores`; `valores`
   continua em toda falha (US1-AC9); `removerProduto` chama `apagarObjetos(chaves)` em melhor
   esforço depois do sucesso e a falha do R2 não desfaz a remoção (US6-AC1) — **test-writer**
 - [ ] T064 [P] **Teste primeiro** — rota `src/app/painel/fotos/[arquivo]/route.test.ts`
@@ -532,7 +536,8 @@ SC-006.
 - [ ] T067 **[TL✅]** `src/lib/fotos/actions.ts` (`"use server"`): `pedirEnvio` e
   `confirmarEnvio` conforme F§3 (ordem `requireAdminAction` → Zod → SQL → R2; recusa apaga a
   linha antes do objeto, TL-2; logs do modo registro conforme F§3 passo 5); alterar
-  `criarProduto` (campo `fotos`, `sem_foto`, `inserirComFotos`, `foto_expirada`) e
+  `criarProduto` (campo `fotos`, `sem_foto`, `inserirComFotos`, `foto_expirada`; lista vazia
+  ⇒ `falha_geral`, F§2.2) e
   `removerProduto` (`apagarObjetos`) em `src/lib/produtos/actions.ts`; **remover o `inserir` da
   003** de `src/lib/db/produtos.ts` (agora sem uso) — **principal**
 - [ ] T068 **[TL✅]** `src/app/painel/fotos/[arquivo]/route.ts` conforme F§5 (404 sem sessão

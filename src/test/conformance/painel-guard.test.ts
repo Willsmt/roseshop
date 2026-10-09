@@ -18,6 +18,11 @@ const EXCECOES_PUBLICAS: readonly string[] = [
   "src/lib/auth/actions.ts#sair",
 ];
 
+// Handlers guardados por SESSÃO (getAdminSession) em vez de requireAdminAction, POR FUNÇÃO.
+// Feature 004: a imagem sem sessão responde 404 e não lança (contracts/fotos.md §5, ADR-009 D4);
+// a ordem (sessão antes do r2) é provada por fotos-rota-guard.test.ts.
+const GUARDA_POR_SESSAO: readonly string[] = ["src/app/painel/fotos/[arquivo]/route.ts#GET"];
+
 // Amplia a lista da T034 (GET/POST/PUT/PATCH/DELETE) com HEAD e OPTIONS, no espírito
 // de "nega por padrão": um `export function HEAD()` sem guard seria endpoint público.
 const HANDLERS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
@@ -181,7 +186,8 @@ export function encontrarSemGuard(
       const id = `${arquivo}#${nome}`;
       candidatos.add(id);
       if (excecaoSet.has(id)) continue;
-      if (!chama(fn.body, ["requireAdminAction"])) violacoes.push(id);
+      const guarda = GUARDA_POR_SESSAO.includes(id) ? "getAdminSession" : "requireAdminAction";
+      if (!chama(fn.body, [guarda])) violacoes.push(id);
     }
     // `export * from` em route ou "use server" não é verificável: sempre violação.
     if (estrela && (ehRoute || topoUseServer)) violacoes.push(`${arquivo}#*`);
@@ -225,6 +231,30 @@ describe("conformidade do guard do painel (US3-1, US3-2, FR-005, FR-007, SC-003)
     const raiz = process.cwd();
     const arquivos = lerSrc(path.join(raiz, "src"), raiz);
     expect(encontrarSemGuard(arquivos, EXCECOES_PUBLICAS)).toEqual([]);
+  });
+
+  it("GUARDA_POR_SESSAO só nomeia handlers que existem no src/ real", () => {
+    const raiz = process.cwd();
+    for (const id of GUARDA_POR_SESSAO) {
+      const [arquivo, nome] = id.split("#");
+      const conteudo = fs.readFileSync(path.join(raiz, arquivo), "utf8");
+      expect(conteudo).toMatch(new RegExp(`export\\s+(async\\s+)?function\\s+${nome}\\b`));
+    }
+  });
+
+  it("handler de GUARDA_POR_SESSAO sem getAdminSession é violação; com ele, não", () => {
+    const [arquivo] = GUARDA_POR_SESSAO[0].split("#");
+    const sem = { [arquivo]: "export async function GET() { return new Response(); }" };
+    expect(encontrarSemGuard(sem, [])).toEqual([GUARDA_POR_SESSAO[0]]);
+    const com = {
+      [arquivo]: "export async function GET() { await getAdminSession(); return new Response(); }",
+    };
+    expect(encontrarSemGuard(com, [])).toEqual([]);
+    // requireAdminAction não substitui: a rota de imagem não pode lançar sem sessão.
+    const outro = {
+      [arquivo]: "export async function GET() { await requireAdminAction(); return new Response(); }",
+    };
+    expect(encontrarSemGuard(outro, [])).toEqual([GUARDA_POR_SESSAO[0]]);
   });
 
   it("reporta função de actions.ts sem requireAdminAction (US3-2, FR-007)", () => {

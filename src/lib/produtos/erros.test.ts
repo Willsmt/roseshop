@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { falhaDoResultado } from "./erros";
+import { type Falha, falhaDoResultado } from "./erros";
 import { mensagemDoMotivo } from "./mensagens";
 
 // T015 / contrato §2 (resultados da camada SQL) e §6 (motivos).
@@ -56,5 +56,15 @@ describe("falhaDoResultado", () => {
       campo: "nome",
     });
     expect(f).not.toHaveProperty("codigoExistente");
+  });
+
+  it("Falha aceita envioIds opcional (foto_expirada, feature 004)", () => {
+    const f: Falha = {
+      motivo: "foto_expirada",
+      mensagem: mensagemDoMotivo("foto_expirada"),
+      envioIds: ["11111111-1111-4111-8111-111111111111"],
+    };
+    expect(f.envioIds).toHaveLength(1);
+    expect(f.mensagem).toBe("Uma das fotos expirou. Envie de novo.");
   });
 });

@@ -114,6 +114,18 @@ export async function enviosValidos(
   return new Set((r.rows as { id: string }[]).map((l) => l.id));
 }
 
+/**
+ * Exibição (contracts/fotos.md §5, ADR-009 D4): a chave só é servida se está em uma foto de
+ * produto ou em um envio `confirmado`. Um statement.
+ */
+export async function chaveExibivel(db: Db, chave: string): Promise<boolean> {
+  const r = await db.execute(sql`
+    SELECT EXISTS (SELECT 1 FROM produto_fotos WHERE chave_objeto = ${chave}::text)
+        OR EXISTS (SELECT 1 FROM fotos_envio WHERE chave = ${chave}::text
+                                               AND estado = 'confirmado') AS exibivel`);
+  return (r.rows as { exibivel: boolean }[])[0]?.exibivel === true;
+}
+
 // Conjunto de fotos de produto existente (contracts/fotos.md §2.3). Writer de fotos: altera só
 // `fotos_versao`, `fotos_operacao`, `atualizado_por` e `atualizado_em`, nunca `versao` (emenda
 // de 2026-10-09 do ADR-008; a concorrência dos campos da 003 segue independente).

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { AdminSession } from "@/lib/auth";
 import type { Db } from "@/lib/db/client";
 
-import { destacar, editar, inserir, inserirComFotos } from "./produtos";
+import { destacar, editar, inserirComFotos } from "./produtos";
 
 // Feature 003, T023 (SF4), unitário com db simulado: 23505 seguido de lookup vazio (a linha
 // conflitante foi removida ou renomeada no meio) ⇒ nome_repetido SEM codigoExistente.
@@ -59,12 +59,26 @@ function dbSimulado() {
 }
 
 describe("fallback do lookup após 23505 (sem codigoExistente)", () => {
-  it("inserir: 23505 e lookup vazio ⇒ nome_repetido sem codigoExistente", async () => {
-    const { db, consumidas } = dbSimulado();
-    const r = await inserir(db, sessao, campos);
+  // Feature 004: o `inserir` da 003 saiu (SF6, T067); o cadastro é `inserirComFotos`, cujo
+  // batch entrega o NeonDbError sem embrulho (R3).
+  it("inserirComFotos: 23505 do nome e lookup vazio ⇒ nome_repetido sem codigoExistente", async () => {
+    const erro = new NeonDbError("duplicate key value violates unique constraint");
+    erro.code = "23505";
+    erro.constraint = "produtos_chave_unique";
+    // Batch falha; qualquer consulta encadeada (o lookup do nome) resolve vazia.
+    const db: unknown = new Proxy(function () {}, {
+      get: (_alvo, prop) => {
+        if (prop === "batch") return () => Promise.reject(erro);
+        if (prop === "then") return (ok: (v: unknown) => unknown) => Promise.resolve([]).then(ok);
+        return db;
+      },
+      apply: () => db,
+    });
+    const r = await inserirComFotos(db as Db, sessao, campos, [
+      "11111111-1111-4111-8111-111111111111",
+    ]);
     expect(r).toEqual({ tipo: "nome_repetido" });
     expect(r).not.toHaveProperty("codigoExistente");
-    expect(consumidas()).toBe(2); // INSERT + lookup do nome existente
   });
 
   it("editar: 23505 e lookup vazio ⇒ nome_repetido sem codigoExistente", async () => {

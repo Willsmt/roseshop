@@ -5,12 +5,15 @@ import type { AdminSession } from "@/lib/auth";
 import { createDb } from "@/lib/db/client";
 import { inserir as inserirCategoria, remover as removerCategoria } from "@/lib/db/categorias";
 import { resetCategorias } from "@/test/db/categorias-fixtures";
+import { inserirEnvio, limparEnvios } from "@/test/db/fotos-fixtures";
 import { inserirProduto, limparProdutos, nomeUnicoProduto } from "@/test/db/produtos-fixtures";
 
-import { editar, inserir, remover } from "./produtos";
+import { editar, inserirComFotos, remover } from "./produtos";
 
 // Feature 003, T024 (SF4): concorrência real com Promise.all, em várias rodadas. Integração com o
 // banco local. Roda em série com os demais arquivos de integração.
+// T063 (004): `inserir` deixou de existir; cada cadastro usa `inserirComFotos` com 1 envio
+// confirmado, criado ANTES da corrida (`prepararEnvios`) para não afrouxar a concorrência.
 const db = createDb({
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   NEON_FETCH_ENDPOINT: process.env.NEON_FETCH_ENDPOINT,
@@ -19,6 +22,14 @@ const sessao: AdminSession = { email: "admin@teste.local", name: "Admin" };
 const RODADAS = 10;
 
 let cat1 = 0;
+
+const prepararEnvios = (qtd: number) =>
+  Promise.all(
+    Array.from({ length: qtd }, async () => {
+      const e = await inserirEnvio(db, { enviadoPor: sessao.email, estado: "confirmado" });
+      return [e.id];
+    }),
+  );
 
 const campos = (extra: Record<string, unknown> = {}) => ({
   nome: nomeUnicoProduto(),
@@ -52,8 +63,14 @@ beforeAll(async () => {
   const r = await db.execute(sql`SELECT id FROM categorias ORDER BY id LIMIT 1`);
   cat1 = (r.rows as { id: number }[])[0].id;
 });
-beforeEach(() => limparProdutos(db));
-afterAll(() => resetCategorias(db));
+beforeEach(async () => {
+  await limparProdutos(db);
+  await limparEnvios(db);
+});
+afterAll(async () => {
+  await limparEnvios(db);
+  await resetCategorias(db);
+});
 
 describe("cadastro concorrente (US1)", () => {
   it(
@@ -61,10 +78,12 @@ describe("cadastro concorrente (US1)", () => {
     async () => {
       for (let i = 0; i < RODADAS; i++) {
         await limparProdutos(db);
+        await limparEnvios(db);
         const base = nomeUnicoProduto("Mesmo");
+        const [f1, f2] = await prepararEnvios(2);
         const rs = await Promise.all([
-          inserir(db, sessao, campos({ nome: base })),
-          inserir(db, sessao, campos({ nome: base.toUpperCase() })),
+          inserirComFotos(db, sessao, campos({ nome: base }), f1),
+          inserirComFotos(db, sessao, campos({ nome: base.toUpperCase() }), f2),
         ]);
         const ctx = `rodada ${i}: ${JSON.stringify(rs)}`;
         const idxOk = rs.findIndex((r) => r.tipo === "ok");
@@ -81,7 +100,8 @@ describe("cadastro concorrente (US1)", () => {
     "SC-005: N cadastros simultâneos ⇒ todos ok com códigos distintos",
     async () => {
       const N = 8;
-      const rs = await Promise.all(Array.from({ length: N }, () => inserir(db, sessao, campos())));
+      const envios = await prepararEnvios(N);
+      const rs = await Promise.all(envios.map((f) => inserirComFotos(db, sessao, campos(), f)));
       const ids = rs.map((r) => (r.tipo === "ok" ? r.id : null));
       expect(ids.every((x) => x !== null), JSON.stringify(rs)).toBe(true);
       expect(new Set(ids).size).toBe(N);
@@ -91,10 +111,18 @@ describe("cadastro concorrente (US1)", () => {
   );
 
   it("SC-005: código de produto removido não volta", async () => {
-    const a = await inserir(db, sessao, campos());
+    const [fa] = await prepararEnvios(1);
+    const a = await inserirComFotos(db, sessao, campos(), fa);
     if (a.tipo !== "ok") throw new Error("setup");
-    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido", chaves: [] });
-    const rs = await Promise.all([inserir(db, sessao, campos()), inserir(db, sessao, campos())]);
+    expect(await remover(db, sessao, a.id, 1)).toEqual({
+      tipo: "removido",
+      chaves: [expect.stringMatching(/^fotos\/.+\.webp$/)],
+    });
+    const [f1, f2] = await prepararEnvios(2);
+    const rs = await Promise.all([
+      inserirComFotos(db, sessao, campos(), f1),
+      inserirComFotos(db, sessao, campos(), f2),
+    ]);
     for (const r of rs) {
       expect(r.tipo).toBe("ok");
       if (r.tipo === "ok") expect(r.id).toBeGreaterThan(a.id);
@@ -170,9 +198,11 @@ describe("corrida com a remoção da categoria (US7-AC3, contrato §4 da 002)", 
     async () => {
       for (let i = 0; i < RODADAS; i++) {
         await limparProdutos(db);
+        await limparEnvios(db);
         const cat = await novaCategoria();
+        const [fotos] = await prepararEnvios(1);
         const [rIns, rCat] = await Promise.all([
-          inserir(db, sessao, campos({ categoriaId: cat })),
+          inserirComFotos(db, sessao, campos({ categoriaId: cat }), fotos),
           removerCategoria(db, sessao, cat, 1),
         ]);
         const ctx = `rodada ${i}: ${JSON.stringify([rIns, rCat])}`;

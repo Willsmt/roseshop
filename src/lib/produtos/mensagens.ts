@@ -20,6 +20,8 @@ export type Motivo =
   | "vaga_disputada"
   | "esgotado_nao_destaca"
   | "ja_em_destaque"
+  | "sem_foto"
+  | "foto_expirada"
   | "falha_geral";
 
 export type DadosMensagem = { codigoExistente?: number };
@@ -47,6 +49,9 @@ const TEXTOS: Record<Motivo, (d: DadosMensagem) => string> = {
   vaga_disputada: () => "Outra pessoa destacou um produto ao mesmo tempo. Tente de novo.",
   esgotado_nao_destaca: () => "Produto esgotado não pode ficar em destaque.",
   ja_em_destaque: () => "Este produto já está em destaque.",
+  // Feature 004 (contracts/fotos.md §8), iguais aos de src/lib/fotos/mensagens.ts.
+  sem_foto: () => "Coloque pelo menos 1 foto do produto.",
+  foto_expirada: () => "Uma das fotos expirou. Envie de novo.",
   falha_geral: () => "Não foi possível concluir agora. Tente de novo em instantes.",
 };
 

@@ -22,14 +22,18 @@ src/app/api/interno/limpeza/route.ts ◄── cloudflare/worker.ts (scheduled) 
 | Módulo | Pode importar | Não pode ser importado por |
 |---|---|---|
 | `src/lib/r2/` (barrel `index.ts`, `server-only`) | `aws4fetch`, `@opennextjs/cloudflare` | qualquer coisa fora de `src/lib/fotos/`, `src/lib/produtos/`, `src/app/painel/fotos/`, `src/app/api/interno/` |
-| `src/lib/db/fotos.ts` | schema, locks, contexto | qualquer coisa fora de `src/lib/fotos/`, `src/lib/produtos/` |
+| `src/lib/db/fotos.ts` | schema, locks, contexto | qualquer coisa fora de `src/lib/fotos/`, `src/lib/produtos/` e `src/lib/db/` |
 | `src/lib/fotos/actions.ts` (`"use server"`) | auth (barrel), r2 (barrel), db/fotos, domínio de fotos | — |
+| `src/lib/fotos/exibicao.ts` (`server-only`) | `db/contexto`, db/fotos (`chaveExibivel`) | — (é a porta da rota de exibição para o banco: a rota não importa db/fotos) |
+| `src/lib/fotos/validacao.ts` | só `zod` (`uuidEnvio`, `envioIdsCadastro`) | — (também importado por `src/lib/produtos/actions.ts`) |
 | `src/lib/fotos/aparelho/` (código do navegador) | só APIs do navegador e `src/lib/fotos/mensagens.ts` | nada de `server-only`, nada de `src/lib/db`, `src/lib/r2`, `src/lib/auth` |
 | `src/lib/fotos/mensagens.ts`, `tipos.ts` | nada | — (seguros para o client) |
 
 Teste de conformidade novo `src/test/conformance/fotos-acesso.test.ts` (nega por padrão, mesmo
 padrão de `produtos-acesso`): as fronteiras acima; `insert(produtos)` só em
-`inserirComFotos`; nenhum import de `aws4fetch` fora de `src/lib/r2/`.
+`inserirComFotos`; nenhum import de `aws4fetch` fora de `src/lib/r2/`; nenhum import de
+submódulo `@/lib/r2/...` fora de `src/lib/r2/` (só o barrel tem `server-only`; segunda camada
+no `no-restricted-imports` do `eslint.config.mjs`).
 
 ## 2. Camada SQL — `src/lib/db/fotos.ts` e alterações em `src/lib/db/produtos.ts`
 
@@ -59,6 +63,9 @@ obterEnvio(db, sessao, id): Promise<EnvioLinha | undefined>        // filtra env
 marcarConfirmado(db, sessao, id): Promise<boolean>                 // estado 'emitido' → 'confirmado', confirmado_em = now()
 descartarEnvio(db, sessao, id): Promise<string | undefined>        // DELETE … estado = 'emitido' RETURNING chave
 enviosValidos(db, sessao, ids): Promise<Set<string>>               // ids que são VALIDO agora (TL-10)
+chaveExibivel(db, chave): Promise<boolean>                         // §5 passo 3, um statement:
+// SELECT EXISTS (SELECT 1 FROM produto_fotos WHERE chave_objeto = $chave)
+//     OR EXISTS (SELECT 1 FROM fotos_envio WHERE chave = $chave AND estado = 'confirmado')
 ```
 
 `enviosValidos` serve à precedência de `foto_expirada` (§2.2) e ao passo 3 de `sugerirProduto`
@@ -225,9 +232,11 @@ removerFoto(e: { produtoId; fotosVersao; posicao: 1|2|3 }): Promise<ResultadoFot
 moverFoto(e: { produtoId; fotosVersao; de: 1|2|3; para: 1|2|3 }): Promise<ResultadoFotos>
 ```
 
-**`pedirEnvio`**: Zod (`tamanho` inteiro ≥ 1; `> 1_048_576` ⇒ `grande` sem SQL) → `id =
-crypto.randomUUID()` → `emitirEnvio` → `assinarEnvio` (§7). O navegador faz o `PUT` com
-exatamente os `headers` devolvidos (`content-type`, `if-none-match: *`) e o corpo de `tamanho`
+**`pedirEnvio`**: Zod (`tamanho` inteiro ≥ 1; `> 1_048_576` ⇒ `grande` sem SQL) → `configR2()`
+(config ausente ⇒ `falha_geral` **sem gravar a linha**) → `id = crypto.randomUUID()` →
+`emitirEnvio` → `assinarEnvio` (§7). Se a assinatura falhar depois da gravação, `descartarEnvio`
+em melhor esforço e `falha_geral`: a linha `emitido` não fica contando no teto de 20 (D13).
+O navegador faz o `PUT` com exatamente os `headers` devolvidos (`content-type`, `if-none-match: *`) e o corpo de `tamanho`
 bytes; o `content-length` é posto pelo navegador. Um segundo `PUT` na mesma URL recebe 412
 (TL-1, prova no R1).
 
@@ -352,7 +361,7 @@ confirmação aceita em modo registro grava log de aviso.
 
 ## 5. Rota de exibição — `src/app/painel/fotos/[arquivo]/route.ts`
 
-`GET` apenas.
+`GET` apenas (o Next atende `HEAD` pelo mesmo `GET` e responde `OPTIONS` sozinho).
 1. `getAdminSession()`; sem sessão ⇒ **404** (é imagem, não redireciona).
 2. `arquivo` deve casar `^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(webp|jpg)$`;
    senão 404 **sem tocar no binding**.
@@ -364,7 +373,16 @@ confirmação aceita em modo registro grava log de aviso.
    max-age=31536000, immutable` (a chave nunca muda de conteúdo), `ETag`,
    `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`.
 
-Conformidade: teste `fotos-rota-guard` exige `getAdminSession` antes de qualquer uso do barrel r2.
+6. 404 com `Cache-Control: private, no-store` e `X-Content-Type-Options: nosniff`. Exceção em
+   qualquer passo (sessão, banco, R2) ⇒ **500** sem corpo, com os mesmos headers do 404, e um
+   `console.error("fotos.exibicao.falha")` sem a chave, o nome do arquivo, o erro original nem
+   bytes.
+
+Conformidade: teste `fotos-rota-guard` exige `getAdminSession` antes de qualquer uso do barrel r2
+e de `src/lib/fotos/exibicao.ts`. O `painel-guard` da 001 (que exige `requireAdminAction` em todo
+route handler) tem a exceção nomeada `GUARDA_POR_SESSAO` só para
+`src/app/painel/fotos/[arquivo]/route.ts#GET`, que exige `getAdminSession` no lugar: a imagem
+sem sessão responde 404 e não lança.
 
 ## 6. Limpeza
 
@@ -423,7 +441,7 @@ funciona; reserva em research D6).
 | `config.ts` | Zod sobre `process.env`: `R2_S3_ENDPOINT` (URL, sem barra final, inclui o bucket; `http` só com host `localhost`/`127.0.0.1`, senão `https`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Ausente ⇒ erro ⇒ `falha_geral` na action |
 | `chaves.ts` | `chaveDoEnvio(id, formato)`, `ARQUIVO_VALIDO` (regex da §5), `chaveDoArquivo`, `arquivoDaChave` |
 | `assinatura.ts` | `assinarEnvio({ chave, formato, tamanho })` ⇒ `{ url, headers }` com `new AwsV4Signer({ service: "s3", region: "auto", … }).sign()` (não `AwsClient.sign`, que monta um `Request` com `content-length` e não foi provado no workerd), `method: "PUT"`, headers `content-type`, `content-length` e `if-none-match: *` (TL-1), `signQuery: true`, `allHeaders: true`; `tamanho` inteiro de 1 a 1_048_576, senão lança (defesa em profundidade; a action já recusa na emissão); `X-Amz-Expires=300` posto na URL **antes** de assinar (o padrão do `aws4fetch` é 86400). Teste: `X-Amz-SignedHeaders` = `content-length;content-type;host;if-none-match`, `X-Amz-Expires=300`, nenhuma credencial na URL além do Access Key ID. Sem o R1 confirmar, valem as reservas do research D2 |
-| `bucket.ts` | via `getCloudflareContext().env.PRODUCT_IMAGES`: `lerObjeto(chave)` (⇒ `{ tamanho, bytes() }` \| `null`; `tamanho` disponível antes de ler o corpo), `apagarObjetos(chaves)`, `listarObjetos(prefixo)` (async iterável com `chave` e `uploaded`) |
+| `bucket.ts` | via `getCloudflareContext().env.PRODUCT_IMAGES`: `lerObjeto(chave)` (⇒ `{ tamanho, bytes() }` \| `null`; `tamanho` disponível antes de ler o corpo), `apagarObjetos(chaves)`, `listarObjetos(prefixo)` (async iterável com `chave` e `uploaded`), `servirObjeto(chave, ifNoneMatch)` (⇒ `{ etag, tamanho, corpo }` \| `null`; `get` com `onlyIf: Headers({ "if-none-match" })` quando há valor; objeto sem `body` ⇒ `corpo: null`, a rota responde 304; `etag` = `httpEtag`) |
 | `verificacao/` | §4 |
 | `index.ts` | barrel `server-only` |
 

@@ -73,6 +73,11 @@ COMMIT;
 **Produção**: só leitura, no console do Neon: `SELECT count(*) FROM produtos;` ⇒ esperado `0`.
 A máquina local nunca acessa produção (VIII).
 
+**Execução (2026-10-09, SF6, relato do humano)**: T060 feita **sem `DELETE`**. A contagem de
+produtos sem foto deu `0` no banco local (`npm run db:psql`) e `0` no Neon dev (SQL Editor do
+console). Sem linha a apagar, não houve branch de backup nem `COMMIT`. T061: `SELECT count(*)
+FROM produtos;` no SQL Editor do console do Neon, branch de produção ⇒ `0` (somente leitura).
+
 ## 3. Gate automatizado
 
 ```bash
@@ -111,6 +116,16 @@ Em `http://localhost:8787`, logada:
    ```
    E `curl -i -X POST http://localhost:8787/api/interno/limpeza` sem header ⇒ **404**.
 9. Abrir `/painel/fotos/<arquivo>` numa janela anônima ⇒ **404**.
+10. **304 no runtime real (TL-19; prova na SF9, T093)**: logada, abrir `/painel/fotos/<arquivo>`
+    e anotar o `ETag` da resposta 200. Repetir com `If-None-Match` igual ⇒ **304** sem corpo e
+    com os mesmos headers; repetir com a **ETag fraca** `W/"<mesmo valor>"` e registrar o status
+    devolvido pelo R2 local (o teste unitário só prova o 304 com mock):
+    ```bash
+    curl -i -H "Cookie: <cookie da sessão>" -H 'If-None-Match: "<etag>"' \
+      http://localhost:8787/painel/fotos/<arquivo>
+    curl -i -H "Cookie: <cookie da sessão>" -H 'If-None-Match: W/"<etag>"' \
+      http://localhost:8787/painel/fotos/<arquivo>
+    ```
 
 ## 5. Dev online (deploy do PR)
 

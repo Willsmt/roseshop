@@ -483,16 +483,16 @@ SC-006.
 **Fecha**: US2-AC4/AC5/AC6/AC9, SC-006 (pela action), US1-AC7–9, US6-AC1.
 **Revisão TL**: ✅ (usa `src/lib/r2`).
 
-- [ ] T060 **Humano executa — limpeza dos produtos da 003 sem foto, ANTES de rodar a SF6 no
+- [X] T060 **Humano executa — limpeza dos produtos da 003 sem foto, ANTES de rodar a SF6 no
   `preview` e ANTES do primeiro `git push` que leve a SF6 ao deploy do dev** (Q§2). **Local**:
   `npm run db:psql` e o bloco `BEGIN; SELECT … ; DELETE … RETURNING id, nome;` conferindo N
   antes do `COMMIT`. **Dev online (Neon)**: criar branch de backup
   `backup-antes-004-AAAA-MM-DD` a partir da branch dev; no SQL Editor da branch dev rodar o
   mesmo bloco com `BEGIN` explícito, conferir N, `COMMIT`; manter a branch de backup até a
   validação da feature no dev. Entregar o N de cada ambiente — **humano**
-- [ ] T061 **Humano executa — conferência de produção (somente leitura)** no console do Neon:
+- [X] T061 **Humano executa — conferência de produção (somente leitura)** no console do Neon:
   `SELECT count(*) FROM produtos;` ⇒ esperado `0`. A máquina local nunca acessa produção — **humano**
-- [ ] T062 [P] **Teste primeiro** — `src/lib/fotos/actions.test.ts` (sugerido), `pedirEnvio` e
+- [X] T062 [P] **Teste primeiro** — `src/lib/fotos/actions.test.ts` (sugerido), `pedirEnvio` e
   `confirmarEnvio` com mocks de db e r2: guard (`requireAdminAction`) **primeiro**, sem sessão
   nada é emitido/lido (US2-AC6); Zod antes de SQL; o Zod normaliza os uuids para minúsculas
   (R1 da revisão da SF4) e exige o formato com hífens (recusa `{…}` e sem hífen);
@@ -508,21 +508,21 @@ SC-006.
   `motivo`, `regra` e `blocos` antes do descarte; **fora do registro** ⇒ nenhum log novo, nem
   no aceite nem na recusa; em todos, o log **nunca** traz bytes do arquivo; SC-006 pela action
   (cada arquivo forjado é apagado e recusado); R2 em melhor esforço — **test-writer**
-- [ ] T063 [P] **Teste primeiro** — `src/lib/produtos/actions.test.ts` (ajuste dos testes da
+- [X] T063 [P] **Teste primeiro** — `src/lib/produtos/actions.test.ts` (ajuste dos testes da
   003, sugerido): `criarProduto` aceita `fotos` repetido (1..3 uuids únicos); 0 fotos ⇒ falha
   `sem_foto` (mensagem do US1-AC8, sem `campo`); ordem guard → campos → fotos →
   `exigirCategoriaValida` → `inserirComFotos`; `foto_expirada` traz `envioIds`;
   `foto_expirada` com `envioIds` vazio (corrida, F§2.2) ⇒ `falha_geral` com `valores`; `valores`
   continua em toda falha (US1-AC9); `removerProduto` chama `apagarObjetos(chaves)` em melhor
   esforço depois do sucesso e a falha do R2 não desfaz a remoção (US6-AC1) — **test-writer**
-- [ ] T064 [P] **Teste primeiro** — rota `src/app/painel/fotos/[arquivo]/route.test.ts`
+- [X] T064 [P] **Teste primeiro** — rota `src/app/painel/fotos/[arquivo]/route.test.ts`
   (sugerido): sem sessão ⇒ 404; `arquivo` fora da regex ⇒ 404 **sem tocar o binding**; chave
   que não está em `produto_fotos` nem em `fotos_envio` `confirmado` ⇒ 404; `bucket.get` `null` ⇒
   404; **objeto sem `body` (condição `If-None-Match` falhou) ⇒ 304 (TL-19)**; com `body` ⇒ 200;
   headers `Content-Type` pela extensão, `Cache-Control: private, max-age=31536000, immutable`,
   `ETag`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`;
   só `GET` — **test-writer**
-- [ ] T065 [P] **Teste primeiro** — conformidade (nega por padrão), `src/test/conformance/
+- [X] T065 [P] **Teste primeiro** — conformidade (nega por padrão), `src/test/conformance/
   fotos-acesso.test.ts` (mesmo escopo de arquivos de `produtos-acesso`): fronteiras de F§1
   (`src/lib/r2/` só importado por `src/lib/fotos/`,
   `src/lib/produtos/`, `src/app/painel/fotos/`, `src/app/api/interno/`; `src/lib/db/fotos.ts` só
@@ -530,27 +530,27 @@ SC-006.
   ou auth); **`insert(produtos)` só em `inserirComFotos`**; nenhum import de `aws4fetch` fora de
   `src/lib/r2/`. `fotos-rota-guard.test.ts`: `getAdminSession` antes de qualquer uso do barrel
   r2 na rota. Atualizar `produtos-acesso` se necessário — **test-writer**
-- [ ] T066 **[TL✅]** `src/lib/fotos/mensagens.ts` (todas as mensagens de F§8, incluindo
+- [X] T066 **[TL✅]** `src/lib/fotos/mensagens.ts` (todas as mensagens de F§8, incluindo
   `muitos_pendentes` da decisão E), `tipos.ts` (`FotoVista`, `Conjunto`, `FalhaFoto`,
   `ResultadoFotos`, `MotivoFoto`), `erros.ts`; seguros para o client — **principal**
-- [ ] T067 **[TL✅]** `src/lib/fotos/actions.ts` (`"use server"`): `pedirEnvio` e
+- [X] T067 **[TL✅]** `src/lib/fotos/actions.ts` (`"use server"`): `pedirEnvio` e
   `confirmarEnvio` conforme F§3 (ordem `requireAdminAction` → Zod → SQL → R2; recusa apaga a
   linha antes do objeto, TL-2; logs do modo registro conforme F§3 passo 5); alterar
   `criarProduto` (campo `fotos`, `sem_foto`, `inserirComFotos`, `foto_expirada`; lista vazia
   ⇒ `falha_geral`, F§2.2) e
   `removerProduto` (`apagarObjetos`) em `src/lib/produtos/actions.ts`; **remover o `inserir` da
   003** de `src/lib/db/produtos.ts` (agora sem uso) — **principal**
-- [ ] T068 **[TL✅]** `src/app/painel/fotos/[arquivo]/route.ts` conforme F§5 (404 sem sessão
+- [X] T068 **[TL✅]** `src/app/painel/fotos/[arquivo]/route.ts` conforme F§5 (404 sem sessão
   antes de qualquer acesso ao r2; regex; consulta às tabelas; `bucket.get` com `onlyIf`) —
   **principal**
-- [ ] T068a `eslint.config.mjs`: `no-restricted-imports` para `@/lib/r2/*` (submódulos) fora de
+- [X] T068a `eslint.config.mjs`: `no-restricted-imports` para `@/lib/r2/*` (submódulos) fora de
   `src/lib/r2/`, como já existe para categorias; consumidores importam só o barrel `@/lib/r2`
   (`server-only`). Origem: sugestão S3 da revisão TL da SF3 (só o barrel tem `server-only`) —
   **principal**
-- [ ] T069 Rodar `npm run check` e `npm run test:int`; colar o output real. Atenção: a página de
+- [X] T069 Rodar `npm run check` e `npm run test:int`; colar o output real. Atenção: a página de
   cadastro ainda não envia `fotos` (SF9); testes de página da 003 que criam produto pela UI
   podem precisar do ajuste mínimo registrado aqui — **principal**
-- [ ] T070 Revisão do diff pelo tech-lead (opus): actions (ordem, TL-2), rota (TL-19, headers,
+- [X] T070 Revisão do diff pelo tech-lead (opus): actions (ordem, TL-2), rota (TL-19, headers,
   ordem do guard), conformidade, uso do barrel r2, remoção do `inserir` — **tech-lead**
 - [ ] T071 Commit (humano), mensagem:
   ```text
@@ -681,7 +681,9 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
   "Salvar" indisponível enquanto houver envio em curso; `fotos` enviadas como campos ocultos em
   ordem (US1-AC7); `sem_foto` mostra a mensagem do US1-AC8; nome repetido mantém as fotos já
   enviadas (US1-AC9); `foto_expirada` volta ao passo Fotos com as miniaturas expiradas em *Não
-  enviada*; recarregar começa vazio. `produtos-paginas-guard` continua verde — **test-writer**
+  enviada*; recarregar começa vazio; **nenhum campo `fotos` vazio (`fotos=""`) é enviado**: a
+  action trata `""` como adulteração (`falha_geral`, não `sem_foto`; revisão TL da SF6).
+  `produtos-paginas-guard` continua verde — **test-writer**
 - [ ] T090 `ui-dev` implementa `escolher-foto.tsx`, `recorte-foto.tsx`, `lista-fotos.tsx` e
   `usar-envio.ts` em `src/app/painel/(protegido)/produtos/_fotos/`, consumindo só o contrato
   existente (`pedirEnvio`, `confirmarEnvio`, `prepararFoto`, mensagens e primitivos de
@@ -689,7 +691,7 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
   `src/lib/`. Faltou campo ou action: parar e reportar — **ui-dev**
 - [ ] T091 `ui-dev` implementa a página `novo/page.tsx` com os dois passos (estado do client) e
   adapta `form-produto.tsx` ao modo cadastro (recebe `envioIds`, campos ocultos `fotos`, "Salvar"
-  condicionado a envios concluídos) — **ui-dev**
+  condicionado a envios concluídos; sem campo `fotos` vazio) — **ui-dev**
 - [ ] T092 Rodar `npm run check` e colar o output real — **principal**
 - [ ] T093 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 1–4, 5 sem IA, 7 e 9):
   tela de fotos com "Continuar" indisponível; JPEG grande ⇒ recorte ⇒ miniatura "Capa" e, no
@@ -698,7 +700,8 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
   de 3 fotos", arrastar e botões de mover, remover sem confirmação; preencher à mão e "Salvar"
   ⇒ detalhe; lista com miniatura da capa depois da SF11; remover produto e conferir o objeto com
   `npx wrangler r2 object get roseshop-local/fotos/<arquivo> --local --file /dev/null`;
-  `/painel/fotos/<arquivo>` em janela anônima ⇒ 404. Entregar o resultado — **humano**
+  `/painel/fotos/<arquivo>` em janela anônima ⇒ 404; Q§4 item 10 (304 com `If-None-Match` e o
+  status com ETag fraca `W/"…"`, TL-19). Entregar o resultado — **humano**
 - [ ] T094 Commit (humano), mensagem:
   ```text
   feat(painel): cadastro de produto começando pelas fotos

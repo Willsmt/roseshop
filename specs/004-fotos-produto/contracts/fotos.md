@@ -392,9 +392,9 @@ funciona; reserva em research D6).
 
 | Arquivo | Conteúdo |
 |---|---|
-| `config.ts` | Zod sobre `process.env`: `R2_S3_ENDPOINT` (URL, sem barra final, inclui o bucket), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Ausente ⇒ erro ⇒ `falha_geral` na action |
+| `config.ts` | Zod sobre `process.env`: `R2_S3_ENDPOINT` (URL, sem barra final, inclui o bucket; `http` só com host `localhost`/`127.0.0.1`, senão `https`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Ausente ⇒ erro ⇒ `falha_geral` na action |
 | `chaves.ts` | `chaveDoEnvio(id, formato)`, `ARQUIVO_VALIDO` (regex da §5), `chaveDoArquivo`, `arquivoDaChave` |
-| `assinatura.ts` | `assinarEnvio({ chave, formato, tamanho })` ⇒ `{ url, headers }` com `AwsClient({ service: "s3", region: "auto" })`, `method: "PUT"`, headers `content-type`, `content-length` e `if-none-match: *` (TL-1), `aws: { signQuery: true, allHeaders: true }`; `X-Amz-Expires=300` posto na URL **antes** de assinar (o padrão do `aws4fetch` é 86400). Teste: `X-Amz-SignedHeaders` = `content-length;content-type;host;if-none-match`, `X-Amz-Expires=300`, nenhuma credencial na URL além do Access Key ID. Sem o R1 confirmar, valem as reservas do research D2 |
+| `assinatura.ts` | `assinarEnvio({ chave, formato, tamanho })` ⇒ `{ url, headers }` com `new AwsV4Signer({ service: "s3", region: "auto", … }).sign()` (não `AwsClient.sign`, que monta um `Request` com `content-length` e não foi provado no workerd), `method: "PUT"`, headers `content-type`, `content-length` e `if-none-match: *` (TL-1), `signQuery: true`, `allHeaders: true`; `tamanho` inteiro de 1 a 1_048_576, senão lança (defesa em profundidade; a action já recusa na emissão); `X-Amz-Expires=300` posto na URL **antes** de assinar (o padrão do `aws4fetch` é 86400). Teste: `X-Amz-SignedHeaders` = `content-length;content-type;host;if-none-match`, `X-Amz-Expires=300`, nenhuma credencial na URL além do Access Key ID. Sem o R1 confirmar, valem as reservas do research D2 |
 | `bucket.ts` | via `getCloudflareContext().env.PRODUCT_IMAGES`: `lerObjeto(chave)` (⇒ `{ tamanho, bytes() }` \| `null`; `tamanho` disponível antes de ler o corpo), `apagarObjetos(chaves)`, `listarObjetos(prefixo)` (async iterável com `chave` e `uploaded`) |
 | `verificacao/` | §4 |
 | `index.ts` | barrel `server-only` |

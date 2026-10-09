@@ -1,0 +1,12 @@
+{
+	"rules": [
+		{
+			"allowed": {
+				"origins": ["https://<origem exata do production>"],
+				"methods": ["PUT"],
+				"headers": ["content-type", "if-none-match"]
+			},
+			"maxAgeSeconds": 600
+		}
+	]
+}

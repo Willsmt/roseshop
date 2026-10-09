@@ -23,3 +23,12 @@ ADMIN_EMAILS=
 
 # OpenAI: chave do projeto roseshop-dev, com teto de gasto.
 OPENAI_API_KEY=
+
+# R2 pelo endpoint S3 local do wrangler (npm run preview). Valores FALSOS e fixos,
+# iguais a local_dev.experimental_s3_credentials no wrangler.jsonc; não são segredo.
+# Em dev e produção vêm de `wrangler secret put` (token do bucket do ambiente).
+R2_ACCESS_KEY_ID=roseshop-local
+R2_SECRET_ACCESS_KEY=roseshop-local-nao-secreto
+
+# Protege a limpeza diária (SF12). Local: qualquer valor não vazio.
+CRON_SECRET=local

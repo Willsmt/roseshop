@@ -271,30 +271,30 @@ do gitleaks (exceção por valor); `cloudflare-env.d.ts` (gerado).
 recusada pela URL, R1).
 **Revisão TL**: ✅.
 
-- [ ] T031 [P] **Teste primeiro** — `src/lib/r2/assinatura.test.ts` (sugerido):
+- [X] T031 [P] **Teste primeiro** — `src/lib/r2/assinatura.test.ts` (sugerido):
   `assinarEnvio({ chave, formato, tamanho })` ⇒ URL com `X-Amz-SignedHeaders` =
   `content-length;content-type;host;if-none-match`, `X-Amz-Expires=300` (não o padrão 86400 do
   `aws4fetch`), nenhuma credencial na URL além do Access Key ID; `headers` devolvidos
   contêm `content-type` e `if-none-match: *`; `content-type` = `image/webp` ou `image/jpeg` pelo
   formato. Se T008 registrou a reserva do research D2 (sem `if-none-match`), ajustar o teste à
   reserva — **test-writer**
-- [ ] T032 [P] **Teste primeiro** — `src/lib/r2/chaves.test.ts` e `config.test.ts` (sugeridos):
+- [X] T032 [P] **Teste primeiro** — `src/lib/r2/chaves.test.ts` e `config.test.ts` (sugeridos):
   `chaveDoEnvio(id, formato)` ⇒ `fotos/<id>.webp|jpg`; `ARQUIVO_VALIDO` é a regex de F§5 (aceita
   uuid v4 + `.webp`/`.jpg`; recusa v1, `.png`, `..`, barras, maiúsculas); `chaveDoArquivo`/
   `arquivoDaChave` são inversas; `config.ts` (Zod sobre `process.env`): `R2_S3_ENDPOINT` URL sem
   barra final, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` obrigatórios; ausente ⇒ lança —
   **test-writer**
-- [ ] T033 `npm install --save-exact aws4fetch` (versão registrada no plan: 1.0.20) e anotar a
+- [X] T033 `npm install --save-exact aws4fetch` (versão registrada no plan: 1.0.20) e anotar a
   justificativa para o commit (assinatura SigV4 é a parte com mais risco de erro próprio; não
   substitui nada da stack fechada) — **principal**
-- [ ] T034 **[TL✅]** `src/lib/r2/config.ts`, `chaves.ts`, `assinatura.ts` (`AwsClient({ service:
-  "s3", region: "auto" })`, `method: "PUT"`, `aws: { signQuery: true, allHeaders: true }`,
+- [X] T034 **[TL✅]** `src/lib/r2/config.ts`, `chaves.ts`, `assinatura.ts` (`AwsV4Signer({ service:
+  "s3", region: "auto" })`, `method: "PUT"`, `signQuery: true, allHeaders: true`,
   `X-Amz-Expires=300` posto na URL **antes** de assinar), `bucket.ts` (via
   `getCloudflareContext().env.PRODUCT_IMAGES`: `lerObjeto(chave)` ⇒ `{ tamanho, bytes() } | null`
   com `tamanho` antes de ler o corpo, `apagarObjetos(chaves)` em lotes de 1000 sem erro para
   inexistente, `listarObjetos(prefixo)` assíncrono iterável com `chave` e `uploaded`),
   `index.ts` (barrel `server-only`, reexporta também `verificacao/`) — **principal**
-- [ ] T035 **[TL✅]** `wrangler.jsonc` (**sem** alterar `main` nem `triggers`, que são da SF12):
+- [X] T035 **[TL✅]** `wrangler.jsonc` (**sem** alterar `main` nem `triggers`, que são da SF12):
   `vars` `R2_S3_ENDPOINT` no nível de cima (`http://localhost:8787/cdn-cgi/local/r2/s3/
   roseshop-local`), `env.dev` e `env.production` com `https://<account>.r2.cloudflarestorage.com/
   roseshop-dev|prod` (`<account>` preenchido pelo humano na T038); `local_dev.
@@ -302,13 +302,13 @@ recusada pela URL, R1).
   ambiente (entra no `env.dev` só na T094a, SF10);
   `.dev.vars.example` com `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (valores locais falsos) e
   `CRON_SECRET` (placeholder), **sem** `FOTOS_VERIFICACAO` — **principal**
-- [ ] T036 [P] **[TL✅]** `infra/r2/cors.dev.json` e `infra/r2/cors.production.json`: `PUT`,
+- [X] T036 [P] **[TL✅]** `infra/r2/cors.dev.json` e `infra/r2/cors.production.json`: `PUT`,
   origem exata do ambiente (preenchida pelo humano), headers `content-type` e `if-none-match`
   — **principal**
-- [ ] T037 **[TL✅]** Exceção do gitleaks **pelo valor exato** dos dois valores locais falsos
+- [X] T037 **[TL✅]** Exceção do gitleaks **pelo valor exato** dos dois valores locais falsos
   (regex dos valores), nunca pelo arquivo `wrangler.jsonc` inteiro (TL-21); depois
   `npm run cf-typegen` para o `CloudflareEnv` tipar `R2_S3_ENDPOINT` e demais — **principal**
-- [ ] T038 **Humano executa** (dev; Q§1 itens 2–4): `npx wrangler secret put R2_ACCESS_KEY_ID
+- [X] T038 **Humano executa** (dev; Q§1 itens 2–4): `npx wrangler secret put R2_ACCESS_KEY_ID
   --env dev` e `R2_SECRET_ACCESS_KEY --env dev` (token do T001; **já gravados em 2026-10-09
   na T014a**, não recriar); preencher o Account ID em
   `R2_S3_ENDPOINT` de `env.dev`/`env.production` e a origem exata do dev em
@@ -316,14 +316,14 @@ recusada pela URL, R1).
   infra/r2/cors.dev.json` e conferir com `npx wrangler r2 bucket cors list roseshop-dev`;
   criar/atualizar o `.dev.vars` local com as chaves de `.dev.vars.example`. Produção fica na SF15
   — **humano**
-- [ ] T039 **Verificação local por `curl`/script** (a prova pela tela fica na SF9): com
+- [X] T039 **Verificação local por `curl`/script** (a prova pela tela fica na SF9): com
   `npm run preview` no ar, o humano roda um script em `curl` (ou `node`, fora do repo) que
   assina uma URL com `assinarEnvio` (via script de apoio fora do repo), faz o `PUT` no endpoint
   S3 local com um arquivo de N bytes e verifica por `npx wrangler r2 object get roseshop-local/
   fotos/<arquivo> --local`: N ⇒ ok; N±1 ⇒ 403; segundo `PUT` ⇒ 412. Entregar o output real —
   **humano**
-- [ ] T040 Rodar `npm run check` e colar o output real — **principal**
-- [ ] T041 Revisão do diff pelo tech-lead (opus): `assinatura.ts` (headers assinados, expiração),
+- [X] T040 Rodar `npm run check` e colar o output real — **principal**
+- [X] T041 Revisão do diff pelo tech-lead (opus): `assinatura.ts` (headers assinados, expiração),
   `bucket.ts`, `wrangler.jsonc`, `.dev.vars.example`, CORS, exceção do gitleaks, ausência de
   `FOTOS_VERIFICACAO` em todos os ambientes — **tech-lead**
 - [ ] T042 Commit (humano), mensagem:
@@ -537,6 +537,10 @@ SC-006.
   003** de `src/lib/db/produtos.ts` (agora sem uso) — **principal**
 - [ ] T068 **[TL✅]** `src/app/painel/fotos/[arquivo]/route.ts` conforme F§5 (404 sem sessão
   antes de qualquer acesso ao r2; regex; consulta às tabelas; `bucket.get` com `onlyIf`) —
+  **principal**
+- [ ] T068a `eslint.config.mjs`: `no-restricted-imports` para `@/lib/r2/*` (submódulos) fora de
+  `src/lib/r2/`, como já existe para categorias; consumidores importam só o barrel `@/lib/r2`
+  (`server-only`). Origem: sugestão S3 da revisão TL da SF3 (só o barrel tem `server-only`) —
   **principal**
 - [ ] T069 Rodar `npm run check` e `npm run test:int`; colar o output real. Atenção: a página de
   cadastro ainda não envia `fotos` (SF9); testes de página da 003 que criam produto pela UI

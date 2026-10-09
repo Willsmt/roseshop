@@ -1,8 +1,9 @@
 # Arquitetura
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
-> e 003 (produtos) implementadas; feature 004 (fotos) em andamento, só a base
-> de servidor (`src/lib/r2/`) existe**. Este documento descreve apenas o que existe hoje
+> e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
+> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF6,
+> sem UI de fotos**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -70,17 +71,19 @@ src/app/
   painel/(protegido)/               # layout (moldura + "Sair"), page (saudação + links Produtos e Categorias), bfcache-reload
   painel/(protegido)/categorias/    # lista, nova/, [id]/renomear/, [id]/remover/ (F02)
   painel/(protegido)/produtos/      # lista, novo/, [id]/ (detalhe), [id]/editar/, [id]/remover/ (F03)
+  painel/fotos/[arquivo]/route.ts   # GET /painel/fotos/<arquivo>: exibição da foto, fora do grupo (protegido) (F04)
 src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/produtos/     # módulo de domínio de produtos (actions, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
+src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao
 infra/r2/     # CORS dos buckets, versionado (cors.dev.json, cors.production.json)
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
   schema.ts     # schema Drizzle (categorias, produtos, produto_fotos, fotos_envio, ia_uso)
-  categorias.ts, produtos.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
+  categorias.ts, produtos.ts, fotos.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
   migrations/   # 0000 (função categoria_chave + categorias + seed), 0001 (produtos, produto_fotos), 0002 (fotos_envio, ia_uso, colunas de fotos) e meta/
   *.test.ts / *.int.test.ts   # testes unitário e de integração
 src/test/       # conformance/ (testes de guard e de acesso) e db/ (fixtures de integração, medição de desempenho)
@@ -90,7 +93,9 @@ vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts, vitest.perf.c
 
 Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
 quatro de `/painel/categorias` (lista, `nova`, `[id]/renomear`, `[id]/remover`)
-e as cinco de `/painel/produtos` (lista, `novo`, `[id]`, `[id]/editar`, `[id]/remover`).
+as cinco de `/painel/produtos` (lista, `novo`, `[id]`, `[id]/editar`, `[id]/remover`)
+e `GET /painel/fotos/[arquivo]` (exibição de foto, guardada por sessão; ver
+[F04](./features/F04-fotos.md)).
 **Nenhum middleware** (de propósito; ver a seção seguinte).
 
 ### Autenticação e proteção do painel
@@ -218,7 +223,7 @@ graph LR
   - `observability.enabled: true` e `upload_source_maps: true`.
   - `r2_buckets` — binding `PRODUCT_IMAGES` (local `roseshop-local`, simulado;
     dev `roseshop-dev`; produção `roseshop-prod`). Usado por
-    `src/lib/r2/bucket.ts` (ainda sem rota ou action que o chame). O item local
+    `src/lib/r2/bucket.ts` (chamado pelas actions de `src/lib/fotos/` e pela rota de exibição). O item local
     traz `local_dev.experimental_s3_credentials` com credenciais **falsas e fixas**
     (não são segredo), que ligam o endpoint S3 do `preview`.
   - `vars.R2_S3_ENDPOINT` — endpoint S3 do bucket do ambiente (local
@@ -244,8 +249,9 @@ o Drizzle está configurado (`src/lib/db/`, `drizzle.config.ts`) e a conexão é
 validada por `/api/health` (`src/app/api/health/route.ts`) e pelo teste de
 integração `src/lib/db/client.int.test.ts` (`npm run test:int`, exige `db:up`).
 O schema tem `categorias` (migration `0000`), `produtos` e `produto_fotos`
-(`0001`), `fotos_envio` e `ia_uso` (`0002`, feature 004 em andamento, ainda sem
-código que as use; ver [database.md](./database.md)).
+(`0001`), `fotos_envio` e `ia_uso` (`0002`, feature 004 em andamento; só
+`fotos_envio` e `produto_fotos` já têm código que as use, `ia_uso` ainda não; ver
+[database.md](./database.md)).
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|
@@ -335,8 +341,14 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   `vitest.probe.config.mts` agora inclui também `fk-produtos.int.test.ts`
   (escreve e apaga linhas marcadas). Config fora do escopo do doc-sync; ajustar
   em PR próprio.
-- **`fotos` sempre vazio** em `DetalheProduto` (`src/lib/produtos/painel.ts`) até a
-  feature 004 (fotos/R2); `produto_fotos` não é gravada por nenhum código.
+- **Cadastro pela tela quebrado até a SF9 da feature 004**: `criarProduto` exige 1 a 3
+  fotos, mas o formulário (`form-produto.tsx`) ainda não envia o campo `fotos`; criar
+  produto pela tela devolve "Coloque pelo menos 1 foto do produto." (ver
+  [F04](./features/F04-fotos.md)). `DetalheProduto.fotos` de `src/lib/produtos/painel.ts`
+  segue vazio até a UI de fotos.
+- **Sem limpeza de objetos órfãos ainda** (cron da feature 004, SF12): recusa de
+  confirmação e remoção de produto apagam objetos do R2 em melhor esforço e dependem
+  dela para o resto.
 - **`next-auth` em beta** (`5.0.0-beta.32`, versão exata): atualização manual e
   deliberada.
 - **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o
@@ -344,10 +356,10 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   leitores de tela e SEO. Também permanecem `title`/`description` genéricos
   ("Create Next App") em `metadata`. Corrigir ao implementar a primeira tela.
 
-### Módulo R2 (feature 004, SF2 e SF3)
+### Módulo R2 (feature 004, SF2, SF3 e SF6)
 
-> Estado: só a base de servidor. **Não existem** rotas, Server Actions, UI de fotos,
-> IA nem cron; nada fora de `src/lib/r2/` e dos testes chama o módulo ainda.
+> Estado: o módulo já tem chamadores desde a SF6 (actions de `src/lib/fotos/`, remoção
+> de produto e a rota de exibição). **Não existem** UI de fotos, IA nem cron.
 
 **Visão leiga**: a foto do produto não passa pelo servidor do site. A administradora
 pede uma "autorização de envio" (uma URL temporária, válida por 5 minutos), o aparelho
@@ -364,11 +376,11 @@ Esta base entrega as peças: conferir o arquivo, gerar a autorização e ler/apa
 | `src/lib/r2/config.ts` | `configR2()`: valida com Zod `R2_S3_ENDPOINT` (https, exceto `localhost`/`127.0.0.1`; sem `/` final), `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY` lidos de `process.env` a cada uso. O erro cita só os nomes. |
 | `src/lib/r2/chaves.ts` | Chave do objeto `fotos/<uuid v4>.<webp\|jpg>`; `ARQUIVO_VALIDO` é a mesma regex da rota de exibição e do CHECK de `produto_fotos`. |
 | `src/lib/r2/assinatura.ts` | `assinarEnvio({ chave, formato, tamanho })`: URL pré-assinada de PUT (SigV4, `AwsV4Signer`), expira em 300 s, com `content-length`, `content-type` e `if-none-match: *` assinados; tamanho de 1 a 1 MB. |
-| `src/lib/r2/bucket.ts` | Acesso pelo binding `PRODUCT_IMAGES`: `lerObjeto` (tamanho vem dos metadados), `apagarObjetos` (lotes de 1000; chave inexistente não é erro) e `listarObjetos` (paginado por cursor). |
+| `src/lib/r2/bucket.ts` | Acesso pelo binding `PRODUCT_IMAGES`: `lerObjeto` (tamanho vem dos metadados), `apagarObjetos` (lotes de 1000; chave inexistente não é erro) e `listarObjetos` (paginado por cursor); SF6: `servirObjeto(chave, ifNoneMatch)`, que lê com `onlyIf` e devolve `{ etag, tamanho, corpo }` (`corpo: null` quando o ETag casa, base do 304). |
 
 ```mermaid
 sequenceDiagram
-  participant C as Chamador (action futura, SF6)
+  participant C as Chamador (src/lib/fotos/actions.ts)
   participant M as src/lib/r2
   participant R as R2 (endpoint S3)
   C->>M: assinarEnvio(chave, formato, tamanho)
@@ -378,8 +390,8 @@ sequenceDiagram
   C->>M: lerObjeto(chave) + verificarImagem
 ```
 
-O chamador (action de envio e confirmação) ainda **não existe**: o diagrama mostra o
-uso do módulo, comprovado só em teste e na prova local. Detalhes de operação (segredos, CORS, endpoint local) em
+O fluxo completo (actions, rota de exibição, cadastro) está em
+[F04-fotos.md](./features/F04-fotos.md). Detalhes de operação (segredos, CORS, endpoint local) em
 [operacao.md, "R2: segredos, endpoint e CORS"](./operacao.md#r2-segredos-endpoint-e-cors).
 
 Pegadinhas:
@@ -392,12 +404,15 @@ Pegadinhas:
   posto **antes** de assinar (senão a lib usa 24 h).
 - **Endpoint S3 local é experimental** e por isso o `wrangler` está fixado; valide
   envio no `preview`, nunca no `dev` (o binding só existe no worker).
+- **Fronteira do barrel**: só `@/lib/r2` (com `server-only`) pode ser importado fora de
+  `src/lib/r2/`; a regra `proibirSubmoduloR2` do `eslint.config.mjs` e o teste
+  `src/test/conformance/fotos-acesso.test.ts` a impõem.
 - **Credenciais no `process.env`**: como os demais secrets, só existem durante o
   request do Worker; não leia no escopo do módulo.
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, rotas e telas de fotos (nenhuma action emite a URL de envio ainda) e integração de IA (OpenAI) são
+Catálogo público, sacola, telas de fotos (SF9), actions do conjunto de fotos (SF7) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

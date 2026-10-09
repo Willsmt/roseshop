@@ -5,7 +5,9 @@
 > uma função SQL (`categoria_chave`). A migration `0000` cria a função,
 > `categorias` e o seed; a `0001` cria `produtos` e `produto_fotos`; a `0002`
 > cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Só o
-> schema existe: nenhum código grava nas tabelas novas ainda. A sessão de login
+> schema existe; desde as SF4 a SF6 da feature 004, `fotos_envio` e `produto_fotos`
+já são gravadas por código (`src/lib/db/fotos.ts`, `inserirComFotos` em
+`produtos.ts`); `ia_uso` ainda não. A sessão de login
 > é JWT e não tem tabelas ([F01](./features/F01-autenticacao.md)). Fonte do
 > schema: `src/lib/db/schema.ts`.
 
@@ -164,7 +166,7 @@ sem edição manual; a `chave` reaproveita `categoria_chave` da `0000`).
 
 ### Tabela `produto_fotos`
 
-Modelo da 003 estendido pela `0002`; nenhum código grava ainda (a 004 liga R2).
+Modelo da 003 estendido pela `0002`; gravada por `inserirComFotos` (cadastro) e `substituirConjunto` (`src/lib/db/fotos.ts`, ainda sem action), apagada em cascata por `remover`.
 `id` identity; `produto_id` FK com `ON DELETE CASCADE` (remover produto leva as
 fotos); `posicao` 1 a 3 (`produto_fotos_posicao_faixa`),
 `UNIQUE(produto_id, posicao)`; `chave_objeto` `text NOT NULL` (chave do objeto no
@@ -180,8 +182,10 @@ R2); `criado_em`. A `0002` acrescentou:
 ### Tabela `fotos_envio`
 
 Registro de cada envio de foto emitido para a área temporária do R2 (feature 004).
-Segundo o comentário em `schema.ts`, a linha some ao ser adotada, recusada ou
-limpa após 24 h; **esses fluxos ainda não existem**, só a tabela. SQL real em
+A linha nasce `emitido` (`emitirEnvio`), vira `confirmado` (`marcarConfirmado`) e some
+ao ser adotada pelo cadastro (`inserirComFotos`), recusada (`descartarEnvio`, só
+`emitido`) ou limpa após 24 h (a **limpeza diária ainda não existe**). Teto de 20 envios
+por pessoa em 24 h. Fluxo em [F04](./features/F04-fotos.md). SQL real em
 `src/lib/db/migrations/0002_breezy_mentor.sql`.
 
 | Coluna | Tipo | Regras |
@@ -201,7 +205,7 @@ Contador diário de sugestões da IA por administradora (feature 004). `dia`
 (`date`, data de Brasília calculada pelo writer sob `LOCK_IA_USO`) e `email`
 (`text`) formam a PK `ia_uso_pkey`; `n` (`integer NOT NULL`) tem
 `ia_uso_n_minimo` (`n >= 1`). Linhas antigas ficam (sem limpeza). Nada grava
-nela ainda.
+nela ainda (a IA é de outra etapa).
 
 ### Regras de exclusão e integridade
 
@@ -222,7 +226,7 @@ O driver é `neon-http`: **não há `db.transaction()`**. Só statements isolado
 statement pelo resultado do anterior). Chaves de lock advisory ficam
 registradas em `src/lib/db/locks.ts` (`LOCK_PROBE_BATCH = 2001`,
 `LOCK_REMOCAO_CATEGORIAS = 2002`, `LOCK_FOTOS = 4001` e `LOCK_IA_USO = 4002`;
-as duas últimas são da 004 e ainda sem uso em código de produção); número nunca
+`LOCK_FOTOS` é usado pelos writers de fotos e `LOCK_IA_USO` ainda não); número nunca
 é reutilizado.
 
 ### FK de produtos e a remoção de categorias
@@ -249,8 +253,13 @@ Pegadinhas do schema de produtos:
   só por migration nova (prática registrada no PR da feature 002, com a `0000`).
   A `0002` ainda não foi aplicada no Neon dev: a regra passa a valer para ela a
   partir do primeiro run do PR da feature 004 (CI aplica `db:migrate`).
-- Premissa de código: todo writer de `produtos` incrementa `versao`
-  (`saiuDoDestaque` e a precedência de mensagens dependem disso).
+- Premissa de código: todo writer de `produtos` que altera campos, status ou destaque
+  incrementa `versao` (`saiuDoDestaque` e a precedência de mensagens dependem disso).
+  O writer de fotos (`substituirConjunto`) altera só `fotos_versao`, `fotos_operacao`,
+  `atualizado_por` e `atualizado_em`, nunca `versao` (emenda de 2026-10-09 do ADR-008).
+- `inserirComFotos` e `remover` de produtos são `db.batch` sob `LOCK_FOTOS`; erros de
+  FK e unicidade do cadastro só viram `categoria_ausente`/`nome_repetido` pelo **nome
+  exato** da constraint (`produtos_categoria_id_categorias_id_fk`, `produtos_chave_unique`).
 
 ### Como o código acessa o banco
 

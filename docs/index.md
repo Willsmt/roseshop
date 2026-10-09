@@ -12,9 +12,10 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > middleware, **feature 002 (categorias)**: primeira tabela do banco e
 > telas de categorias no painel, e **feature 003 (produtos)**: cadastro,
 > lista, busca, status e destaque de produtos no painel, ainda sem fotos. A
-> **feature 004 (fotos)** está em andamento: existe só a base de servidor
-> (schema, verificação do arquivo e módulo R2 em `src/lib/r2/`).
-> Catálogo público, sacola, telas de upload de imagem e IA ainda não existem; por isso este índice é deliberadamente curto: só existem
+> **feature 004 (fotos)** está em andamento: existe o servidor
+> (schema, verificação do arquivo, módulo R2, actions de envio, rota de exibição e
+> cadastro com fotos, até a SF6). Catálogo público, sacola, telas de fotos (SF9) e IA
+> ainda não existem; por isso este índice é deliberadamente curto: só existem
 > documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
@@ -46,8 +47,11 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    painel: rotas e actions, camadas (`src/lib/produtos/`, `src/lib/db/produtos.ts`),
    concorrência otimista, destaque (teto de 8), busca com cursor, preço e
    pegadinhas.
+8. **[features/F04-fotos.md](./features/F04-fotos.md)** — fotos de produto (em
+   andamento, até a SF6): fluxo de envio e confirmação, rota de exibição, cadastro com
+   fotos, fronteira de acesso e pegadinhas.
 
 ## O que ainda não existe aqui
 
-Só há doc de feature para a F01, a F02 e a F03; as demais serão criadas ao serem
+Só há doc de feature para a F01, a F02, a F03 e a F04 (parcial); as demais serão criadas ao serem
 fechadas (catálogo público, fotos, sacola, upload, IA).

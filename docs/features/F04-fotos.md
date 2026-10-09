@@ -1,18 +1,22 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF6: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
-> e do cadastro com fotos (SF4/SF5) e as Server Actions de envio, a rota de
-> exibição e a exigência de fotos no cadastro (SF6). **Ainda não existem**: UI de
-> fotos (SF9), actions do conjunto (adicionar, trocar, remover, mover: SF7), IA e
-> limpeza diária (cron). Spec:
+> SF7: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
+> exibição e a exigência de fotos no cadastro (SF6) e as actions do conjunto
+> (adicionar, trocar, remover, mover: SF7). **Ainda não existem**: o pipeline de
+> tratamento da foto no aparelho (SF8), a UI de fotos (SF9 e SF11), IA e limpeza
+> diária (cron). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
 
 ## Visão leiga
 
-Cada produto precisa de 1 a 3 fotos. A foto não passa pelo servidor do site: a
+Cada produto precisa de 1 a 3 fotos. Depois de cadastrado, o conjunto pode ser
+alterado foto a foto: adicionar (até 3), trocar uma, remover (nunca a última) e
+mudar a ordem (a foto da posição 1 é a capa). Essas operações já existem como
+actions, mas ainda sem tela (SF11). A foto não passa pelo servidor do site: a
 administradora escolhe a foto, o sistema pede uma **autorização de envio**
 (`pedirEnvio`), o aparelho manda o arquivo direto ao armazenamento (R2) e o
 sistema **confere** o que chegou (`confirmarEnvio`). Só então a foto fica
@@ -74,6 +78,65 @@ Pontos de projeto:
   `pequena` → `pequena`; `metadado`, `animada`, `corrompida`, `dimensao` →
   `nao_passou` (`src/lib/fotos/erros.ts`).
 
+### Actions do conjunto (`src/lib/fotos/actions.ts`)
+
+Quatro actions chamadas pela tela do produto já cadastrado (a tela é a SF11). Todas
+passam por `alterarConjunto`, que fixa a ordem dos passos.
+
+| Action | Entrada | Regra aplicada (`aplicarAcao`) |
+|---|---|---|
+| `adicionarFoto` | `produtoId`, `fotosVersao`, `envioId` | acrescenta no fim; com 3 fotos = `limite`; produto sem fotos (herdado da 003) aceita |
+| `trocarFoto` | `produtoId`, `fotosVersao`, `posicao` (1..3), `envioId` | substitui a foto da posição; a chave antiga sai do conjunto |
+| `removerFoto` | `produtoId`, `fotosVersao`, `posicao` | tira a foto; se for a única = `ultima`; a chave sai do conjunto |
+| `moverFoto` | `produtoId`, `fotosVersao`, `de`, `para` | reposiciona; `de` = `para` = `falha_geral` |
+
+Ordem em `alterarConjunto`:
+
+```mermaid
+sequenceDiagram
+  participant A as Aparelho
+  participant S as alterarConjunto
+  participant D as Banco
+  participant R as R2
+  A->>S: adicionarFoto / trocarFoto / removerFoto / moverFoto
+  S->>S: requireAdminAction, Zod (envioId uuid minúsculo com hífens)
+  S->>D: lerConjunto (produto + fotosVersao + fotos)
+  S->>S: fotosVersao diferente = alterado
+  S->>D: obterEnvio (só adicionar e trocar; ausente ou não confirmado = foto_expirada)
+  S->>S: aplicarAcao (regra pura, conjunto.ts)
+  S->>D: substituirConjunto (db.batch sob LOCK_FOTOS)
+  S->>S: revalidatePath /painel/produtos e /painel/produtos/id
+  S->>R: apagarObjetos([chave que saiu]) (só trocar e remover)
+  S-->>A: ok + fotosVersao nova + fotos
+```
+
+- **Regra pura** (`src/lib/fotos/conjunto.ts`, `aplicarAcao`, sem I/O): devolve a lista
+  nova numerada de 1 a n, mais `saiu` (a chave que deixou o conjunto) em trocar e
+  remover, ou uma recusa. `MAXIMO_FOTOS = 3`. Recusas: `limite`, `ultima`, e
+  `falha_geral` para posição inexistente, `de` = `para` ou chave repetida (a mesma
+  foto já presente no conjunto). O resultado sempre tem 1 a 3 fotos em posições 1..n.
+- **Zod**: `produtoId` inteiro positivo, `fotosVersao` inteiro ≥ 0, posições inteiras
+  1..3, `envioId` via `uuidEnvio`. Entrada inválida = `falha_geral` sem tocar no banco
+  e **sem `atual`**.
+- **Chave e autoria vêm do banco, não do cliente**: a chave nova, `enviadoPor` e
+  `enviadoEm` (= `criadoEm` do envio) saem do envio lido por `obterEnvio` com a sessão.
+  Envio inexistente, de outra pessoa ou não `confirmado` = `foto_expirada`. A validade de
+  24 h é conferida no batch (`substituirConjunto`).
+- **Resposta de sucesso**: `{ ok: true } & Conjunto` (`fotosVersao` nova + `fotos`), **sem
+  `mensagem`**: a tela usa `SUCESSO_FOTO` (`src/lib/fotos/mensagens.ts`). A vista é
+  montada antes do batch, então um erro nela vira `falha_geral` sem gravar nada.
+- **Falhas trazem `atual`** (conjunto e `fotosVersao` correntes) sempre que o conjunto
+  pôde ser lido: `alterado`, `foto_expirada`, `limite`, `ultima` e `falha_geral` da
+  regra. Se o batch devolve `alterado` ou `foto_expirada`, o conjunto é **relido**
+  (`falharRelendo`). Sem `atual` só em: entrada inválida, `nao_existe` (produto sumido,
+  inclusive no batch) e falha da primeira leitura.
+- **R2 depois do batch, em melhor esforço**: trocar e remover apagam o objeto antigo
+  só depois de o banco valer; `revalidatePath` também. Falha ao apagar não vira erro:
+  só `console.warn("fotos.conjunto.objeto_nao_apagado", { produtoId })`, sem chave. O
+  órfão sai na limpeza diária (ainda não existe).
+- **Versão própria**: o conjunto usa `fotosVersao` (concorrência otimista), separada da
+  `versao` do produto.
+
 ### Rota de exibição
 
 | Rota | Handler | O que faz |
@@ -111,7 +174,8 @@ desfaz a remoção.
 
 | Arquivo | Papel |
 |---|---|
-| `src/lib/fotos/actions.ts` | `pedirEnvio` e `confirmarEnvio`. |
+| `src/lib/fotos/actions.ts` | `pedirEnvio`, `confirmarEnvio` e as do conjunto: `adicionarFoto`, `trocarFoto`, `removerFoto`, `moverFoto` (via `alterarConjunto`). |
+| `src/lib/fotos/conjunto.ts` | `aplicarAcao` (regra pura do conjunto), `MAXIMO_FOTOS`, tipos `AcaoConjunto` e `NovaFoto`. |
 | `src/lib/fotos/tipos.ts` | `MotivoFoto`, `FotoVista`, `Conjunto`, `FalhaFoto`, `ResultadoFotos`; sem imports de runtime (seguro para o client). |
 | `src/lib/fotos/mensagens.ts` | Textos pt-BR por motivo, avisos de sucesso e confirmação; sem imports de runtime. |
 | `src/lib/fotos/erros.ts` | `falhaFoto` e o mapa motivo da verificação → motivo da tela. |
@@ -129,7 +193,7 @@ Os writers que tocam fotos são `db.batch` sob `LOCK_FOTOS` (4001), a emenda de
 confirmar e descartar envio são um statement cada, fora do lock. Todo array vai como
 **um** parâmetro (`${sql.param(ids)}::uuid[]`). `substituirConjunto`/`lerConjunto`
 (conjunto de fotos de um produto, com `fotos_versao` própria, sem tocar `versao`)
-existem no SQL mas **nenhuma action os chama ainda** (SF7). Detalhes do schema em
+são chamados pelas actions do conjunto (SF7). Detalhes do schema em
 [database.md](../database.md#tabela-fotos_envio).
 
 ### Fronteira de acesso e guards
@@ -152,6 +216,8 @@ existem no SQL mas **nenhuma action os chama ainda** (SF7). Detalhes do schema e
 ### Pegadinhas
 
 - **Criar produto pela tela falha até a SF9** (ver a observação no topo).
+- **Actions do conjunto sem UI**: `adicionarFoto`, `trocarFoto`, `removerFoto` e
+  `moverFoto` só são exercidas por teste até a SF11.
 - **`pedirEnvio` valida a config do R2 antes de gravar**: sem
   `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_S3_ENDPOINT` a resposta é
   `falha_geral` e nenhuma linha `emitido` é criada.
@@ -159,7 +225,7 @@ existem no SQL mas **nenhuma action os chama ainda** (SF7). Detalhes do schema e
   `TETO_PENDENTES`).
 - **`foto_expirada` por 24 h**: o envio só vale se `confirmado` e com menos de 24 h; o
   id é normalizado para minúsculas (o Postgres devolve assim).
-- **Objetos órfãos** (recusa que não apagou o objeto, remoção de produto com R2
+- **Objetos órfãos** (recusa que não apagou o objeto, troca/remoção de foto ou de produto com R2
   fora) dependem da limpeza diária, que ainda não existe (dívida da feature).
 - **Valide no `preview`**: o binding do R2 e o endpoint S3 local só existem no
   worker, nunca no `next dev`.

@@ -593,7 +593,7 @@ US5-AC1–5.
 - [X] T075 Rodar `npm run check` e `npm run test:int`; colar o output real — **principal**
 - [X] T076 Revisão do diff pelo tech-lead (opus): ordem das chamadas, `atual` nas falhas,
   apagamento do objeto antigo só após `ok` — **tech-lead**
-- [ ] T077 Commit (humano), mensagem:
+- [X] T077 Commit (humano), mensagem:
   ```text
   feat(fotos): adiciona, troca, remove e reordena fotos do produto
 

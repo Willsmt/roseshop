@@ -2,7 +2,7 @@
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
-> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF6,
+> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7,
 > sem UI de fotos**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
@@ -412,7 +412,7 @@ Pegadinhas:
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, telas de fotos (SF9), actions do conjunto de fotos (SF7) e integração de IA (OpenAI) são
+Catálogo público, sacola, telas de fotos (SF9 e SF11) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

@@ -5,7 +5,7 @@
 > uma função SQL (`categoria_chave`). A migration `0000` cria a função,
 > `categorias` e o seed; a `0001` cria `produtos` e `produto_fotos`; a `0002`
 > cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Só o
-> schema existe; desde as SF4 a SF6 da feature 004, `fotos_envio` e `produto_fotos`
+> schema existe; desde as SF4 a SF7 da feature 004, `fotos_envio` e `produto_fotos`
 já são gravadas por código (`src/lib/db/fotos.ts`, `inserirComFotos` em
 `produtos.ts`); `ia_uso` ainda não. A sessão de login
 > é JWT e não tem tabelas ([F01](./features/F01-autenticacao.md)). Fonte do

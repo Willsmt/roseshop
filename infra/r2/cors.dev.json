@@ -1,0 +1,12 @@
+{
+	"rules": [
+		{
+			"allowed": {
+				"origins": ["https://roseshop-dev.willsmt.workers.dev"],
+				"methods": ["PUT"],
+				"headers": ["content-type", "if-none-match"]
+			},
+			"maxAgeSeconds": 600
+		}
+	]
+}

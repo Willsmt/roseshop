@@ -310,6 +310,35 @@ Decisões destravadas:
   `/cdn-cgi/local/r2/s3/` é servido pelo miniflare, o mesmo do `preview` na mesma versão; a
   prova no app completo fica para o **quickstart §4, na SF3**.
 
+#### R2 no app completo — **aprovado** (2026-10-09, SF3, T039, humano executou)
+
+`npm run preview` do app completo com o `wrangler.jsonc` da SF3 (wrangler 4.147.0). Script fora do
+repo (scratchpad): `assinarEnvio` real (bundle de `src/lib/r2/assinatura.ts`, `AwsV4Signer`) com
+as credenciais falsas do F§7, `PUT` contra `http://localhost:8787/cdn-cgi/local/r2/s3/
+roseshop-local/…` e leitura por `wrangler r2 object get … --local`. Output real:
+
+```text
+chave: fotos/46614dfc-9353-484f-acd9-1306b06baf2e.webp
+X-Amz-SignedHeaders: content-length;content-type;host;if-none-match | X-Amz-Expires: 300
+PUT N+1 bytes (1001)               => 403
+PUT N-1 bytes (999)                => 403
+PUT N bytes, content-type jpeg     => 403
+PUT N bytes, sem if-none-match     => 403
+PUT N bytes (1000)                 => 200
+segundo PUT N bytes                => 412
+wrangler r2 object get … --local → "Download complete."
+cmp esperado.bin lido.bin → arquivos iguais
+```
+
+- Fecha o limite da prova R2: o endpoint S3 local funciona no app completo, com as mesmas
+  recusas do R2 real e o objeto íntegro no bucket local.
+- **Limite desta prova**: a assinatura rodou em Node (script), não dentro do workerd. A troca
+  para `AwsV4Signer` (que não monta `Request`) reduz o risco; a assinatura dentro do worker é
+  exercitada pela action `pedirEnvio` (SF6) e pela tela (SF9).
+- CORS do `roseshop-dev` aplicado na T038 com `infra/r2/cors.dev.json`; `cors list` conferiu
+  origem `https://roseshop-dev.willsmt.workers.dev`, `PUT`, `content-type`, `if-none-match`,
+  `max_age` 600. Havia no bucket uma regra anterior sem registro no repositório; foi substituída.
+
 #### R3 — **aprovado, local e online** (2026-10-09, humano executou)
 
 Worker próprio `.spike/r3/worker.mjs` (fora do repo) na forma do F§6: `fetch` reexportado do

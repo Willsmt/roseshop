@@ -26,20 +26,37 @@
 
 	"images": { "binding": "IMAGES" },
 	"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop-local" }],
-	"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-local" }],
+	"r2_buckets": [
+		{
+			"binding": "PRODUCT_IMAGES",
+			"bucket_name": "roseshop-local",
+			// Endpoint S3 local do wrangler (ADR-009 D6). Credenciais FALSAS e fixas,
+			// iguais às do .dev.vars.example; não são segredo.
+			"local_dev": {
+				"experimental_s3_credentials": {
+					"accessKeyId": "roseshop-local",
+					"secretAccessKey": "roseshop-local-nao-secreto"
+				}
+			}
+		}
+	],
+	// vars não são herdadas: cada env redeclara. O endpoint inclui o bucket do ambiente.
+	"vars": { "R2_S3_ENDPOINT": "http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local" },
 
 	"env": {
 		"dev": {
 			"name": "roseshop-dev",
 			"images": { "binding": "IMAGES" },
 			"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop-dev" }],
-			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-dev" }]
+			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-dev" }],
+			"vars": { "R2_S3_ENDPOINT": "https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-dev" }
 		},
 		"production": {
 			"name": "roseshop",
 			"images": { "binding": "IMAGES" },
 			"services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "roseshop" }],
-			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-prod" }]
+			"r2_buckets": [{ "binding": "PRODUCT_IMAGES", "bucket_name": "roseshop-prod" }],
+			"vars": { "R2_S3_ENDPOINT": "https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-prod" }
 		}
 	}
 }

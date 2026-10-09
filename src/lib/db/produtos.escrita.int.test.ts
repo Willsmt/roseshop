@@ -111,7 +111,7 @@ describe("inserir (US1)", () => {
   it("US1-AC8/SC-005: código (id) nunca reaproveitado após remover", async () => {
     const a = await inserir(db, sessao, campos());
     if (a.tipo !== "ok") throw new Error("setup");
-    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido" });
+    expect(await remover(db, sessao, a.id, 1)).toEqual({ tipo: "removido", chaves: [] });
     const b = await inserir(db, sessao, campos());
     if (b.tipo !== "ok") throw new Error("setup");
     expect(b.id).toBeGreaterThan(a.id);
@@ -195,10 +195,11 @@ describe("editar (US4)", () => {
 describe("remover (US6)", () => {
   it("US6-AC3: remove a linha ⇒ removido; fotos saem em cascata", async () => {
     const id = await inserirProduto(db, cat1);
+    const chaves = [`fotos/${randomUUID()}.jpg`, `fotos/${randomUUID()}.jpg`];
     await db.execute(
-      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em) VALUES (${id}, 1, ${`fotos/${randomUUID()}.jpg`}, 'zt@example.com', now()), (${id}, 2, ${`fotos/${randomUUID()}.jpg`}, 'zt@example.com', now())`,
+      sql`INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em) VALUES (${id}, 1, ${chaves[0]}, 'zt@example.com', now()), (${id}, 2, ${chaves[1]}, 'zt@example.com', now())`,
     );
-    expect(await remover(db, sessao, id, 1)).toEqual({ tipo: "removido" });
+    expect(await remover(db, sessao, id, 1)).toEqual({ tipo: "removido", chaves });
     expect(await linha(id)).toBeUndefined();
     const f = await db.execute(sql`SELECT count(*)::int AS n FROM produto_fotos WHERE produto_id = ${id}`);
     expect((f.rows as { n: number }[])[0].n).toBe(0);
@@ -223,7 +224,7 @@ describe("remover (US6)", () => {
     const alvo = await inserirProduto(db, cat1);
     const outroId = await inserirProduto(db, cat1, { criadoPor: sessao.email });
     const antes = (await linha(outroId))!;
-    expect(await remover(db, outra, alvo, 1)).toEqual({ tipo: "removido" });
+    expect(await remover(db, outra, alvo, 1)).toEqual({ tipo: "removido", chaves: [] });
     expect(await linha(outroId)).toEqual(antes);
     expect(await contar()).toBe(1);
   });

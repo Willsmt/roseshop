@@ -4,12 +4,15 @@ import type { AdminSession } from "@/lib/auth";
 
 import type { Db } from "./client";
 import { codigoSqlstate, nomeConstraint } from "./erros-pg";
-import { categorias, produtos } from "./schema";
+import { envioValido, enviosValidos } from "./fotos";
+import { LOCK_FOTOS } from "./locks";
+import { categorias, produtoFotos, produtos } from "./schema";
 
 // Camada SQL de produtos, parte de escrita (contrato §2). Toda função recebe `db`; cada
-// escrita é um único statement (ADR-008: sem transação interativa nem lock advisory) e a
-// garantia de concorrência está no WHERE/UNIQUE/FK. A leitura depois de 0 linhas só escolhe
-// a mensagem. Erros inesperados do banco propagam.
+// escrita da 003 é um único statement (ADR-008: sem transação interativa) e a garantia de
+// concorrência está no WHERE/UNIQUE/FK. Os writers que tocam fotos (`inserirComFotos`,
+// `remover`) são `db.batch` sob LOCK_FOTOS (feature 004, emenda de 2026-10-09 do ADR-008).
+// A leitura depois de 0 linhas só escolhe a mensagem. Erros inesperados do banco propagam.
 
 export type ProdutoDb = {
   id: number; // = código de referência (D2)
@@ -41,8 +44,10 @@ export type NomeRepetido = { tipo: "nome_repetido"; codigoExistente?: number };
 export type CategoriaAusente = { tipo: "categoria_ausente" };
 export type Ausente = { tipo: "ausente" };
 export type VersaoDiferente = { tipo: "versao_diferente" };
+export type FotoExpirada = { tipo: "foto_expirada"; envioIds: string[] };
 
 export type ResultadoInserir = { tipo: "ok"; id: number } | NomeRepetido | CategoriaAusente;
+export type ResultadoInserirComFotos = ResultadoInserir | FotoExpirada;
 export type ResultadoEditar =
   | { tipo: "ok" }
   | NomeRepetido
@@ -62,10 +67,19 @@ export type ResultadoDestacar =
   | { tipo: "ja_em_destaque" }
   | { tipo: "limite" }
   | { tipo: "vaga_disputada" };
-export type ResultadoRemover = { tipo: "removido" } | Ausente | VersaoDiferente;
+// `chaves`: objetos das fotos do produto removido, em ordem de posição (D14).
+export type ResultadoRemover =
+  | { tipo: "removido"; chaves: string[] }
+  | Ausente
+  | VersaoDiferente;
 
 const VIOLACAO_DE_UNICIDADE = "23505";
 const VIOLACAO_DE_FK = "23503";
+// Única unicidade que vira `nome_repetido` no cadastro com fotos, por comparação exata do nome
+// (ADR-008): `produto_fotos_objeto_unique` ou qualquer outra propaga.
+const NOME_UNICO = "produtos_chave_unique";
+// Única FK que vira `categoria_ausente` no cadastro com fotos, também por nome exato.
+const FK_CATEGORIA = "produtos_categoria_id_categorias_id_fk";
 
 function valores(campos: CamposProduto) {
   return {
@@ -87,8 +101,16 @@ async function codigoPorNome(db: Db, nome: string): Promise<number | undefined> 
   return linha?.id;
 }
 
+// Linha sumida entre o erro (ou o 0 linhas) e a leitura ⇒ resultado sem código.
+async function nomeRepetido(db: Db, nome: string): Promise<NomeRepetido> {
+  const codigoExistente = await codigoPorNome(db, nome);
+  return codigoExistente === undefined
+    ? { tipo: "nome_repetido" }
+    : { tipo: "nome_repetido", codigoExistente };
+}
+
 // O UNIQUE da `chave` decide a duplicidade, inclusive sob concorrência; aqui só se descobre
-// o código para a mensagem. Linha sumida entre o erro e a leitura ⇒ resultado sem código.
+// o código para a mensagem.
 async function traduzirErroDeEscrita(
   db: Db,
   nome: string,
@@ -97,10 +119,7 @@ async function traduzirErroDeEscrita(
   const sqlstate = codigoSqlstate(erro);
   if (sqlstate === VIOLACAO_DE_FK) return { tipo: "categoria_ausente" };
   if (sqlstate !== VIOLACAO_DE_UNICIDADE) throw erro;
-  const codigoExistente = await codigoPorNome(db, nome);
-  return codigoExistente === undefined
-    ? { tipo: "nome_repetido" }
-    : { tipo: "nome_repetido", codigoExistente };
+  return nomeRepetido(db, nome);
 }
 
 async function ausenteOuVersaoDiferente(db: Db, id: number): Promise<Ausente | VersaoDiferente> {
@@ -112,7 +131,11 @@ async function ausenteOuVersaoDiferente(db: Db, id: number): Promise<Ausente | V
   return linha ? { tipo: "versao_diferente" } : { tipo: "ausente" };
 }
 
-/** `campos` chega normalizado e validado pelo domínio (src/lib/produtos/validacao.ts). */
+/**
+ * `campos` chega normalizado e validado pelo domínio (src/lib/produtos/validacao.ts).
+ * Substituído por `inserirComFotos`; continua exportado só até a SF6 da 004 (T067), enquanto
+ * a action `criarProduto` o usa.
+ */
 export async function inserir(
   db: Db,
   sessao: AdminSession,
@@ -127,6 +150,74 @@ export async function inserir(
   } catch (erro) {
     return traduzirErroDeEscrita(db, campos.nome, erro);
   }
+}
+
+/**
+ * Cadastro com fotos (contracts/fotos.md §2.2). Batch sob LOCK_FOTOS: o INSERT de `produtos`
+ * só ocorre se os N envios são `VALIDO` e grava o token; a adoção é um DELETE … RETURNING de
+ * `fotos_envio` (VALIDO repetido, TL-11, e guarda pelo token) que alimenta o INSERT de
+ * `produto_fotos` nas posições 1..N, na ordem de `envioIds`. Sem o INSERT de `produtos` nada
+ * mais muda; um erro aborta o batch inteiro.
+ */
+export async function inserirComFotos(
+  db: Db,
+  sessao: AdminSession,
+  campos: CamposProduto,
+  envioIdsRecebidos: string[],
+): Promise<ResultadoInserirComFotos> {
+  // O Postgres devolve o uuid em minúsculas: sem normalizar, um id válido em maiúsculas
+  // sairia em `foto_expirada` e duas grafias do mesmo uuid passariam como distintas.
+  const envioIds = envioIdsRecebidos.map((id) => id.toLowerCase());
+  if (envioIds.length < 1 || envioIds.length > 3 || new Set(envioIds).size !== envioIds.length) {
+    throw new Error("inserirComFotos: envioIds deve ter de 1 a 3 ids distintos");
+  }
+  const tok = crypto.randomUUID();
+  const ids = sql`${sql.param(envioIds)}::uuid[]`;
+  let inseridos: { id: number }[];
+  try {
+    const [, produto] = await db.batch([
+      db.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_FOTOS}::bigint)`),
+      db.execute(sql`
+        INSERT INTO produtos (categoria_id, nome, descricao, preco_centavos, a_partir_de,
+                              criado_por, atualizado_por, fotos_operacao)
+        SELECT ${campos.categoriaId}::integer, ${campos.nome}::text, ${campos.descricao}::text,
+               ${campos.precoCentavos}::integer, ${campos.aPartirDe}::boolean,
+               ${sessao.email}::text, ${sessao.email}::text, ${tok}::uuid
+        WHERE (SELECT count(*) FROM fotos_envio e
+               WHERE e.id = ANY(${ids}) AND ${envioValido(sessao)}) = ${envioIds.length}
+        RETURNING id`),
+      db.execute(sql`
+        WITH adotados AS (
+          DELETE FROM fotos_envio e
+          WHERE e.id = ANY(${ids}) AND ${envioValido(sessao)}
+            AND EXISTS (SELECT 1 FROM produtos WHERE fotos_operacao = ${tok}::uuid)
+          RETURNING e.id, e.chave, e.enviado_por, e.criado_em)
+        INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, enviado_em)
+        SELECT (SELECT id FROM produtos WHERE fotos_operacao = ${tok}::uuid), o.ord,
+               a.chave, a.enviado_por, a.criado_em
+        FROM adotados a JOIN unnest(${ids}) WITH ORDINALITY AS o(id, ord) ON o.id = a.id`),
+    ]);
+    inseridos = produto.rows as { id: number }[];
+  } catch (erro) {
+    const sqlstate = codigoSqlstate(erro);
+    const constraint = nomeConstraint(erro);
+    if (sqlstate === VIOLACAO_DE_FK && constraint === FK_CATEGORIA) {
+      return { tipo: "categoria_ausente" };
+    }
+    if (sqlstate === VIOLACAO_DE_UNICIDADE && constraint === NOME_UNICO) {
+      return nomeRepetido(db, campos.nome);
+    }
+    throw erro;
+  }
+  if (inseridos.length > 0) return { tipo: "ok", id: inseridos[0].id };
+  // 0 linhas: nome primeiro (duplo "Salvar": os envios já foram adotados pelo primeiro e o
+  // INSERT nem chega ao UNIQUE), depois os envios que não são VALIDO.
+  // Lista vazia é corrida (envio confirmado entre o batch e esta leitura); a action responde
+  // `falha_geral` (F§2.2).
+  const codigoExistente = await codigoPorNome(db, campos.nome);
+  if (codigoExistente !== undefined) return { tipo: "nome_repetido", codigoExistente };
+  const validos = await enviosValidos(db, sessao, envioIds);
+  return { tipo: "foto_expirada", envioIds: envioIds.filter((id) => !validos.has(id)) };
 }
 
 // Concorrência otimista: só grava se a `versao` lida pelo formulário ainda é a atual.
@@ -159,18 +250,24 @@ export async function editar(
   return ausenteOuVersaoDiferente(db, id);
 }
 
-// Fotos saem em cascata pela FK; remover não grava autoria. A confirmação é da UI.
+// Fotos saem em cascata pela FK; remover não grava autoria. A confirmação é da UI. Sob
+// LOCK_FOTOS, as chaves capturadas na CTE são exatamente as que saíram (contracts/fotos.md
+// §2.5): nenhum writer de fotos intercala.
 export async function remover(
   db: Db,
   sessao: AdminSession,
   id: number,
   versao: number,
 ): Promise<ResultadoRemover> {
-  const linhas = await db
-    .delete(produtos)
-    .where(and(eq(produtos.id, id), eq(produtos.versao, versao)))
-    .returning({ id: produtos.id });
-  if (linhas.length > 0) return { tipo: "removido" };
+  const [, r] = await db.batch([
+    db.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_FOTOS}::bigint)`),
+    db.execute(sql`
+      WITH f AS (SELECT chave_objeto, posicao FROM produto_fotos WHERE produto_id = ${id}),
+           d AS (DELETE FROM produtos WHERE id = ${id} AND versao = ${versao} RETURNING id)
+      SELECT (SELECT id FROM d) AS id, ARRAY(SELECT chave_objeto FROM f ORDER BY posicao) AS chaves`),
+  ]);
+  const linha = (r.rows as { id: number | null; chaves: string[] }[])[0];
+  if (linha.id !== null) return { tipo: "removido", chaves: linha.chaves };
   return ausenteOuVersaoDiferente(db, id);
 }
 
@@ -310,6 +407,13 @@ export type FiltroDb = {
 
 export const TAMANHO_PAGINA = 20;
 
+// `capa`: chave da posição 1; `null` só em produto legado sem foto (D10).
+export type ProdutoListado = ProdutoDb & { capa: string | null };
+export type ProdutoDetalhe = ProdutoDb & {
+  fotosVersao: number;
+  fotos: { posicao: number; chave: string }[];
+};
+
 const colunas = {
   id: produtos.id,
   categoriaId: produtos.categoriaId,
@@ -327,9 +431,17 @@ const colunas = {
   atualizadoEm: produtos.atualizadoEm,
 };
 
-export async function obterPorId(db: Db, id: number): Promise<ProdutoDb | null> {
+// As fotos vêm no mesmo statement (um snapshot só para produto e conjunto).
+export async function obterPorId(db: Db, id: number): Promise<ProdutoDetalhe | null> {
   const [linha] = await db
-    .select(colunas)
+    .select({
+      ...colunas,
+      fotosVersao: produtos.fotosVersao,
+      fotos: sql<ProdutoDetalhe["fotos"]>`coalesce((
+        SELECT json_agg(json_build_object('posicao', f.posicao, 'chave', f.chave_objeto)
+                        ORDER BY f.posicao)
+        FROM produto_fotos f WHERE f.produto_id = ${produtos.id}), '[]'::json)`,
+    })
     .from(produtos)
     .innerJoin(categorias, eq(categorias.id, produtos.categoriaId))
     .where(eq(produtos.id, id))
@@ -342,7 +454,7 @@ export async function obterPorId(db: Db, id: number): Promise<ProdutoDb | null> 
 export async function listar(
   db: Db,
   filtro: FiltroDb,
-): Promise<{ itens: ProdutoDb[]; haMais: boolean }> {
+): Promise<{ itens: ProdutoListado[]; haMais: boolean }> {
   const condicoes: (SQL | undefined)[] = [
     filtro.categoriaId === undefined ? undefined : eq(produtos.categoriaId, filtro.categoriaId),
     filtro.esgotado === undefined ? undefined : eq(produtos.esgotado, filtro.esgotado),
@@ -358,9 +470,13 @@ export async function listar(
     );
   }
   const linhas = await db
-    .select(colunas)
+    .select({ ...colunas, capa: produtoFotos.chaveObjeto })
     .from(produtos)
     .innerJoin(categorias, eq(categorias.id, produtos.categoriaId))
+    .leftJoin(
+      produtoFotos,
+      and(eq(produtoFotos.produtoId, produtos.id), eq(produtoFotos.posicao, 1)),
+    )
     .where(and(...condicoes))
     .orderBy(desc(produtos.id))
     .limit(TAMANHO_PAGINA + 1);

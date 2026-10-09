@@ -114,10 +114,19 @@ binding; só serve chaves que existem em `produto_fotos` ou em `fotos_envio` com
 - **Prova R2 (wrangler 4.147.0, 2026-10-09, output literal em research §3)**: URL assinada
   grava no bucket local e o objeto é lido pelo binding; assinatura errada ⇒ 403; as mesmas
   recusas do R2 real. Reserva do D11 (rota de PUT só local) descartada. A prova rodou num
-  worker mínimo; a prova no app completo é o quickstart §4, na SF3.
+  worker mínimo; a prova no app completo foi a T039 da SF3 (research §3, "R2 no app
+  completo"; ver emenda abaixo).
 - A opção é **experimental** (o wrangler avisa a cada carga) e depende da versão **fixada**
-  do wrangler: todo bump repete o teste de envio local do quickstart. Se o gitleaks acusar as
-  credenciais falsas, a exceção é pelo valor exato, nunca pelo arquivo.
+  do wrangler: a partir da SF9, todo bump repete o quickstart §4 (envio pela tela no
+  `preview`); até a SF9, o wrangler não é atualizado (ver emenda abaixo). Se o gitleaks acusar
+  as credenciais falsas, a exceção é pelo valor exato, nunca pelo arquivo.
+- **Emenda (2026-10-09, SF3 da feature 004, aprovada pelo humano):** o texto anterior dizia
+  "a prova no app completo é o quickstart §4, na SF3" e "todo bump repete o teste de envio
+  local do quickstart". O quickstart §4 é o roteiro pela tela e só existe a partir da SF9; a
+  prova no app completo foi feita por script na T039 (research §3, "R2 no app completo": PUT
+  assinado aceito, N±1 ⇒ 403, segundo PUT ⇒ 412, objeto íntegro), e o script não é
+  versionado. Por isso: até a SF9, sem bump do wrangler (fixado em 4.147.0, commit
+  `cb62190`); a partir da SF9, todo bump repete o quickstart §4.
 
 ## Alternativas descartadas
 

@@ -210,11 +210,15 @@ bytes; o `content-length` é posto pelo navegador. Um segundo `PUT` na mesma URL
    (idempotente).
 2. `lerObjeto(chave)`: ausente ⇒ `nao_enviada` (a linha fica; "Tentar de novo" pede envio novo).
 3. `tamanho do objeto > 1_048_576` ou `≠ fotos_envio.tamanho` ⇒ `grande`, **sem ler o corpo**.
-4. `verificarImagem(bytes)` (§4); formato detectado `≠` declarado ⇒ `formato`.
+4. `verificarImagem(bytes, { declarado, modo: modoVerificacao() })` (§4); `declarado` vem da
+   extensão da chave; formato detectado `≠` declarado já sai como `formato`.
 5. Recusa ⇒ **primeiro** `descartarEnvio` (`DELETE … WHERE estado = 'emitido' RETURNING
    chave`); **só se uma linha voltar**, `apagarObjetos([chave])` (TL-2: uma confirmação
-   concorrente que já marcou `confirmado` não perde o objeto). Devolve o motivo. Exceção: modo
-   registro (research D4) com motivo `metadado` ⇒ log de aviso e segue para 6.
+   concorrente que já marcou `confirmado` não perde o objeto). Devolve o motivo. Modo registro
+   (research D4): a própria verificação não recusa por `metadado` e segue até as dimensões;
+   aceito em modo registro ⇒ log de aviso com `blocos` e segue para 6; **recusado em modo
+   registro ⇒ log de aviso com `motivo`, `regra` e `blocos`** (nunca bytes) antes do descarte.
+   Fora do modo registro, a recusa não grava log novo.
 6. `marcarConfirmado` ⇒ `ok`.
 
 Mapeamento de motivo da verificação para a action: `formato` ⇒ `formato`; `metadado`,
@@ -247,27 +251,57 @@ melhor esforço depois do sucesso (FR-035).
 ## 4. Verificação do arquivo — `src/lib/r2/verificacao/`
 
 ```ts
-verificarImagem(bytes: Uint8Array):
+verificarImagem(bytes: Uint8Array, opcoes: { declarado: "jpeg" | "webp"; modo: "recusar" | "registro" }):
   | { ok: true; formato: "jpeg" | "webp"; lado: number; blocos: string[] }
-  | { ok: false; motivo: "formato" | "corrompida" | "metadado" | "animada" | "pequena" | "dimensao"; blocos: string[] }
+  | { ok: false; motivo: "formato" | "corrompida" | "metadado" | "animada" | "pequena" | "dimensao"; regra: RegraVerificacao; blocos: string[] }
 ```
 
 Sem decodificar a imagem (VII). Percorre o **arquivo inteiro**. Ordem: assinatura (⇒ `formato`;
-**PNG, GIF, SVG, HEIC, PDF e qualquer outra assinatura ⇒ `formato`**) → estrutura completa
-(⇒ `corrompida`) → blocos (⇒ `animada` / `metadado`) → dimensões: largura `≠` altura ou lado
+**PNG, GIF, SVG, HEIC, PDF e qualquer outra assinatura ⇒ `formato`**; detectado `≠`
+`declarado` ⇒ `formato`) → estrutura completa (⇒ `corrompida`) → SOFn não permitido (⇒
+`formato`) → blocos (⇒ `animada`, depois `metadado`; com `modo: "registro"` o `metadado` não
+recusa e a verificação segue) → dimensões: largura `≠` altura ou lado
 `> 1200` ⇒ `dimensao`; lado `< 400` ⇒ `pequena` (FR-016, FR-018). `blocos` lista os nomes
-encontrados (para o log do modo registro; nunca bytes).
+encontrados (para o log do modo registro; nunca bytes). `regra` é o subcódigo da primeira regra
+que decidiu a recusa (para o log do modo registro na SF10; nunca bytes). Dentro de um mesmo
+motivo, vale a primeira regra na ordem do arquivo, com uma exceção: no JPEG o perfil ICC é
+remontado e julgado depois da passada, então `icc_tag`, `icc_tamanho` e `icc_estrutura` perdem
+para as regras dos segmentos (no WebP o ICCP é julgado na sua posição). `jpeg_comprimento`
+também cobre o arquivo que acaba dentro do campo de comprimento (logo depois do marcador);
+`jpeg_truncado` fica para o fim no lugar de um marcador ou nos dados entrópicos. Upload cortado
+pela rede não chega à verificação: o R2 recusa o `PUT` com tamanho diferente do assinado (R1).
+O motivo não muda:
+
+| Motivo | `regra` |
+|---|---|
+| `formato` | `assinatura`, `declarado`, `sof_tipo`, `sof_precisao` (≠ 8 e ≠ 0), `sof_componentes` |
+| `corrompida` (JPEG) | `jpeg_marcador` (byte que não é marcador, `FF FF`, marcador inválido, RST fora dos dados, segundo SOI), `jpeg_comprimento`, `jpeg_truncado`, `jpeg_sem_sof_sos`, `jpeg_apos_eoi`, `jpeg_bloco_apos_sos`, `jpeg_dri`, `sof_duplicado`, `sof_estrutura`, `sof_precisao` (= 0), `sof_dimensao_zero`, `sos_estrutura`, `icc_sequencia` |
+| `corrompida` (WebP) | `riff_tamanho`, `webp_chunk_truncado`, `vp8x_estrutura`, `vp8x_reservado`, `vp8x_dimensao`, `iccp_posicao`, `iccp_sem_flag`, `iccp_sem_chunk`, `alph_posicao`, `alph_sem_flag`, `alph_com_vp8l`, `imagem_duplicada`, `imagem_ausente`, `vp8_cabecalho`, `vp8l_cabecalho` |
+| `corrompida` (ICC) | `icc_estrutura` |
+| `animada` | `mpf`, `vp8x_animacao`, `anim` |
+| `metadado` | `jfif_miniatura` (miniatura ou comprimento ≠ 16), `jfif_posicao` (fora da posição logo após o SOI, inclusive duplicado), `app0_outro` (JFXX ou outro APP0), `app1`, `app2_outro`, `appn`, `com`, `marcador_fora_da_lista`, `vp8x_flag_metadado`, `chunk_fora_da_lista`, `icc_tag`, `icc_tamanho` |
+| `dimensao` | `nao_quadrada`, `lado_maior` |
+| `pequena` | `lado_menor` |
 
 | Formato | Permitidos | `animada` | `metadado` (qualquer outro) | `corrompida` |
 |---|---|---|---|---|
-| **JPEG** (`FF D8`) | SOI; APP0 `JFIF\0` **com comprimento 16 e miniatura 0×0** (TL-7); APP2 `ICC_PROFILE\0` (um ou mais pedaços, sequência válida; perfil conforme a regra do ICC abaixo); DQT; SOF0/SOF1/SOF2 (exatamente 1); DHT; DRI; SOS + dados entrópicos (com `FF 00` e RST0–7) — **progressivo: vários SOS, com DHT/DQT entre eles** (TL-18); EOI | APP2 `MPF\0` | APP1 (Exif, XMP), APP0 JFIF com miniatura ou outro comprimento, APP0 não-JFIF (JFXX), APP2 de outro tipo, APP3–APP15 (inclui APP14 "Adobe"; reavaliado na SF10), COM, DNL; demais SOFn ⇒ `formato` | segmento com comprimento além do fim; byte de preenchimento `FF FF`; marcador inválido; ausência de SOF/SOS/EOI; pedaços do ICC fora de sequência; **qualquer byte depois do EOI**; largura/altura 0 |
-| **WebP** (`RIFF….WEBP`) | VP8 ou VP8L (simples); ou VP8X (flags só ICC e/ou alpha) + ICCP (regra do ICC) + ALPH + VP8/VP8L | flag de animação no VP8X; ANIM; ANMF | flags EXIF/XMP no VP8X; EXIF; XMP; qualquer outro chunk | tamanho do RIFF + 8 `≠` tamanho do arquivo (**bytes além do RIFF** ou truncado); chunk além do fim; dimensões do VP8X `≠` do bitstream |
+| **JPEG** (`FF D8`) | SOI; APP0 `JFIF\0` **com comprimento 16 e miniatura 0×0** (TL-7), no máximo um e logo após o SOI; APP2 `ICC_PROFILE\0` (um ou mais pedaços, sequência válida; perfil conforme a regra do ICC abaixo); DQT; SOF0/SOF1/SOF2 (exatamente 1, precisão 8, 1 ou 3 componentes); DHT; DRI; SOS + dados entrópicos (com `FF 00` e RST0–7) — **progressivo: vários SOS, com DHT/DQT entre eles** (TL-18); EOI | APP2 `MPF\0` | APP1 (Exif, XMP), APP0 JFIF com miniatura, outro comprimento, duplicado ou fora da posição logo após o SOI, APP0 não-JFIF (JFXX), APP2 de outro tipo, APP3–APP15 (inclui APP14 "Adobe"; reavaliado na SF10), COM, DNL; demais SOFn e SOF com precisão `≠` 8 ou componentes fora de 1 e 3 ⇒ `formato` | segmento com comprimento além do fim; byte de preenchimento `FF FF`; marcador inválido; ausência de SOF/SOS/EOI; pedaços do ICC fora de sequência; **qualquer byte depois do EOI**; largura/altura 0; precisão 0 no SOF |
+| **WebP** (`RIFF….WEBP`) | VP8 ou VP8L (simples); ou VP8X (flags só ICC e/ou alpha; bits e bytes reservados zerados) + ICCP (regra do ICC) + ALPH (só com a flag de alpha) + VP8/VP8L | flag de animação no VP8X; ANIM; ANMF | flags EXIF/XMP no VP8X; EXIF; XMP; qualquer outro chunk | tamanho do RIFF + 8 `≠` tamanho do arquivo (**bytes além do RIFF** ou truncado); chunk além do fim; dimensões do VP8X `≠` do bitstream; bit ou byte reservado do VP8X ligado; ALPH sem a flag de alpha ou antes de VP8L; ICCP sem a flag de ICC |
+
+Os apertos da revisão da SF2 (JFIF único e logo após o SOI; SOF com precisão 8 e 1 ou 3
+componentes; reservados do VP8X zerados; ALPH só com a flag de alpha e nunca antes de VP8L) são
+**confirmados na SF10** com os arquivos reais dos aparelhos (T098): três deles recusam como
+`formato`/`corrompida`, que o modo registro não relaxa, e por isso a recusa em modo registro
+loga `motivo` e `regra` (§3, passo 5). Recusar bits e bytes reservados do VP8X é **mais estrito
+que a spec do WebP** (que manda o leitor ignorá-los), por decisão deliberada da lista de
+permitidos; a T098 pode afrouxar com dado real.
 
 **Regra do ICC** (decisão C, TL-8): perfil completo de até **8 KB** (valor provisório, fechado na
 SF10); cabeçalho de 128 bytes e tabela de tags consistentes (cada tag dentro do perfil). Tags
 permitidas: `wtpt`, `bkpt`, `rXYZ`, `gXYZ`, `bXYZ`, `rTRC`, `gTRC`, `bTRC`, `chad`, `chrm`,
 `lumi`, `desc`, `cprt`. Qualquer outra (inclusive `dmnd`, `dmdd`, `meta` e tags privadas) ⇒
-`metadado`. Lista final fechada com as fixtures reais da SF10.
+`metadado`. Estrutura inconsistente (tamanho declarado `≠` real, sem `acsp`, tabela ou tag fora
+do perfil) ⇒ `corrompida`. Lista final fechada com as fixtures reais da SF10.
 
 - Dimensões: JPEG pelo SOF; WebP pelo VP8 (14 bits após `9D 01 2A`), VP8L (14+14 bits após
   `0x2F`) ou VP8X (24 bits + 1).
@@ -283,8 +317,9 @@ permitidas: `wtpt`, `bkpt`, `rXYZ`, `gXYZ`, `bXYZ`, `rTRC`, `gTRC`, `bTRC`, `cha
 `src/lib/r2/verificacao/modo.ts`: `modoVerificacao(): "recusar" | "registro"` — `"registro"`
 só se `process.env.FOTOS_VERIFICACAO === "registro"` (exato). Teste unitário de todos os outros
 valores ⇒ `"recusar"`. Conformidade (TL-17): lê `wrangler.jsonc` (parser JSONC do `typescript`)
-e `.dev.vars.example`; falha se `FOTOS_VERIFICACAO` existir no nível de cima, em
-`env.production` ou no exemplo; **depois da SF10, falha se existir em qualquer lugar**. Toda
+e `.dev.vars.example`; falha se `FOTOS_VERIFICACAO` existir **em qualquer lugar** do
+`wrangler.jsonc` (inclusive `env.dev`) ou no exemplo. Só durante a SF10 a conformidade permite
+a variável nas `vars` do `env.dev` (ajuste na T094a) e volta à proibição total na T099. Toda
 confirmação aceita em modo registro grava log de aviso.
 
 ## 5. Rota de exibição — `src/app/painel/fotos/[arquivo]/route.ts`

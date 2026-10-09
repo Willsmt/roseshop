@@ -205,7 +205,7 @@ e ICC — nomes sugeridos —, `modo.ts`), testes ao lado; `src/test/conformance
 **Fecha**: US2-AC3, US2-AC4, US2-AC9 (lado do servidor), SC-006 (lado da verificação).
 **Revisão TL**: ✅.
 
-- [ ] T022 [P] **Teste primeiro** — fixtures sintéticas montadas em código, no teste (helper
+- [X] T022 [P] **Teste primeiro** — fixtures sintéticas montadas em código, no teste (helper
   sugerido `src/lib/r2/verificacao/fixtures.ts`), cada bloco da tabela de F§4: JPEG válido
   quadrado com SOI/DQT/SOF0/DHT/SOS/EOI; JFIF **com comprimento 16 e miniatura 0×0** aceito e
   **JFIF com miniatura (TL-7) ⇒ `metadado`**; JFXX ⇒ `metadado`; APP1 Exif com GPS **falso**,
@@ -214,17 +214,17 @@ e ICC — nomes sugeridos —, `modo.ts`), testes ao lado; `src/test/conformance
   (exatamente 1 SOF); demais SOFn ⇒ `formato`; **progressivo com vários SOS e DHT/DQT entre
   eles aceito (TL-18)**; RST0–7 e `FF 00` nos dados entrópicos. `src/lib/r2/verificacao/
   jpeg.test.ts` (sugerido) — **test-writer**
-- [ ] T023 [P] **Teste primeiro** — ICC (TL-8), `icc.test.ts` (sugerido): perfil completo de
+- [X] T023 [P] **Teste primeiro** — ICC (TL-8), `icc.test.ts` (sugerido): perfil completo de
   até 8 KB com cabeçalho de 128 bytes e tabela de tags consistente aceito com as tags
   `wtpt, bkpt, rXYZ, gXYZ, bXYZ, rTRC, gTRC, bTRC, chad, chrm, lumi, desc, cprt`; perfil com
   `dmnd`, `dmdd`, `meta`, tag privada, tag fora do perfil, acima de 8 KB e pedaços fora de
   sequência ⇒ `metadado`/`corrompida` conforme F§4 — **test-writer**
-- [ ] T024 [P] **Teste primeiro** — WebP, `webp.test.ts` (sugerido): VP8, VP8L e VP8X (flags só
+- [X] T024 [P] **Teste primeiro** — WebP, `webp.test.ts` (sugerido): VP8, VP8L e VP8X (flags só
   ICC e/ou alpha) + ICCP + ALPH aceitos; flag de animação, ANIM e ANMF ⇒ `animada`; flags
   EXIF/XMP, EXIF, XMP e qualquer outro chunk ⇒ `metadado`; tamanho do RIFF + 8 ≠ tamanho do
   arquivo (bytes além do RIFF ou truncado), chunk além do fim, dimensões do VP8X ≠ do bitstream
   ⇒ `corrompida` — **test-writer**
-- [ ] T025 **Teste primeiro** — `verificarImagem` no todo, `verificacao.test.ts` (sugerido):
+- [X] T025 **Teste primeiro** — `verificarImagem` no todo, `verificacao.test.ts` (sugerido):
   ordem assinatura → estrutura → blocos → dimensões; **PNG, SVG, GIF, HEIC (`ftypheic`), PDF
   renomeado e qualquer outra assinatura ⇒ `formato`**; não quadrada ou lado > 1200 (inclui 1201)
   ⇒ `dimensao`; lado < 400 ⇒ `pequena`; truncado em cada segmento, comprimento inflado, `FF FF`,
@@ -232,21 +232,21 @@ e ICC — nomes sugeridos —, `modo.ts`), testes ao lado; `src/test/conformance
   do SOS**, largura/altura 0 ⇒ `corrompida`; dimensões lidas do SOF / VP8 (14 bits após
   `9D 01 2A`) / VP8L (14+14 bits após `0x2F`) / VP8X (24 bits + 1); `blocos` lista nomes e
   nunca bytes — **test-writer**
-- [ ] T026 [P] **Teste primeiro** — `src/lib/r2/verificacao/modo.test.ts` (sugerido):
+- [X] T026 [P] **Teste primeiro** — `src/lib/r2/verificacao/modo.test.ts` (sugerido):
   `modoVerificacao()` devolve `"registro"` **só** para `FOTOS_VERIFICACAO === "registro"`
   exato; `undefined`, `""`, `"Registro"`, `"registro "`, `"true"`, `"1"` ⇒ `"recusar"`.
   `src/test/conformance/verificacao-modo.test.ts`: lê `wrangler.jsonc` (parser JSONC do
-  `typescript`) e `.dev.vars.example` (se existir) e **falha** se `FOTOS_VERIFICACAO` existir no
-  nível de cima, em `env.production` ou no exemplo (TL-17); em `env.dev` é permitido **até a
-  SF10** — **test-writer**
-- [ ] T027 **[TL✅]** Implementar `src/lib/r2/verificacao/` até as T022–T026 ficarem verdes:
+  `typescript`) e `.dev.vars.example` (se existir) e **falha** se `FOTOS_VERIFICACAO` existir em
+  **qualquer lugar** do `wrangler.jsonc` (inclusive `env.dev`) ou no exemplo (TL-17); só a T094a
+  libera o `env.dev`, e a T099 volta à proibição total — **test-writer**
+- [X] T027 **[TL✅]** Implementar `src/lib/r2/verificacao/` até as T022–T026 ficarem verdes:
   uma passada linear; nos dados entrópicos do JPEG, o próximo `0xFF` achado com `indexOf`
   (TL-9), sem laço byte a byte em JS; sem decodificar a imagem (VII); `modo.ts` com a
   comparação exata. Não criar `index.ts` do barrel de `src/lib/r2/` (é da SF3) — **principal**
-- [ ] T028 Rodar `npm run check` e colar o output real — **principal**
-- [ ] T029 Revisão do diff pelo tech-lead (opus): cobertura da tabela de F§4, ausência de
+- [X] T028 Rodar `npm run check` e colar o output real — **principal**
+- [X] T029 Revisão do diff pelo tech-lead (opus): cobertura da tabela de F§4, ausência de
   decodificação, uso de `indexOf`, conformidade do modo registro — **tech-lead**
-- [ ] T030 Commit (humano), mensagem:
+- [X] T030 Commit (humano), mensagem:
   ```text
   feat(r2): verifica JPEG e WebP por lista de blocos permitidos
 
@@ -500,8 +500,11 @@ SC-006.
   motivo de recusa apaga a linha primeiro e o objeto só se a linha voltar (TL-2)**; confirmação
   concorrente que já marcou `confirmado` **não** apaga o objeto; mapeamento `formato` ⇒ `formato`,
   `metadado`/`animada`/`corrompida`/`dimensao` ⇒ `nao_passou`, `pequena` ⇒ `pequena`; modo
-  registro + `metadado` ⇒ log de aviso e segue; SC-006 pela action (cada arquivo forjado é
-  apagado e recusado); R2 em melhor esforço — **test-writer**
+  registro conforme F§3 passo 5, um teste para cada caso: **aceito em registro** ⇒ log de aviso
+  com `blocos` e segue para `marcarConfirmado`; **recusado em registro** ⇒ log de aviso com
+  `motivo`, `regra` e `blocos` antes do descarte; **fora do registro** ⇒ nenhum log novo, nem
+  no aceite nem na recusa; em todos, o log **nunca** traz bytes do arquivo; SC-006 pela action
+  (cada arquivo forjado é apagado e recusado); R2 em melhor esforço — **test-writer**
 - [ ] T063 [P] **Teste primeiro** — `src/lib/produtos/actions.test.ts` (ajuste dos testes da
   003, sugerido): `criarProduto` aceita `fotos` repetido (1..3 uuids únicos); 0 fotos ⇒ falha
   `sem_foto` (mensagem do US1-AC8, sem `campo`); ordem guard → campos → fotos →
@@ -528,10 +531,10 @@ SC-006.
   `ResultadoFotos`, `MotivoFoto`), `erros.ts`; seguros para o client — **principal**
 - [ ] T067 **[TL✅]** `src/lib/fotos/actions.ts` (`"use server"`): `pedirEnvio` e
   `confirmarEnvio` conforme F§3 (ordem `requireAdminAction` → Zod → SQL → R2; recusa apaga a
-  linha antes do objeto, TL-2; modo registro com log de aviso); alterar `criarProduto` (campo
-  `fotos`, `sem_foto`, `inserirComFotos`, `foto_expirada`) e `removerProduto` (`apagarObjetos`)
-  em `src/lib/produtos/actions.ts`; **remover o `inserir` da 003** de `src/lib/db/produtos.ts`
-  (agora sem uso) — **principal**
+  linha antes do objeto, TL-2; logs do modo registro conforme F§3 passo 5); alterar
+  `criarProduto` (campo `fotos`, `sem_foto`, `inserirComFotos`, `foto_expirada`) e
+  `removerProduto` (`apagarObjetos`) em `src/lib/produtos/actions.ts`; **remover o `inserir` da
+  003** de `src/lib/db/produtos.ts` (agora sem uso) — **principal**
 - [ ] T068 **[TL✅]** `src/app/painel/fotos/[arquivo]/route.ts` conforme F§5 (404 sem sessão
   antes de qualquer acesso ao r2; regex; consulta às tabelas; `bucket.get` com `onlyIf`) —
   **principal**
@@ -712,14 +715,17 @@ do R4 registrado na T007.
 **Revisão TL**: ✅.
 
 - [ ] T094a **[TL✅]** Ligar o modo registro **só para esta SF**: `FOTOS_VERIFICACAO: "registro"`
-  nas `vars` de `env.dev` em `wrangler.jsonc` (nunca no nível de cima nem em `env.production`;
-  a conformidade da T026 já permite o `env.dev`); `npm run check` com output real; revisão do
+  nas `vars` de `env.dev` em `wrangler.jsonc` (nunca no nível de cima nem em `env.production`)
+  e ajustar `src/test/conformance/verificacao-modo.test.ts` para permitir a variável **só** em
+  `env.dev.vars` (continua negando no nível de cima, em `env.production`, em qualquer outro
+  ambiente e no `.dev.vars.example`); `npm run check` com output real; revisão do
   diff pelo tech-lead; commit pelo humano (`chore(wrangler): liga o modo registro no dev para a
   prova com aparelhos`) e push confirmado para o deploy do dev, antes da T095 — **principal**
 - [ ] T095 **Humano executa — captura com aparelhos** (dev, `FOTOS_VERIFICACAO=registro`):
   em **Chrome Android** e **Safari iOS**, 1 foto tirada na hora e 1 da galeria com localização
   ativa; no iPhone, 1 HEIC; cadastrar um produto com elas. Em paralelo, `npx wrangler tail --env
-  dev` mostrando os blocos de cada confirmação. Entregar o output do `tail` — **humano**
+  dev` mostrando os blocos de cada confirmação e, em cada recusa, o `motivo` e o subcódigo
+  `regra` (§3 passo 5, §4). Entregar o output do `tail` — **humano**
 - [ ] T096 **Humano executa — inspeção**: baixar cada objeto (`npx wrangler r2 object get
   roseshop-dev/fotos/<arquivo> --remote --file /tmp/<arquivo>`) e rodar `exiftool -a -G1
   /tmp/<arquivo>`. Esperado: nenhum grupo EXIF/GPS/XMP/IPTC. Entregar os outputs e os arquivos
@@ -729,7 +735,10 @@ do R4 registrado na T007.
   fixtures reais: todos aceitos por `verificarImagem`; confirmar `blocos` contra o `tail` —
   **test-writer**
 - [ ] T098 **[TL✅]** Com os outputs reais: fechar a lista de blocos permitidos e a regra do
-  ICC (tags e limite de 8 KB provisório), reavaliar APP14 "Adobe" e qualquer bloco novo; ajustar
+  ICC (tags e limite de 8 KB provisório), reavaliar APP14 "Adobe" e qualquer bloco novo; ler
+  no `tail` a `regra` de cada recusa e confirmar ou afrouxar os apertos da revisão da SF2
+  (`jfif_posicao`, `sof_precisao`, `sof_componentes`, `vp8x_reservado`, `alph_sem_flag`,
+  `alph_com_vp8l`); ajustar
   `src/lib/r2/verificacao/` e os testes da SF2 de acordo. Se algum aparelho produzir bloco fora
   da lista e a decisão mudar o desenho, **parar e trazer ao humano** — **principal**
 - [ ] T099 **[TL✅]** Tirar `FOTOS_VERIFICACAO` de `env.dev` em `wrangler.jsonc` e atualizar a

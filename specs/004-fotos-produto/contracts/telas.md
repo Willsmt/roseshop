@@ -48,11 +48,14 @@ Código só de navegador; nada de `server-only` (fotos.md §1).
 ```ts
 detectarTipo(cabecalho: Uint8Array): "jpeg" | "png" | "webp" | "heic" | "outro"   // pelos bytes, não pela extensão; PNG é aceito como ENTRADA e sai como WebP/JPEG
 suportaWebp(): Promise<boolean>                                                 // canvas 1×1, uma vez por sessão (D4)
-abrirImagem(arquivo: File): Promise<ImageBitmap>                                // createImageBitmap(arquivo, { imageOrientation: "from-image" }) (FR-017); falha ⇒ "nao_abre"
-recortar(img, area: { x; y; lado }): { lado: number }                          // lado final = min(area.lado, 1200); area.lado < 400 ⇒ "pequena" (FR-018)
-codificar(canvas, formato, qualidades = [0.82, 0.72, 0.62] | [0.85, 0.72, 0.62]): Promise<Blob>
-  // confere blob.type === pedido; senão recodifica em JPEG; PNG nunca sai; > 1 MB na última ⇒ "grande"
-prepararFoto(arquivo, area): Promise<{ blob: Blob; formato: "webp" | "jpeg" } | { motivo: "formato" | "nao_abre" | "pequena" | "grande" }>
+abrirImagem(arquivo: Blob): Promise<ImageBitmap | { motivo: "nao_abre" }>        // createImageBitmap(arquivo, { imageOrientation: "from-image" }) (FR-017)
+recortar(img, area: { x; y; lado }): { origem: { x; y; lado }; lado: number } | { motivo: "pequena" }
+  // área limitada à imagem; lado final = min(origem.lado, 1200), nunca amplia; origem.lado < 400 ⇒ "pequena" (FR-018)
+codificar(canvas, formato, qualidades = [0.82, 0.72, 0.62] | [0.85, 0.72, 0.62]): Promise<{ blob: Blob; formato: "webp" | "jpeg" } | { motivo: "grande" }>
+  // confere blob.type === pedido; senão recodifica em JPEG; PNG nunca sai; > 1 MB na última ⇒ "grande";
+  // nem o JPEG sai ⇒ rejeita com FalhaCodificacao
+prepararFoto(arquivo, area): Promise<{ blob: Blob; formato: "webp" | "jpeg" } | { motivo: "formato" | "nao_abre" | "pequena" | "grande" | "nao_enviada" }>
+  // nunca rejeita: falha fora do previsto (leitura, contexto 2d, codificação) ⇒ "nao_enviada"
 ```
 
 - `detectarTipo` "outro" (SVG, GIF, PDF…) ⇒ mensagem `formato` antes de abrir (US2-AC3).
@@ -60,6 +63,14 @@ prepararFoto(arquivo, area): Promise<{ blob: Blob; formato: "webp" | "jpeg" } | 
   quadro); o arquivo original nunca é enviado (FR-013).
 - Testes unitários: `detectarTipo`, a matemática de `recortar` e o laço de `codificar` com
   codificador injetado (jsdom não tem canvas). Comportamento real: SF10 e quickstart §4.
+- Decisões da SF8 (humano, 2026-10-09):
+  - `prepararFoto` nunca rejeita. Uma falha fora do previsto vira `{ motivo: "nao_enviada" }`
+    (D4: "falha ⇒ Não enviada"): leitura do arquivo, contexto 2d nulo, nem o JPEG gerado,
+    `suportaWebp` com erro. A imagem aberta é sempre fechada. A tela só olha o `motivo`.
+  - Diferenças aceitas em relação à primeira versão deste contrato: `codificar` devolve
+    `{ blob, formato }`, porque o formato pode cair de WebP para JPEG; `recortar` devolve
+    `{ origem, lado }`, o retângulo lido e o lado final; `abrirImagem` devolve o motivo em vez
+    de lançar.
 
 ## 4. Requisitos de UX (constitution V)
 

@@ -614,12 +614,12 @@ Spec: US2-AC1/AC2 (lado do aparelho), US2-AC3, US2-AC7, SC-005.
 **Fecha**: US2-AC1/AC2, US2-AC3/AC7 (parte pura), SC-005 (laço de qualidade).
 **Revisão TL**: — (sem zona protegida).
 
-- [ ] T078 [P] **Teste primeiro** — `detectarTipo(cabecalho)`: reconhece `jpeg`, `png`, `webp`,
+- [X] T078 [P] **Teste primeiro** — `detectarTipo(cabecalho)`: reconhece `jpeg`, `png`, `webp`,
   `heic` pelos bytes (não pela extensão); SVG, GIF, PDF e qualquer outro ⇒ `"outro"`;
   cabeçalho curto/vazio ⇒ `"outro"`. PNG é aceito como **entrada** — **test-writer**
-- [ ] T079 [P] **Teste primeiro** — `recortar(img, area)`: lado final = `min(area.lado, 1200)`;
+- [X] T079 [P] **Teste primeiro** — `recortar(img, area)`: lado final = `min(area.lado, 1200)`;
   `area.lado < 400` ⇒ `"pequena"`; saída sempre quadrada (FR-016, FR-018) — **test-writer**
-- [ ] T080 [P] **Teste primeiro** — `codificar(canvas, formato, qualidades)` com **codificador
+- [X] T080 [P] **Teste primeiro** — `codificar(canvas, formato, qualidades)` com **codificador
   injetado** (jsdom não tem canvas): qualidades `[0.82, 0.72, 0.62]` (webp) e `[0.85, 0.72, 0.62]`
   (jpeg); confere `blob.type === pedido`, senão recodifica em JPEG; PNG nunca sai; fica na
   primeira qualidade que couber em 1 MB (1.048.576 bytes); estourou na última ⇒ `"grande"`.
@@ -629,11 +629,11 @@ Spec: US2-AC1/AC2 (lado do aparelho), US2-AC3, US2-AC7, SC-005.
   `"nao_abre"`; `outro`/`heic`
   não abrível ⇒ mensagem correta (US2-AC3, AC7); o arquivo original nunca é devolvido (FR-013)
   — **test-writer**
-- [ ] T081 Implementar `src/lib/fotos/aparelho/` até as T078–T080 ficarem verdes: `detectarTipo`,
+- [X] T081 Implementar `src/lib/fotos/aparelho/` até as T078–T080 ficarem verdes: `detectarTipo`,
   `suportaWebp()` (canvas 1×1, uma vez por sessão), `abrirImagem` (`createImageBitmap(arquivo,
   { imageOrientation: "from-image" })`, FR-017), `recortar`, `codificar`, `prepararFoto`. Só APIs
   do navegador e `src/lib/fotos/mensagens.ts`; nada de `server-only`, db, r2 ou auth — **principal**
-- [ ] T082 Rodar `npm run check` e colar o output real; o comportamento real (canvas, HEIC,
+- [X] T082 Rodar `npm run check` e colar o output real; o comportamento real (canvas, HEIC,
   orientação) é provado na SF10 e no Q§4 — **principal**
 - [ ] T083 Commit (humano), mensagem:
   ```text

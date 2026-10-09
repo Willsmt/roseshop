@@ -2,8 +2,8 @@
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
-> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7,
-> sem UI de fotos**. Este documento descreve apenas o que existe hoje
+> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7 e
+> o pipeline da foto no aparelho (SF8), sem UI de fotos**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -78,6 +78,7 @@ src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitur
 src/lib/produtos/     # módulo de domínio de produtos (actions, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
 src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao
+src/lib/fotos/aparelho/   # pipeline da foto só de navegador (SF8): tipo, recorte 1:1, WebP/JPEG até 1 MiB
 infra/r2/     # CORS dos buckets, versionado (cors.dev.json, cors.production.json)
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
@@ -409,6 +410,21 @@ Pegadinhas:
   `src/test/conformance/fotos-acesso.test.ts` a impõem.
 - **Credenciais no `process.env`**: como os demais secrets, só existem durante o
   request do Worker; não leia no escopo do módulo.
+
+### Pipeline da foto no aparelho (feature 004, SF8)
+
+Único código de `src/lib/fotos/` que roda **no navegador**: `src/lib/fotos/aparelho/`. Fica
+entre a escolha do arquivo e `pedirEnvio`: detecta o tipo pelos bytes, abre a imagem com a
+orientação da câmera, recorta 1:1 (400 a 1200 px, nunca amplia) e recodifica em WebP ou JPEG
+até caber em 1 MiB, o que descarta os metadados. Não importa `server-only`, `@/lib/r2`,
+`@/lib/db`, auth nem `next`; `src/lib/fotos/aparelho/fronteira.test.ts` garante isso. Não há
+binding nem variável de ambiente envolvidos. O servidor não confia nele: `confirmarEnvio`
+reverifica o arquivo. Detalhes, motivos e pegadinhas em
+[F04](./features/F04-fotos.md#pipeline-da-foto-no-aparelho-srclibfotosaparelho-sf8).
+
+Diferença `next dev` × navegadores: o suporte a WebP em canvas varia (Safari antigo devolve
+PNG), e por isso `suportaWebp` e a conferência do `blob.type` existem. A prova em aparelho
+real (Chrome Android e Safari iOS) é da SF10, depois da tela da SF9.
 
 ### Planejado, não implementado
 

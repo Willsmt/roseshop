@@ -14,7 +14,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > lista, busca, status e destaque de produtos no painel, ainda sem fotos. A
 > **feature 004 (fotos)** está em andamento: existe o servidor
 > (schema, verificação do arquivo, módulo R2, actions de envio, rota de exibição e
-> cadastro com fotos e actions do conjunto, até a SF7). Catálogo público, sacola, telas de fotos (SF9) e IA
+> cadastro com fotos, actions do conjunto e pipeline da foto no aparelho, até a SF8). Catálogo público, sacola, telas de fotos (SF9) e IA
 > ainda não existem; por isso este índice é deliberadamente curto: só existem
 > documentos para o que já tem código real por trás.
 
@@ -48,7 +48,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    concorrência otimista, destaque (teto de 8), busca com cursor, preço e
    pegadinhas.
 8. **[features/F04-fotos.md](./features/F04-fotos.md)** — fotos de produto (em
-   andamento, até a SF7): fluxo de envio e confirmação, actions do conjunto (adicionar,
+   andamento, até a SF8): pipeline da foto no aparelho, fluxo de envio e confirmação, actions do conjunto (adicionar,
    trocar, remover, mover), rota de exibição, cadastro com fotos, fronteira de acesso e pegadinhas.
 
 ## O que ainda não existe aqui

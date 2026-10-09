@@ -1,11 +1,13 @@
 # Banco de dados
 
-> Estado: **três tabelas** — `categorias` (feature 002), `produtos` e
-> `produto_fotos` (feature 003) — e uma função SQL (`categoria_chave`). A
-> migration `0000` cria a função, `categorias` e o seed; a `0001` cria `produtos`
-> e `produto_fotos`. A sessão de login é JWT e não tem tabelas
-> ([F01](./features/F01-autenticacao.md)). Fonte do schema:
-> `src/lib/db/schema.ts`.
+> Estado: **cinco tabelas** — `categorias` (feature 002), `produtos` e
+> `produto_fotos` (feature 003), `fotos_envio` e `ia_uso` (feature 004, SF1) — e
+> uma função SQL (`categoria_chave`). A migration `0000` cria a função,
+> `categorias` e o seed; a `0001` cria `produtos` e `produto_fotos`; a `0002`
+> cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Só o
+> schema existe: nenhum código grava nas tabelas novas ainda. A sessão de login
+> é JWT e não tem tabelas ([F01](./features/F01-autenticacao.md)). Fonte do
+> schema: `src/lib/db/schema.ts`.
 
 ## Visão leiga
 
@@ -21,7 +23,10 @@ equivalência das categorias), descrição e preço opcionais, a marca de esgota
 uma vaga de destaque (1 a 8, no máximo oito produtos em destaque). O banco
 recusa nome fora de 3 a 80 letras, preço fora da faixa, destaque de produto
 esgotado e uma categoria apagada enquanto tem produtos. A tabela de fotos já
-existe, mas fica vazia até a feature 004.
+existe, mas fica vazia até a feature 004. Para essa feature o banco também ganhou
+(sem uso ainda) o registro dos **envios de foto** em andamento, o **contador
+diário de sugestões da IA** por administradora e, em cada produto, uma versão do
+conjunto de fotos.
 
 ## Aprofundamento técnico
 
@@ -52,13 +57,32 @@ erDiagram
     text atualizado_por
     timestamptz criado_em
     timestamptz atualizado_em
+    integer fotos_versao "NOT NULL DEFAULT 1 (feature 004)"
+    uuid fotos_operacao "nulo (feature 004)"
   }
   produto_fotos {
     integer id PK
     integer produto_id FK "ON DELETE CASCADE"
     smallint posicao "1 a 3, UNIQUE com produto_id"
-    text chave_objeto
+    text chave_objeto UK "formato fotos/uuid-v4.webp|jpg"
+    text enviado_por
+    timestamptz enviado_em
     timestamptz criado_em
+  }
+  fotos_envio {
+    uuid id PK "uuid v4"
+    text formato "webp ou jpeg"
+    text chave UK "gerada STORED a partir de id e formato"
+    integer tamanho "1 a 1048576"
+    text enviado_por
+    text estado "emitido ou confirmado"
+    timestamptz criado_em
+    timestamptz confirmado_em "nulo enquanto emitido"
+  }
+  ia_uso {
+    date dia PK "parte 1 da PK"
+    text email PK "parte 2 da PK"
+    integer n "maior ou igual a 1"
   }
   categorias ||--o{ produtos : "restrict"
   produtos ||--o{ produto_fotos : "cascade"
@@ -135,13 +159,49 @@ sem edição manual; a `chave` reaproveita `categoria_chave` da `0000`).
 | `versao` | `integer` | `NOT NULL DEFAULT 1`; todo writer soma 1 e a confere no `WHERE`. |
 | `criado_por` / `atualizado_por` | `text` | `NOT NULL`; e-mail da sessão. |
 | `criado_em` / `atualizado_em` | `timestamptz` | `NOT NULL DEFAULT now()`; `atualizado_em` é gravado pela query (sem trigger). |
+| `fotos_versao` | `integer` | `NOT NULL DEFAULT 1` (migration `0002`). Versão do conjunto de fotos; só o writer de fotos a altera, nunca `versao` (comentário em `schema.ts`, "research D5" da spec 004). Nenhum código a usa ainda. |
+| `fotos_operacao` | `uuid` | Nulável (migration `0002`). Idem: reservada ao writer de fotos da 004, sem uso ainda. |
 
 ### Tabela `produto_fotos`
 
-Só modelo nesta feature (nenhum código grava; a 004 liga R2). `id` identity;
-`produto_id` FK com `ON DELETE CASCADE` (remover produto leva as fotos);
-`posicao` 1 a 3 (`produto_fotos_posicao_faixa`), `UNIQUE(produto_id, posicao)`;
-`chave_objeto` `text NOT NULL` (chave do objeto no R2); `criado_em`.
+Modelo da 003 estendido pela `0002`; nenhum código grava ainda (a 004 liga R2).
+`id` identity; `produto_id` FK com `ON DELETE CASCADE` (remover produto leva as
+fotos); `posicao` 1 a 3 (`produto_fotos_posicao_faixa`),
+`UNIQUE(produto_id, posicao)`; `chave_objeto` `text NOT NULL` (chave do objeto no
+R2); `criado_em`. A `0002` acrescentou:
+
+| Coluna / constraint | Regra |
+|---|---|
+| `enviado_por` | `text NOT NULL`, sem default (quem enviou; e-mail da sessão). |
+| `enviado_em` | `timestamptz NOT NULL`, sem default (diferente de `criado_em`, que tem `now()`). |
+| `produto_fotos_objeto_unique` | `UNIQUE(chave_objeto)`: o mesmo objeto do R2 não serve a duas fotos. |
+| `produto_fotos_objeto_formato` | `CHECK` por regex: `^fotos/<uuid v4 minúsculo>\.(webp\|jpg)$`, o mesmo formato de `fotos_envio.chave`. |
+
+### Tabela `fotos_envio`
+
+Registro de cada envio de foto emitido para a área temporária do R2 (feature 004).
+Segundo o comentário em `schema.ts`, a linha some ao ser adotada, recusada ou
+limpa após 24 h; **esses fluxos ainda não existem**, só a tabela. SQL real em
+`src/lib/db/migrations/0002_breezy_mentor.sql`.
+
+| Coluna | Tipo | Regras |
+|---|---|---|
+| `id` | `uuid` | PK, sem default (a aplicação gera). `fotos_envio_id_v4`: `uuid_extract_version(id) = 4`. |
+| `formato` | `text` | `NOT NULL`; `fotos_envio_formato`: `webp` ou `jpeg`. |
+| `chave` | `text` | Gerada `STORED`: `'fotos/' \|\| id::text \|\| ('.webp' ou '.jpg')`; `UNIQUE` (`fotos_envio_chave_unique`). STORED porque coluna virtual (padrão do PG 18) não aceita `UNIQUE`; o cast `id::text` mantém o `\|\|` imutável, exigido em coluna gerada. |
+| `tamanho` | `integer` | `NOT NULL`; `fotos_envio_tamanho`: 1 a 1.048.576 (1 MiB). |
+| `enviado_por` | `text` | `NOT NULL`. |
+| `estado` | `text` | `NOT NULL DEFAULT 'emitido'`; `fotos_envio_estado`: `emitido` ou `confirmado`. |
+| `criado_em` | `timestamptz` | `NOT NULL DEFAULT now()`. |
+| `confirmado_em` | `timestamptz` | Nulável; `fotos_envio_confirmacao` amarra: `estado = 'confirmado'` se e somente se `confirmado_em` não é nulo. |
+
+### Tabela `ia_uso`
+
+Contador diário de sugestões da IA por administradora (feature 004). `dia`
+(`date`, data de Brasília calculada pelo writer sob `LOCK_IA_USO`) e `email`
+(`text`) formam a PK `ia_uso_pkey`; `n` (`integer NOT NULL`) tem
+`ia_uso_n_minimo` (`n >= 1`). Linhas antigas ficam (sem limpeza). Nada grava
+nela ainda.
 
 ### Regras de exclusão e integridade
 
@@ -161,7 +221,9 @@ O driver é `neon-http`: **não há `db.transaction()`**. Só statements isolado
 `db.batch([...])` (uma transação `READ COMMITTED`, sem decidir o próximo
 statement pelo resultado do anterior). Chaves de lock advisory ficam
 registradas em `src/lib/db/locks.ts` (`LOCK_PROBE_BATCH = 2001`,
-`LOCK_REMOCAO_CATEGORIAS = 2002`); número nunca é reutilizado.
+`LOCK_REMOCAO_CATEGORIAS = 2002`, `LOCK_FOTOS = 4001` e `LOCK_IA_USO = 4002`;
+as duas últimas são da 004 e ainda sem uso em código de produção); número nunca
+é reutilizado.
 
 ### FK de produtos e a remoção de categorias
 
@@ -179,6 +241,14 @@ Pegadinhas do schema de produtos:
   PR da feature 003; mudança depois disso exige migration nova.
 - Alterar o corpo de `categoria_chave` afeta categorias **e** produtos (duas
   colunas geradas); a regra de recriar coluna e índice vale para as duas.
+- A migration `0002` adiciona `enviado_por`/`enviado_em` `NOT NULL` sem default a
+  `produto_fotos`: qualquer INSERT (inclusive de teste) precisa informá-los e a
+  `chave_objeto` precisa estar no formato novo (por isso os testes da 003
+  foram ajustados).
+- Regra geral: migration aplicada em ambiente online **não é editada**; correção
+  só por migration nova (prática registrada no PR da feature 002, com a `0000`).
+  A `0002` ainda não foi aplicada no Neon dev: a regra passa a valer para ela a
+  partir do primeiro run do PR da feature 004 (CI aplica `db:migrate`).
 - Premissa de código: todo writer de `produtos` incrementa `versao`
   (`saiuDoDestaque` e a precedência de mensagens dependem disso).
 

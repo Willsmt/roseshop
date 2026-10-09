@@ -32,9 +32,10 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    das administradoras: rotas, como a proteção funciona sem middleware (guards e
    teste de conformidade), módulos de `src/lib/auth/` e pegadinhas.
 5. **[database.md](./database.md)** — schema Drizzle (tabelas `categorias`,
-   `produtos` e `produto_fotos`, função `categoria_chave`, migrations `0000` com
-   seed e `0001`), regras de integridade sem transação interativa (ADR-008),
-   teto de 8 destaques e FK `ON DELETE RESTRICT`.
+   `produtos`, `produto_fotos`, `fotos_envio` e `ia_uso`, função
+   `categoria_chave`, migrations `0000` com seed, `0001` e `0002`), regras de
+   integridade sem transação interativa (ADR-008), teto de 8 destaques e FK
+   `ON DELETE RESTRICT`.
 6. **[features/F02-categorias.md](./features/F02-categorias.md)** — cadastro de
    categorias no painel: rotas, actions, camadas (`src/lib/categorias/` e
    `src/lib/db/`), fronteira de acesso, fluxo de remoção e pegadinhas.

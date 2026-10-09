@@ -70,9 +70,9 @@ src/lib/produtos/     # módulo de domínio de produtos (actions, painel, valida
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
-  schema.ts     # schema Drizzle (categorias, produtos, produto_fotos)
+  schema.ts     # schema Drizzle (categorias, produtos, produto_fotos, fotos_envio, ia_uso)
   categorias.ts, produtos.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
-  migrations/   # 0000 (função categoria_chave + categorias + seed), 0001 (produtos, produto_fotos) e meta/
+  migrations/   # 0000 (função categoria_chave + categorias + seed), 0001 (produtos, produto_fotos), 0002 (fotos_envio, ia_uso, colunas de fotos) e meta/
   *.test.ts / *.int.test.ts   # testes unitário e de integração
 src/test/       # conformance/ (testes de guard e de acesso) e db/ (fixtures de integração, medição de desempenho)
 drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations)
@@ -228,8 +228,9 @@ isoladas**. Hoje existem no repositório o `preview`, os três ambientes no
 o Drizzle está configurado (`src/lib/db/`, `drizzle.config.ts`) e a conexão é
 validada por `/api/health` (`src/app/api/health/route.ts`) e pelo teste de
 integração `src/lib/db/client.int.test.ts` (`npm run test:int`, exige `db:up`).
-O schema tem `categorias` (migration `0000`), `produtos` e `produto_fotos` (`0001`; ver
-[database.md](./database.md)).
+O schema tem `categorias` (migration `0000`), `produtos` e `produto_fotos`
+(`0001`), `fotos_envio` e `ia_uso` (`0002`, feature 004 em andamento, ainda sem
+código que as use; ver [database.md](./database.md)).
 
 | Recurso | Local | Dev online | Produção |
 |---|---|---|---|

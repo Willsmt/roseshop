@@ -53,7 +53,8 @@ app, migration e probe usam o mesmo `DATABASE_URL` direto, ver "CI").
 
 ```bash
 npm run db:up        # sobe Postgres 18 + proxy HTTP do Neon
-npm run db:migrate   # aplica as migrations (0000 categorias + seed, 0001 produtos) no banco local
+npm run db:migrate   # aplica as migrations no banco local (0000 categorias + seed,
+                     # 0001 produtos, 0002 envios de foto e uso da IA)
 npm run test:int     # integração (exige as migrations aplicadas)
 ```
 
@@ -555,8 +556,8 @@ Jobs de `checks.yml`:
 
 Passos dos jobs de deploy (`deploy-dev` e `deploy-production`): `npm ci` →
 migrations (`npm run db:migrate` só se existir
-`src/lib/db/migrations/meta/_journal.json`; hoje existem a `0000` e a `0001`,
-então roda) →
+`src/lib/db/migrations/meta/_journal.json`; hoje existem a `0000`, a `0001` e a
+`0002`, então roda) →
 **(só `deploy-dev`) probe de transação do batch** → `npm run deploy:dev` ou
 `npm run deploy:production` → `scripts/smoke-health.sh <url>/api/health`.
 

@@ -6,8 +6,9 @@
 > banco (Docker, ver "Banco local") e a conexão Drizzle + driver HTTP do Neon,
 > exercitada pela rota `/api/health`, pelas categorias (feature 002: migration
 > `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
-> (Auth.js + Google) está implementado (feature 001); R2 e IA não estão
-> configurados.
+> (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
+> endpoint, credenciais e CORS configurados, mas nenhuma rota o usa ainda); IA não está
+> configurada.
 
 ## Visão leiga
 
@@ -298,6 +299,25 @@ do `drizzle-kit`). Verificado no commit `6ed2cfc`: o `drizzle-kit` carrega
 reavaliar a vulnerabilidade; a entrada `esbuild@0.25.12` em `allowScripts`
 depende dele.
 
+### `wrangler` fixado em `4.147.0` (devDependency)
+
+Versão exata, sem `^`. O endpoint S3 local do R2 (`local_dev.experimental_s3_credentials`
+no `wrangler.jsonc`) é **experimental** e seu comportamento depende da versão
+(ADR-009 D6, commit `cb62190`). Bump do `wrangler` é sempre decisão explícita:
+
+- **Prova já feita** (SF3, T039): `specs/004-fotos-produto/research.md` §3, "R2 no app
+  completo" (`PUT` assinado aceito; N±1 bytes ⇒ 403; segundo `PUT` na mesma URL ⇒ 412;
+  objeto íntegro no bucket local). O script da prova **não é versionado**.
+- **Até a SF9**: o `wrangler` não é atualizado.
+- **A partir da SF9**: todo bump repete o `specs/004-fotos-produto/quickstart.md` §4
+  (envio pela tela no `preview`, com o `PUT` para
+  `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` visto no DevTools, aba Rede).
+
+### `aws4fetch` fixado em `1.0.20` (dependência de runtime)
+
+Versão exata, sem dependências próprias. Assina a URL de envio ao R2
+(`src/lib/r2/assinatura.ts`). Ver [architecture.md, "Módulo R2"](./architecture.md#módulo-r2-feature-004-sf2-e-sf3).
+
 ## Auditoria de dependências
 
 **Dependências de autenticação com política própria** (feature 001):
@@ -325,7 +345,37 @@ e aplicada pelo job `security` do CI (ver "CI"). Resumo:
 ## Bindings
 
 Detalhados em um só lugar: [architecture.md, seção "Build e deploy"](./architecture.md#build-e-deploy-opennext--wrangler).
-Para regenerar os tipos após mudar bindings, use `npm run cf-typegen`.
+Para regenerar os tipos após mudar bindings **ou `vars`**, use `npm run cf-typegen`
+(o `cloudflare-env.d.ts` também reflete `.dev.vars`; a SF3 o regenerou).
+
+### R2: segredos, endpoint e CORS
+
+**Visão leiga**: o aparelho envia a foto direto ao R2 por um endereço temporário
+assinado pelo servidor. Para isso o servidor precisa de um par de chaves do R2 (por
+ambiente) e o bucket precisa aceitar o envio vindo do site (CORS).
+
+- **Endpoint** (`R2_S3_ENDPOINT`, var pública no `wrangler.jsonc`, por ambiente): já
+  inclui o bucket. Local usa o endpoint S3 do wrangler (`http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local`,
+  só no `preview`, nunca no `dev`); dev e produção usam `https://<id da conta>.r2.cloudflarestorage.com/<bucket>`.
+- **Chaves** (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`): token **Object Read & Write**
+  restrito ao bucket do ambiente. Local: valores falsos e fixos em `.dev.vars.example`
+  (iguais aos de `local_dev.experimental_s3_credentials`; não são segredo). Dev e produção:
+  `npx wrangler secret put R2_ACCESS_KEY_ID --env <amb>` (idem `R2_SECRET_ACCESS_KEY`),
+  com o procedimento por pipe de "Cadastrar um secret". **Dev já cadastrado**; **produção
+  fica para a SF15** da feature 004.
+- **`CRON_SECRET`**: entrou no `.dev.vars.example` (local: qualquer valor não vazio) para a
+  limpeza diária (SF12); ainda sem consumidor.
+- **CORS** versionado em `infra/r2/` (formato do wrangler, `rules[].allowed`, **não** o do S3):
+
+```bash
+npx wrangler r2 bucket cors set roseshop-dev --file infra/r2/cors.dev.json
+npx wrangler r2 bucket cors list roseshop-dev   # conferir
+```
+
+  `cors.dev.json` libera só a origem `https://roseshop-dev.willsmt.workers.dev`, método
+  `PUT`, headers `content-type` e `if-none-match`, `maxAgeSeconds` 600 (aplicado e
+  conferido em `roseshop-dev`). `cors.production.json` tem a origem **ainda por preencher**
+  (placeholder); aplicar na SF15.
 
 ## Variáveis de ambiente
 
@@ -343,12 +393,17 @@ local").
 | `AUTH_GOOGLE_ID` | Client ID do OAuth do Google (termina em `.apps.googleusercontent.com`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
 | `AUTH_GOOGLE_SECRET` | Client Secret do OAuth do Google (começa com `GOCSPX-`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
 | `ADMIN_EMAILS` | Allowlist de e-mails das administradoras, separados por vírgula, sem espaço. Comparação sem diferenciar maiúsculas; entradas inválidas são ignoradas. | `src/lib/auth/config.ts` (callback `signIn`) e `src/lib/auth/guard.ts` (`getAdminSession`, a cada acesso). | Secret em dev online e produção (contém e-mails pessoais) |
+| `R2_S3_ENDPOINT` | Endpoint S3 do bucket do ambiente (já inclui o nome do bucket). | `src/lib/r2/config.ts` (`configR2`), usado por `assinarEnvio`. Declarada em `vars` no `wrangler.jsonc`, redeclarada por ambiente. | Var pública (`wrangler.jsonc`) |
+| `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
+| `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
+| `CRON_SECRET` | Protege a limpeza diária de fotos (SF12). | Nenhum consumidor ainda. | A definir na SF12; local: qualquer valor não vazio |
 | `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | Nenhum consumidor ainda (feature 005, IA). | Secret em dev online e produção |
 
-As cinco últimas estão declaradas em `.dev.vars.example` e tipadas em
-`cloudflare-env.d.ts`. As quatro de auth têm consumidor (coluna "Onde é usada");
-`OPENAI_API_KEY` **ainda não é referenciada** em `src/`. Chaves de R2 não são variáveis: R2
-é binding (ver "Bindings").
+As variáveis de auth, R2 e `CRON_SECRET` estão em `.dev.vars.example` e tipadas em
+`cloudflare-env.d.ts`. As de auth e R2 têm consumidor (coluna "Onde é usada");
+`OPENAI_API_KEY` e `CRON_SECRET` **ainda não são referenciadas** em `src/`. O **bucket** é
+binding (`PRODUCT_IMAGES`); as chaves e o endpoint S3 são variáveis (ver "R2: segredos,
+endpoint e CORS" em "Bindings").
 
 ### Google OAuth (informação do mantenedor)
 
@@ -482,9 +537,10 @@ npx wrangler secret put DATABASE_URL --env dev        # ou --env production
 
 Para `DATABASE_URL`, cole o valor **somente no prompt** interativo (nunca em
 argumento, arquivo ou histórico do shell). Para os demais secrets, prefira o
-procedimento por pipe abaixo. Dev online tem 6 secrets cadastrados
+procedimento por pipe abaixo. Dev online tem 8 secrets cadastrados
 (informação do mantenedor): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`,
-`AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`. Em produção, cadastre
+`AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`. Em produção, cadastre
 logo após o primeiro deploy; até lá `/api/health` responde 503.
 
 #### Procedimento por pipe (validar e enviar)
@@ -679,6 +735,14 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   PR do próprio repositório.
 - **Deploy do CI falha com erro de autenticação Cloudflare**: verifique se o
   token expirou (validade até 2027-10-03) ou perdeu escopo.
+- **Envio ao R2 devolve 403 no `preview`**: o `content-length` do PUT difere do assinado
+  (ou as credenciais locais divergem de `local_dev.experimental_s3_credentials`). Segundo
+  PUT na mesma chave devolver 412 é o esperado (`if-none-match: *`).
+- **Envio ao R2 falha no navegador de dev (erro de CORS)**: confira com `cors list` que a
+  regra de `infra/r2/cors.dev.json` está aplicada em `roseshop-dev` e que a origem é exatamente a do worker.
+- **"Configuração do R2 inválida: <NOMES>"**: falta ou está inválida alguma das variáveis
+  citadas (`R2_S3_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`); endpoint com `/`
+  final ou `http` fora de localhost também é recusado (`src/lib/r2/config.ts`).
 - **Qual porta/runtime estou validando?** `npm run dev` sobe em
   `http://localhost:3000` (porta padrão do Next, sem override no repo) e roda em
   **Node**. `npm run preview` sobe em `http://localhost:8787` e roda em

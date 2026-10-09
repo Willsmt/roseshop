@@ -80,7 +80,7 @@ Justificativa em research D5.
 
 | Coluna | Tipo | Regras | Requisito |
 |---|---|---|---|
-| `chave_objeto` | `text` | existente `NOT NULL`; **novo** `UNIQUE` (`produto_fotos_chave_unique`) e `CHECK (chave_objeto ~ '^fotos/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(webp\|jpg)$')` (`produto_fotos_chave_formato`) | FR-016, D12 |
+| `chave_objeto` | `text` | existente `NOT NULL`; **novo** `UNIQUE` (`produto_fotos_objeto_unique`) e `CHECK (chave_objeto ~ '^fotos/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(webp\|jpg)$')` (`produto_fotos_objeto_formato`) | FR-016, D12 |
 | `enviado_por` | `text` | **nova**, `NOT NULL` — de `fotos_envio.enviado_por` | Key Entities |
 | `enviado_em` | `timestamptz` | **nova**, `NOT NULL` — de `fotos_envio.criado_em` | Key Entities |
 | `criado_em` | `timestamptz` | existente; momento em que a linha foi (re)inserida | — |

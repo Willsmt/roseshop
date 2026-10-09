@@ -93,7 +93,9 @@ INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, envia
   em `erros-pg.ts`); qualquer outra ⇒ propaga (ADR-008, ressalva da 003).
   `23503` na FK de categoria ⇒ `categoria_ausente`.
 - **Testes obrigatórios (TL-4)**: mesmo nome com envios válidos diferentes ⇒ `nome_repetido`
-  vindo do `23505` do batch; `23505` de outra constraint ⇒ propaga; categoria removida ⇒
+  vindo do `23505` do batch; `23505` de outra constraint ⇒ propaga, **inclusive as de
+  `produto_fotos`** (`produto_fotos_objeto_unique`); só `produtos_chave_unique`, por
+  **comparação exata** do nome da constraint, vira `nome_repetido`; categoria removida ⇒
   `categoria_ausente` vindo do `23503`.
 - 0 linhas no `INSERT produtos` (sem erro) ⇒ leitura posterior, nesta precedência:
   1. já existe produto com a mesma chave de nome ⇒ `nome_repetido` com o código. É o caso do

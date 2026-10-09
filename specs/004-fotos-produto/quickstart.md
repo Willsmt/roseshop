@@ -17,7 +17,9 @@ o agente pede o comando e recebe o output real.
 Para `dev` e depois `production`, nesta ordem:
 
 1. Painel R2 → **Manage API tokens** → token **Object Read & Write**, escopo **só** no bucket
-   do ambiente (`roseshop-dev` / `roseshop-prod`).
+   do ambiente (`roseshop-dev` / `roseshop-prod`), **sem expiração** (padrão nos dois
+   ambientes; o do dev foi criado assim em 2026-10-09). Revogação **manual** no painel do R2
+   em caso de suspeita de vazamento (ADR-009).
 2. Segredos (um comando por chave, valor digitado no prompt):
    ```bash
    npx wrangler secret put R2_ACCESS_KEY_ID --env dev
@@ -25,6 +27,10 @@ Para `dev` e depois `production`, nesta ordem:
    npx wrangler secret put CRON_SECRET --env dev        # openssl rand -base64 32
    npx wrangler secret put OPENAI_API_KEY --env dev     # se ainda não existir
    ```
+   **Dev, estado em 2026-10-09 (SF0, T014a):** o token do bucket `roseshop-dev` criado para o
+   spike R1 já está gravado como `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY` no secret do
+   `env.dev`; a SF3 **não** recria o token nem esses dois secrets (no dev faltam só
+   `CRON_SECRET` e, se ainda não existir, `OPENAI_API_KEY`).
 3. Preencher o Account ID em `R2_S3_ENDPOINT` de `env.dev`/`env.production` no `wrangler.jsonc`
    e a origem exata do ambiente em `infra/r2/cors.<env>.json` (commit pela SF3).
 4. CORS do bucket:

@@ -80,7 +80,7 @@ na remoção do produto é da 004. FR-014 (≥ 1 foto) não é constraint nesta 
 | Esgotar tira do destaque | um `UPDATE` só | Statement único |
 | No máximo 8 destaques | `CHECK 1..8` + índice único parcial de `destaque_vaga` | Banco |
 | Concorrência otimista | `WHERE id AND versao` em todo `UPDATE`/`DELETE` | Statement único |
-| Todo writer de `produtos` incrementa `versao` | Convenção de código (sem constraint). Sustenta o `saiuDoDestaque` do `esgotar` (CTE `antes`) e a precedência da leitura após 0 linhas; escrita futura sem `versao + 1` quebra as duas | Convenção |
+| Todo writer que altera **campos, status ou destaque** de `produtos` incrementa `versao`; o writer de fotos (feature 004) altera **só** `fotos_versao`, `fotos_operacao`, `atualizado_por` e `atualizado_em`, e nunca `versao` | Convenção de código (sem constraint). Sustenta o `saiuDoDestaque` do `esgotar` (CTE `antes`) e a precedência da leitura após 0 linhas; escrita futura de campos, status ou destaque sem `versao + 1` quebra as duas. O writer de fotos não as afeta: elas leem só `versao`, `esgotado` e `destaque_vaga`, que ele não toca, e um `UPDATE` da 003 que espera o lock de linha dele reavalia `versao = $v` (inalterada) e segue. Emenda de 2026-10-09 (ADR-008, D5 da 004) | Convenção |
 | No máximo 3 fotos, posições únicas | `CHECK` + `UNIQUE (produto_id, posicao)` | Banco |
 
 ## Transições de estado

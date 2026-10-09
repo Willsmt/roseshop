@@ -142,7 +142,10 @@ UPDATE produtos
  WHERE id = $p AND fotos_versao = $v
    AND (SELECT coalesce(array_agg(chave_objeto ORDER BY posicao), '{}')
           FROM produto_fotos WHERE produto_id = $p) = $atuais::text[]
-   AND ($envio::uuid IS NULL OR EXISTS (SELECT 1 FROM fotos_envio WHERE VALIDO($envio)))
+   AND $chaves::text[] <@ ($atuais::text[]
+                           || ARRAY(SELECT chave FROM fotos_envio WHERE VALIDO($envio)))
+   AND ($envio::uuid IS NULL OR EXISTS (SELECT 1 FROM fotos_envio
+                                        WHERE VALIDO($envio) AND chave = ANY($chaves::text[])))
  RETURNING fotos_versao;
 DELETE FROM fotos_envio WHERE id = $envio AND G(tok);            -- só com envioId
 DELETE FROM produto_fotos WHERE produto_id = $p AND G(tok);
@@ -152,11 +155,22 @@ INSERT INTO produto_fotos (produto_id, posicao, chave_objeto, enviado_por, envia
   WHERE G(tok);
 ```
 
+- `$chaves` são as chaves de `novas`, em ordem (as mesmas do `INSERT`).
+- **Chave nova amarrada ao envio** (emenda de 2026-10-09, achado 1 da revisão da SF5, opção ii,
+  aprovada pelo humano): toda chave de `novas` está em `atuais` ou é a chave do envio `VALIDO`
+  informado, e com `envioId` essa chave está em `novas`. Sem `envioId`, nenhuma chave fora de
+  `atuais` entra. A garantia é do próprio `UPDATE` que decide, não só da action.
 - A precedência após 0 linhas (leitura posterior): produto inexistente ⇒ `ausente`;
-  `fotos_versao ≠ $v` ou conjunto diferente ⇒ `alterado`; envio inválido ⇒ `foto_expirada`.
+  `fotos_versao ≠ $v` ou conjunto diferente ⇒ `alterado`; envio inválido ⇒ `foto_expirada`;
+  versão, conjunto e envio em ordem mas chave nova fora da regra acima ⇒ **lança** `Error` (bug
+  de quem chama: a action monta `novas` com `obterEnvio`). Envio confirmado depois do batch, com
+  as chaves em ordem, continua `foto_expirada` (corrida).
+- `novas` com 0 ou mais de 3 itens, posições diferentes de 1..n em ordem ou chaves repetidas ⇒
+  **lança** `Error` antes do batch, sem tocar o banco (FR-003).
 - `versao` (003) não é tocada.
 - Os valores de `novas` vêm de `lerConjunto` (fotos existentes, imutáveis e de chave única) e de
-  `obterEnvio` (foto nova); a igualdade de `atuais` no `UPDATE` garante que são os do banco.
+  `obterEnvio` (foto nova); a igualdade de `atuais` e a regra da chave nova no `UPDATE` garantem
+  que as chaves são as do banco. `enviadoPor` e `enviadoEm` continuam vindo de quem chama.
 
 ### 2.4 Leitura (alterações em `produtos.ts`)
 

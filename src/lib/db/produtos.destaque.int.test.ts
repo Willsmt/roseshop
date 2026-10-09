@@ -9,7 +9,8 @@ import { inserirProduto, limparProdutos } from "@/test/db/produtos-fixtures";
 import { codigoSqlstate, nomeConstraint } from "./erros-pg";
 import { destacar, disponibilizar, esgotar, tirarDoDestaque } from "./produtos";
 
-// Feature 003, T029 (SF5): status e destaque de produtos (US2-AC1-3/5/6, US5-AC1-6, SC-005 teto).
+// Feature 003, T029 (SF5): status e destaque de produtos (US2-AC1-3/5/6, US5-AC1-6, SC-005 teto;
+// estendido pela 004, T054: destaque sempre com foto).
 // Integração com o banco local. Roda em série com os demais arquivos de integração.
 const db = createDb({
   DATABASE_URL: process.env.DATABASE_URL ?? "",
@@ -72,6 +73,15 @@ async function vagasOcupadas(): Promise<number[]> {
     sql`SELECT destaque_vaga FROM produtos WHERE destaque_vaga IS NOT NULL ORDER BY destaque_vaga`,
   );
   return (r.rows as { destaque_vaga: number }[]).map((x) => x.destaque_vaga);
+}
+
+/** Feature 004 (FR-004): produtos em destaque sem nenhuma linha em `produto_fotos`. */
+async function destaquesSemFoto(): Promise<number> {
+  const r = await db.execute(sql`
+    SELECT count(*)::int AS n FROM produtos p
+    WHERE p.destaque_vaga IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM produto_fotos f WHERE f.produto_id = p.id)`);
+  return (r.rows as { n: number }[])[0].n;
 }
 
 async function violacoesEsgotadoComVaga(): Promise<number> {
@@ -343,6 +353,8 @@ describe("concorrência (SC-005, FR-026)", () => {
         const recusado = rs.find((r) => r.tipo !== "ok");
         expect(["vaga_disputada", "limite"], ctx).toContain(recusado?.tipo);
         expect(await vagasOcupadas(), ctx).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+        // SC-005 estendido pela 004: o destaque nunca mostra produto sem foto.
+        expect(await destaquesSemFoto(), ctx).toBe(0);
       }
     },
     120_000,

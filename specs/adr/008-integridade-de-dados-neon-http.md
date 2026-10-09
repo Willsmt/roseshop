@@ -88,7 +88,11 @@ T013):** aplicações da regra geral às fotos e à IA, sem mudar a Decisão (or
     DELETE FROM produto_fotos WHERE produto_id = $p AND G(tok), INSERT INTO produto_fotos …
     FROM unnest(…) WHERE G(tok) ])`. `VALIDO` = da própria pessoa, `confirmado` e com menos
     de 24 h; é checado no `UPDATE`, e os valores inseridos vêm da leitura anterior, garantidos
-    pela igualdade do conjunto no `UPDATE`.
+    pela igualdade do conjunto no `UPDATE`. **Chave nova amarrada ao envio** (acréscimo de
+    2026-10-09, revisão da SF5, aprovado pelo humano): o mesmo `UPDATE` exige que toda chave da
+    lista nova esteja no conjunto atual ou seja a do envio `VALIDO` informado, e que, com envio,
+    essa chave esteja na lista; sem envio, nenhuma chave nova entra. Recusa só por isso ⇒ a
+    função lança (bug de quem chama), sem alterar nada (contracts/fotos.md §2.3).
   - *Cadastro com fotos* (`inserirComFotos`): `lock 4_001` + `INSERT INTO produtos … SELECT …
     WHERE (count dos envios VALIDO) = $n` gravando `fotos_operacao = $tok` (sem `UPDATE` nem
     `fotos_versao`), seguido da **adoção por `DELETE FROM fotos_envio … RETURNING` numa CTE**

@@ -635,7 +635,7 @@ Spec: US2-AC1/AC2 (lado do aparelho), US2-AC3, US2-AC7, SC-005.
   do navegador e `src/lib/fotos/mensagens.ts`; nada de `server-only`, db, r2 ou auth — **principal**
 - [X] T082 Rodar `npm run check` e colar o output real; o comportamento real (canvas, HEIC,
   orientação) é provado na SF10 e no Q§4 — **principal**
-- [ ] T083 Commit (humano), mensagem:
+- [X] T083 Commit (humano), mensagem:
   ```text
   feat(fotos): trata a foto no aparelho antes do envio
 
@@ -657,6 +657,14 @@ SF9. Dependência nova: `react-easy-crop` (versão exata). Q§4 (roteiro pela te
 componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
 **Fecha**: US1-AC1–9, US2-AC3/AC7/AC8/AC10, edge cases de envio durante "Salvar" e de expiração.
 **Revisão TL**: —.
+**Notas da revisão TL da SF8** (entram nas tasks T088, T090 e no `telas.md`):
+1. `nao_enviada` vindo do `prepararFoto` deixa rastro no navegador: `console.warn` com o tipo de
+   erro, sem bytes nem nome de arquivo. Só em desenvolvimento ou também em produção: **decisão do
+   humano na SF9**, antes da T088.
+2. "Tentar de novo" guarda em memória o arquivo e a área do recorte até a confirmação, para
+   rodar o `prepararFoto` de novo sem pedir outra escolha nem outro recorte.
+3. A linha do `usar-envio.ts` em `contracts/telas.md` §2 passa a citar, além da falha de rede, o
+   `nao_enviada` do `prepararFoto` como causa de *Não enviada*.
 
 - [ ] T084 `npm install --save-exact react-easy-crop` e anotar a justificativa para o commit
   (gesto de pinça com risco de erro próprio; não substitui nada da stack) — **principal**

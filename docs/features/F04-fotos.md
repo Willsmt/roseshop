@@ -1,12 +1,12 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF7: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF8: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
-> exibição e a exigência de fotos no cadastro (SF6) e as actions do conjunto
-> (adicionar, trocar, remover, mover: SF7). **Ainda não existem**: o pipeline de
-> tratamento da foto no aparelho (SF8), a UI de fotos (SF9 e SF11), IA e limpeza
-> diária (cron). Spec:
+> exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
+> (adicionar, trocar, remover, mover: SF7) e o pipeline de tratamento da foto no
+> aparelho (SF8, ainda sem tela que o chame). **Ainda não existem**: a UI de fotos
+> (SF9 e SF11), IA e limpeza diária (cron). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -22,6 +22,12 @@ administradora escolhe a foto, o sistema pede uma **autorização de envio**
 sistema **confere** o que chegou (`confirmarEnvio`). Só então a foto fica
 "confirmada" e pode ser usada no cadastro do produto. Fotos nunca são públicas: só
 quem está logada no painel consegue vê-las.
+
+Antes de enviar, o próprio aparelho **prepara** a foto: confere que é uma imagem de
+verdade, endireita a orientação da câmera, recorta em quadrado, reduz se for grande
+demais e regrava em WebP ou JPEG abaixo de 1 MB. Isso também descarta os metadados do
+original (localização, câmera). Esse tratamento já existe como código
+(`src/lib/fotos/aparelho/`, SF8), mas nenhuma tela o chama ainda (SF9).
 
 > **Observação de UX (até a SF9)**: a tela de cadastro ainda não envia fotos.
 > Criar um produto pela tela devolve "Coloque pelo menos 1 foto do produto.",
@@ -52,6 +58,59 @@ sequenceDiagram
   A->>S: criarProduto (campo fotos repetido, 1..3 envioIds)
   S->>D: inserirComFotos (adota os envios)
 ```
+
+### Pipeline da foto no aparelho (`src/lib/fotos/aparelho/`, SF8)
+
+Código **só de navegador**: sem `server-only`, `@/lib/r2`, `@/lib/db`, auth nem `next`.
+O teste `src/lib/fotos/aparelho/fronteira.test.ts` lê os imports dos 5 arquivos e só
+admite `./x` do próprio diretório e `mensagens`/`tipos` de `src/lib/fotos/`. As APIs do
+navegador (`createImageBitmap`, canvas, teste de WebP) são **injetáveis**, por isso o
+pipeline é testável em Node. Contrato: `specs/004-fotos-produto/contracts/telas.md` §3
+(bloco "Decisões da SF8").
+
+```mermaid
+graph TD
+  E["arquivo escolhido + área do recorte"] --> D["detectarTipo (64 primeiros bytes)"]
+  D -->|outro| F1["motivo: formato"]
+  D --> O["abrirImagem (orientação da câmera)"]
+  O -->|erro| F2["motivo: nao_abre"]
+  O --> R["recortar (1:1, 400 a 1200 px)"]
+  R -->|menor que 400| F3["motivo: pequena"]
+  R --> C["desenharRecorte (canvas)"]
+  C --> W{"suportaWebp?"}
+  W -->|sim| K1["codificar webp"]
+  W -->|não| K2["codificar jpeg"]
+  K1 -->|blob não é webp| K2
+  K1 --> S["blob + formato"]
+  K2 --> S
+  K1 -->|acima de 1 MiB na última qualidade| F4["motivo: grande"]
+  K2 -->|acima de 1 MiB na última qualidade| F4
+  K2 -->|nem o JPEG sai| F5["motivo: nao_enviada"]
+```
+
+| Arquivo | Papel |
+|---|---|
+| `detectar-tipo.ts` | `detectarTipo`: JPEG, PNG, WebP ou HEIC pelos bytes (assinatura; HEIC pela caixa `ftyp`, e `mif1`/`msf1` só com marca HEIC compatível, para não aceitar AVIF); o resto é `outro`. Nome, extensão e MIME declarado não entram. `BYTES_CABECALHO = 64`. |
+| `suporta-webp.ts` | `suportaWebp`: `toBlob` de um canvas 1×1 em `image/webp`; resultado guardado uma vez por sessão. Safari antigo devolve PNG, e isso conta como "não suporta". |
+| `recortar.ts` | `recortar` (limita a área à imagem, lado final = `min(origem.lado, 1200)`, nunca amplia, origem < 400 = `pequena`) e `desenharRecorte` (canvas, suavização alta). `LADO_MINIMO = 400`, `LADO_MAXIMO = 1200`. |
+| `codificar.ts` | `codificar`: WebP (0.82, 0.72, 0.62) ou JPEG (0.85, 0.72, 0.62), a primeira qualidade que cabe em `TETO_BYTES = 1_048_576`. |
+| `preparar-foto.ts` | `abrirImagem` e `prepararFoto`, a única função que a tela chama. |
+
+- **Saída**: `{ blob, formato: "webp" | "jpeg" }` ou `{ motivo }` com `formato`,
+  `nao_abre`, `pequena`, `grande` ou `nao_enviada` (subconjunto de `MotivoFoto`). PNG e
+  HEIC são aceitos só como **entrada**; o que sai é sempre WebP ou JPEG.
+- **`prepararFoto` nunca rejeita**: falha fora do previsto (leitura do arquivo, contexto
+  2d nulo, nem o JPEG sai, `suportaWebp` com erro) vira `{ motivo: "nao_enviada" }`. A
+  tela só olha o `motivo`.
+- **Conferência do `blob.type`**: o navegador pode devolver outro tipo em silêncio
+  (Safari entrega PNG ao pedir WebP). Se o WebP vier errado, `codificar` recodifica em
+  JPEG; se nem o JPEG vier certo, lança `FalhaCodificacao`, que `prepararFoto` converte
+  em `nao_enviada`.
+- **Memória**: a imagem aberta é fechada sempre (`close`) e o canvas é zerado
+  (`width`/`height` = 0) ao fim, porque o Safari do iOS limita a memória de canvas.
+- **Foto de entrada animada**: só o primeiro quadro é desenhado.
+- O servidor **não confia** nesse tratamento: `confirmarEnvio` verifica o arquivo
+  recebido de novo (`verificarImagem`).
 
 ### Actions de envio (`src/lib/fotos/actions.ts`)
 
@@ -175,6 +234,7 @@ desfaz a remoção.
 | Arquivo | Papel |
 |---|---|
 | `src/lib/fotos/actions.ts` | `pedirEnvio`, `confirmarEnvio` e as do conjunto: `adicionarFoto`, `trocarFoto`, `removerFoto`, `moverFoto` (via `alterarConjunto`). |
+| `src/lib/fotos/aparelho/` | Pipeline da foto no navegador (SF8): `detectar-tipo.ts`, `suporta-webp.ts`, `recortar.ts`, `codificar.ts`, `preparar-foto.ts` e o teste de fronteira; ver a seção acima. |
 | `src/lib/fotos/conjunto.ts` | `aplicarAcao` (regra pura do conjunto), `MAXIMO_FOTOS`, tipos `AcaoConjunto` e `NovaFoto`. |
 | `src/lib/fotos/tipos.ts` | `MotivoFoto`, `FotoVista`, `Conjunto`, `FalhaFoto`, `ResultadoFotos`; sem imports de runtime (seguro para o client). |
 | `src/lib/fotos/mensagens.ts` | Textos pt-BR por motivo, avisos de sucesso e confirmação; sem imports de runtime. |
@@ -216,6 +276,8 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
 ### Pegadinhas
 
 - **Criar produto pela tela falha até a SF9** (ver a observação no topo).
+- **Pipeline do aparelho sem tela**: `prepararFoto` só é exercido por teste até a SF9
+  (telas do cadastro, com `react-easy-crop` para a área do recorte).
 - **Actions do conjunto sem UI**: `adicionarFoto`, `trocarFoto`, `removerFoto` e
   `moverFoto` só são exercidas por teste até a SF11.
 - **`pedirEnvio` valida a config do R2 antes de gravar**: sem

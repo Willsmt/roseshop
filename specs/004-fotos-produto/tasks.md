@@ -573,23 +573,25 @@ US5-AC1–5.
 **Fecha**: US4-AC1–5 (actions), US5-AC1–5 (mensagens e `atual`).
 **Revisão TL**: ✅ (usa `src/lib/r2`).
 
-- [ ] T072 [P] **Teste primeiro** — `src/lib/fotos/conjunto.test.ts` (tabela de regras de
+- [X] T072 [P] **Teste primeiro** — `src/lib/fotos/conjunto.test.ts` (tabela de regras de
   F§3): adicionar `[...atuais, nova]`, 3 fotos ⇒ `limite`; trocar nova na `posicao`, posição
   inexistente ⇒ `falha_geral`; remover sem a `posicao` e as demais sobem, 1 foto ⇒ `ultima`;
   mover tira de `de` e insere em `para`, posição inexistente ou `de = para` ⇒ `falha_geral`;
   posições finais sempre 1..N — **test-writer**
-- [ ] T073 [P] **Teste primeiro** — `src/lib/fotos/actions.conjunto.test.ts` (sugerido), mocks:
+- [X] T073 [P] **Teste primeiro** — `src/lib/fotos/actions.conjunto.test.ts` (sugerido), mocks:
   guard primeiro; Zod antes de SQL; produto inexistente ⇒ `nao_existe`; `fotosVersao` ≠ ⇒
   `alterado` com `atual`; **`atual` (lido de novo) em toda falha** `alterado`/`limite`/
   `foto_expirada`; `ok` devolve a versão nova (US4-AC7: ações seguidas da mesma pessoa não
   conflitam); `ok` ⇒ `revalidatePath` da lista e do detalhe; troca e remoção apagam a chave
-  antiga com `apagarObjetos` em melhor esforço (falha só registrada, FR-036); mensagens de
-  sucesso ("Foto adicionada", "Foto trocada", "Foto removida", "Ordem salva") — **test-writer**
-- [ ] T074 **[TL✅]** `src/lib/fotos/conjunto.ts` e as quatro actions em
+  antiga com `apagarObjetos` em melhor esforço (falha só registrada, FR-036); o sucesso é
+  `{ ok: true } & Conjunto`, sem `mensagem` (contrato mantido, decisão do humano): a tela usa
+  `SUCESSO_FOTO` ("Foto adicionada", "Foto trocada", "Foto removida", "Ordem salva"), testado em
+  `mensagens.test.ts` — **test-writer**
+- [X] T074 **[TL✅]** `src/lib/fotos/conjunto.ts` e as quatro actions em
   `src/lib/fotos/actions.ts`, na ordem fixa `requireAdminAction` → Zod → `lerConjunto` → regra →
   `substituirConjunto` → R2 (melhor esforço) — **principal**
-- [ ] T075 Rodar `npm run check` e `npm run test:int`; colar o output real — **principal**
-- [ ] T076 Revisão do diff pelo tech-lead (opus): ordem das chamadas, `atual` nas falhas,
+- [X] T075 Rodar `npm run check` e `npm run test:int`; colar o output real — **principal**
+- [X] T076 Revisão do diff pelo tech-lead (opus): ordem das chamadas, `atual` nas falhas,
   apagamento do objeto antigo só após `ok` — **tech-lead**
 - [ ] T077 Commit (humano), mensagem:
   ```text

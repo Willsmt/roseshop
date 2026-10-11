@@ -7,7 +7,7 @@ Dono das telas: `ui-dev` (só contrato existente). Pipeline do aparelho: sessão
 
 | Rota | Mudança | Guard |
 |---|---|---|
-| `/painel/produtos/novo` | passa a ter **dois passos na mesma página** (estado do client): **Fotos** → **Dados**. "Continuar" só com ≥ 1 foto confirmada e nenhum envio em curso (FR-005). Botão "Voltar às fotos" no passo Dados mantém o digitado. Recarregar ou sair começa vazio (edge case) | `requireAdminPage` (já existe) |
+| `/painel/produtos/novo` | passa a ter **dois passos na mesma página** (estado do client): **Fotos** → **Dados**. "Continuar" só com ≥ 1 foto confirmada e nenhuma foto *enviando* ou *Não enviada* (FR-005, US1-AC7). Botão "Voltar às fotos" no passo Dados mantém o digitado. Recarregar ou sair começa vazio (edge case) | `requireAdminPage` (já existe) |
 | `/painel/produtos/[id]` | mostra as fotos em ordem, capa primeiro (FR-040); botão "Fotos" | idem |
 | `/painel/produtos/[id]/fotos` | **nova**: gerenciar fotos (US4/US5) | `requireAdminPage("/painel/produtos/<id>/fotos")` + conformidade `produtos-paginas-guard` |
 | `/painel/produtos` | miniatura da capa no lugar do marcador "sem foto" (FR-039) | idem |
@@ -20,8 +20,8 @@ Dono das telas: `ui-dev` (só contrato existente). Pipeline do aparelho: sessão
 |---|---|
 | `escolher-foto.tsx` | Celular (`(pointer: coarse)`): dois botões ≥ 48 px, "Tirar foto" (`<input type="file" accept="image/*" capture="environment">`) e "Escolher da galeria" (`accept="image/*"` sem `capture`). Desktop: um botão "Escolher arquivo". Com 3 fotos: indisponíveis + "Máximo de 3 fotos" (US1-AC4) |
 | `recorte-foto.tsx` | `react-easy-crop`, moldura 1:1, mover e aproximar (pinça e controle deslizante), botões "Usar esta foto" e "Cancelar". Nada é enviado antes de "Usar esta foto" (FR-007) |
-| `lista-fotos.tsx` | Miniaturas em ordem; selo "Capa" na 1ª; estados por miniatura: *enviando*, *Não enviada* + "Tentar de novo"; botão "Remover" (ícone de lixeira **com o texto** ao lado, FR-021); "Mover para a esquerda", "Mover para a direita", "Usar como capa" (≥ 48 px, FR-022); arrasto horizontal por pointer events (D8). No cadastro, remover não confirma (US1-AC6); na tela Fotos, confirma (US4-AC3) |
-| `usar-envio.ts` (hook) | Uma foto: `prepararFoto` (§3) → `pedirEnvio` → `fetch(url, { method: "PUT", headers, body })` (exatamente os `headers` devolvidos, inclusive `if-none-match`) → `confirmarEnvio`. Guarda o último motivo `nao_passou` da tela para a 2ª mensagem (US2-AC10). Falha de rede ⇒ *Não enviada* (US2-AC8) |
+| `lista-fotos.tsx` | Miniaturas em ordem; selo "Capa" na 1ª; estados por miniatura: *enviando*, *Não enviada* + "Tentar de novo"; botão "Remover" (ícone de lixeira **com o texto** ao lado, FR-021); "Mover para cima", "Mover para baixo", "Usar como capa" (≥ 48 px, FR-022); lista vertical com arrasto por pointer events na miniatura (D8, revisto na SF9). No cadastro, remover não confirma (US1-AC6); na tela Fotos, confirma (US4-AC3) |
+| `usar-envio.ts` (hook) | Uma foto: `prepararFoto` (§3) → `pedirEnvio` → `fetch(url, { method: "PUT", headers, body })` (exatamente os `headers` devolvidos, inclusive `if-none-match`) → `confirmarEnvio`. Guarda o último motivo `nao_passou` da tela para a 2ª mensagem (US2-AC10). *Não enviada* + "Tentar de novo" (US2-AC8) por falha de rede ou pelo `nao_enviada` do `prepararFoto` (§3). "Tentar de novo" reusa o arquivo e a área do recorte guardados em memória até a confirmação (sem nova escolha nem novo recorte); foto expirada no "Salvar" (`foto_expirada`) reenvia o blob já tratado da miniatura, sem `prepararFoto` |
 
 Tela **Fotos** (`[id]/fotos`): cada ação chama a action e substitui o estado local pelo `Conjunto`
 devolvido — no `ok` **e** nas falhas com `atual` (FR-024). Aviso curto com o primitivo `aviso`.
@@ -71,6 +71,19 @@ prepararFoto(arquivo, area): Promise<{ blob: Blob; formato: "webp" | "jpeg" } | 
     `{ blob, formato }`, porque o formato pode cair de WebP para JPEG; `recortar` devolve
     `{ origem, lado }`, o retângulo lido e o lado final; `abrirImagem` devolve o motivo em vez
     de lançar.
+- Decisões da SF9 (humano, 2026-10-09):
+  - `nao_enviada` do `prepararFoto` deixa `console.warn("fotos.aparelho.nao_enviada", { erro })`
+    em dev e produção, com `erro` = `name` do erro (ou `"desconhecido"`); nunca `message`, bytes
+    nem nome de arquivo.
+  - `react-easy-crop` fixado em 6.2.3 (a 6.2.4 tinha 3 dias). O recortador não deixa a moldura
+    sair da imagem (`restrictPosition`, zoom mínimo 1).
+  - Revisão TL da SF9, decisões do humano (2026-10-09): "Continuar" e "Salvar" indisponíveis
+    enquanto houver foto *enviando* ou *Não enviada* (US1-AC7); a alça do arrasto é só a
+    miniatura (a página continua rolando sobre a lista); a miniatura só aparece com a foto já
+    tratada (antes, espaço com "Enviando…"); lista vertical, uma foto por linha, com arrasto
+    vertical e os botões "Mover para cima", "Mover para baixo" e "Usar como capa" (o FR-022 dá
+    esquerda/direita como exemplo; substitui o "arrasto horizontal" da research D8 e da §2).
+    Os textos que citam 'Tirar foto' ficam iguais no computador (secundário).
 
 ## 4. Requisitos de UX (constitution V)
 

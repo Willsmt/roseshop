@@ -3,6 +3,7 @@ import { mensagemDoMotivo } from "@/lib/produtos/mensagens";
 import {
   AVISO_REMOCAO_PRODUTO,
   CONFIRMAR_REMOCAO_FOTO,
+  CONTINUAR_COM_NAO_ENVIADA,
   SUCESSO_FOTO,
   mensagemFoto,
 } from "./mensagens";
@@ -60,5 +61,8 @@ describe("constantes", () => {
   });
   it("AVISO_REMOCAO_PRODUTO (FR-035)", () => {
     expect(AVISO_REMOCAO_PRODUTO).toBe("As fotos do produto também serão apagadas.");
+  });
+  it("CONTINUAR_COM_NAO_ENVIADA (SF9, D1/N1: explica o \"Continuar\" indisponível)", () => {
+    expect(CONTINUAR_COM_NAO_ENVIADA).toBe("Para continuar, tente de novo ou remova as fotos não enviadas.");
   });
 });

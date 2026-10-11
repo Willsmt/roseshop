@@ -484,3 +484,4 @@ tipar `CRON_SECRET`, `R2_S3_ENDPOINT` e os demais).
 | sucesso | "Foto adicionada", "Foto trocada", "Foto removida", "Ordem salva" | FR-020 |
 | confirmação de remoção de foto | Remover esta foto do produto? Ela será apagada. | US4-AC3 |
 | remoção de produto (acréscimo) | As fotos do produto também serão apagadas. | FR-035 |
+| "Continuar" indisponível no cadastro com foto *Não enviada* (`CONTINUAR_COM_NAO_ENVIADA`) | Para continuar, tente de novo ou remova as fotos não enviadas. (aprovada pelo humano na SF9, N1) | US1-AC7 |

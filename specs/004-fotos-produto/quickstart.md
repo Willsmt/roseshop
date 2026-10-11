@@ -127,6 +127,21 @@ Em `http://localhost:8787`, logada:
       http://localhost:8787/painel/fotos/<arquivo>
     ```
 
+**Execução (2026-10-11, SF9, T093, relato do humano)**: `preview` no Chrome com emulação de
+celular (360 px). Itens 1–4 e "Salvar" ⇒ detalhe (item 5 sem IA) conforme o roteiro: recorte 1:1
+com a moldura presa na imagem; GIF e foto pequena recusados sem envio; 3 fotos com "Máximo de 3
+fotos"; arrasto pela miniatura com a página rolando sobre os botões; mover e "Usar como capa";
+"Remover" sem confirmação; offline ⇒ "Não enviada", "Continuar" indisponível e "Tentar de novo"
+sem novo recorte; "Voltar às fotos" mantém os dados. Item 2: `PUT
+/cdn-cgi/local/r2/s3/roseshop-local/fotos/52b7fcd3-….webp` ⇒ 200, `X-Amz-Expires=300`,
+`SignedHeaders=content-length;content-type;host;if-none-match`, ETag
+`"91b206620835e21fbc208cb325db3afa"`, foto tratada em WebP com 20 308 bytes (SC-005). Item 7:
+fotos dos produtos removidos (`91afb72c-…`, `fa2159e4-…`, `.webp` e `.jpg`) ⇒ "The specified key
+does not exist." nas quatro; controle com a foto de produto existente ⇒ "Download complete".
+A miniatura da capa na lista fica para a SF11. Item 9: anônima ⇒ **404**. Item 10: logada ⇒ 200
+com a ETag; `If-None-Match` forte ⇒ **304**; **ETag fraca** `W/"…"` ⇒ **304** (o R2 local usa a
+comparação fraca, como manda o `If-None-Match`). Itens 6 e 8 não fazem parte da T093.
+
 ## 5. Dev online (deploy do PR)
 
 1. **Envio assinado (R1)**: registrar o output do spike na SF0 (`PUT` com N±1 bytes ⇒ 403; com N

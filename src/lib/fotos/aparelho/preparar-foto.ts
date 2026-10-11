@@ -50,7 +50,8 @@ export async function abrirImagem(
 }
 
 // Nunca rejeita (telas.md §3, decisão da SF8): falha fora do previsto (leitura do arquivo,
-// contexto 2d, nem o JPEG gerado) vira "nao_enviada", a tela só olha o motivo (D4).
+// contexto 2d, nem o JPEG gerado) vira "nao_enviada", a tela só olha o motivo (D4). Deixa
+// rastro em dev e produção (SF9) só com `name`: `message` pode trazer o nome do arquivo.
 export async function prepararFoto(
   arquivo: Blob,
   area: AreaRecorte,
@@ -58,7 +59,8 @@ export async function prepararFoto(
 ): Promise<FotoPreparada | { motivo: MotivoAparelho }> {
   try {
     return await preparar(arquivo, area, deps);
-  } catch {
+  } catch (e) {
+    console.warn("fotos.aparelho.nao_enviada", { erro: e instanceof Error ? e.name : "desconhecido" });
     return { motivo: "nao_enviada" };
   }
 }

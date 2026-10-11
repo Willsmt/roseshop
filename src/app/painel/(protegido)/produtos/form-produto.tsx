@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useId } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { useState } from "react";
 
 import { AreaTexto } from "@/components/ui/area-texto";
@@ -24,7 +24,12 @@ const MAX_DIGITOS = 7; // 99.999,99
 type Props = {
 	categorias: readonly { id: number; nome: string }[];
 } & (
-	| { modo: "cadastro" }
+	| {
+			modo: "cadastro";
+			envioIds: readonly string[];
+			envioEmCurso: boolean;
+			onFotoExpirada?: (envioIds: string[]) => void;
+		}
 	| { modo: "edicao"; id: number; versao: number; inicial: ValoresFormulario }
 );
 
@@ -84,19 +89,32 @@ export function FormProduto(props: Props) {
 	const { categorias } = props;
 	const router = useRouter();
 	const edicao = props.modo === "edicao";
-	const [estado, acao, enviando] = useActionState<Resultado, FormData>(
-		comFalhaGeral(
-			(edicao ? editarProduto : criarProduto) as (a: Resultado, f: FormData) => Promise<NonNullable<Resultado>>,
-			true,
-		) as (a: Resultado, f: FormData) => Promise<NonNullable<Resultado>>,
-		null,
-	);
+	const acaoComFalhaGeral = comFalhaGeral(
+		(edicao ? editarProduto : criarProduto) as (a: Resultado, f: FormData) => Promise<NonNullable<Resultado>>,
+		true,
+	) as (a: Resultado, f: FormData) => Promise<NonNullable<Resultado>>;
+	const [estado, acao, enviando] = useActionState<Resultado, FormData>(acaoComFalhaGeral, null);
 
 	useEffect(() => {
 		if (estado?.ok) router.push(`${LISTA}/${edicao ? props.id : estado.id}`);
 	}, [estado, edicao, props, router]);
 
+	// foto_expirada: avisa a tela uma vez por resultado (as fotos voltam a ser enviadas lá).
+	const onFotoExpirada = props.modo === "cadastro" ? props.onFotoExpirada : undefined;
+	const tratado = useRef<Resultado>(null);
+	useEffect(() => {
+		if (!estado || estado.ok || estado.motivo !== "foto_expirada" || tratado.current === estado) return;
+		tratado.current = estado;
+		onFotoExpirada?.(estado.envioIds ?? []);
+	}, [estado, onFotoExpirada]);
+
 	const falha = estado && !estado.ok ? estado : null;
+	// foto_expirada: a mensagem some quando alguma das fotos expiradas já não está entre as
+	// fotos atuais (reenviada ou removida no passo Fotos).
+	const expiradaVencida =
+		props.modo === "cadastro" &&
+		falha?.motivo === "foto_expirada" &&
+		(falha.envioIds ?? []).some((id) => !props.envioIds.includes(id));
 	const v = falha?.valores ?? (props.modo === "edicao" ? props.inicial : VAZIO);
 	const erroDe = (campo: string) => (falha && falha.campo === campo ? falha.mensagem : undefined);
 	// Remonta os campos a cada falha nova: o reset do formulário volta aos valores enviados.
@@ -109,7 +127,9 @@ export function FormProduto(props: Props) {
 					<input type="hidden" name="id" value={props.id} />
 					<input type="hidden" name="versao" value={props.versao} />
 				</>
-			) : null}
+			) : (
+				props.envioIds.map((id) => <input key={id} type="hidden" name="fotos" value={id} />)
+			)}
 			<div key={chave} className="flex flex-col gap-4">
 				<CampoTexto
 					name="nome"
@@ -130,9 +150,9 @@ export function FormProduto(props: Props) {
 				<CampoPreco inicial={v.preco} erro={erroDe("preco")} />
 				<CaixaMarcacao name="aPartirDe" rotulo={'Usar "a partir de" no preço'} defaultChecked={v.aPartirDe} erro={erroDe("aPartirDe")} />
 			</div>
-			{falha && !falha.campo ? <Aviso tipo="erro">{falha.mensagem}</Aviso> : null}
+			{falha && !falha.campo && !expiradaVencida ? <Aviso tipo="erro">{falha.mensagem}</Aviso> : null}
 			<div className="flex flex-col gap-3 sm:flex-row">
-				<Button type="submit" variant="primary" disabled={enviando}>
+				<Button type="submit" variant="primary" disabled={enviando || (props.modo === "cadastro" && props.envioEmCurso)}>
 					Salvar
 				</Button>
 				<Button

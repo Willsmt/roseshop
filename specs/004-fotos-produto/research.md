@@ -222,7 +222,7 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 | R1 | R2 não impõe `Content-Length` nem `If-None-Match` assinados | No bucket dev: URL assinada para N bytes com `if-none-match: *`; `PUT` com N+1 e com N−1 ⇒ esperado 403; `PUT` com N ⇒ 200; **segundo `PUT` com N na mesma URL ⇒ 412**; `PUT` sem o header ⇒ 403. `X-Amz-SignedHeaders` = `content-length;content-type;host;if-none-match` | Reservas (a)/(b) do D2; registrar no ADR-009 |
 | R2 | `experimental_s3_credentials` não funciona no `preview` | `npm run preview`; `PUT` assinado em `http://localhost:8787/cdn-cgi/local/r2/s3/roseshop-local/…` ⇒ 200 e objeto lido pelo binding; assinatura errada ⇒ 403 | Reserva do D11, decisão do humano |
 | R3 | Cron no worker próprio do OpenNext não roda (local ou dev) | Local: `preview` com `--test-scheduled` e `curl /cdn-cgi/handler/scheduled`; dev: cron temporário `*/5 * * * *` + `wrangler tail --env dev` mostrando a rota executada; depois volta a `0 6 * * *` | Reserva do D6 (`WORKER_SELF_REFERENCE`); se nem isso, volta ao humano |
-| R4 | JPEG/WebP de canvas do Safari ou do Chrome traz bloco fora da lista | SF10 (D4) | Ajuste do pipeline no aparelho ou da lista, com aprovação do humano |
+| R4 | JPEG/WebP de canvas do Safari ou do Chrome traz bloco fora da lista | SF10 (D4); só Chrome Android, Safari iOS é risco aceito (ver "R4" abaixo) | Ajuste do pipeline no aparelho ou da lista, com aprovação do humano |
 | R5 | Modelos candidatos não aceitam imagem + structured output na Responses API | Doc confirmou ambos (F7); SF0 faz uma chamada real com a chave dev (imagem sintética, `store: false`) e registra o `usage` | Trocar candidato, decisão do humano |
 
 ### Resultados das provas (SF0, T008)
@@ -443,6 +443,13 @@ R4 (aparelhos reais, Chrome Android e Safari iOS) **adiado para a SF10**. Pontei
 Q§5.4. **Critério de saída**: fixtures reais commitadas, lista de blocos e do ICC fechadas (tags
 e limite), `FOTOS_VERIFICACAO` fora do `env.dev` e `exiftool` sem EXIF/GPS/XMP/IPTC nos objetos
 baixados. Nenhum spike de R4 foi feito na SF0.
+
+**Escopo reduzido (humano, 2026-10-11, início da SF10):** não há iPhone disponível e as três
+administradoras usam Android. A prova da SF10 é feita **só com Chrome Android** (inclui uma foto
+HEIF da galeria, se o aparelho tiver). O caminho do **Safari iOS** (WebP indisponível ⇒ JPEG,
+perfil Display P3) fica como **risco aceito**, coberto só pelos testes unitários da SF8; o
+critério de saída acima vale só para o Chrome Android. **Refazer a parte iOS da SF10 antes de
+liberar uma admin com iPhone.**
 
 #### R5 — `gpt-6-luna` **aprovado** na prova técnica; `gpt-5.4-mini` **acesso pendente** (2026-10-09)
 

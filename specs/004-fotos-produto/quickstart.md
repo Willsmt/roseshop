@@ -144,6 +144,11 @@ comparação fraca, como manda o `If-None-Match`). Itens 6 e 8 não fazem parte 
 
 ## 5. Dev online (deploy do PR)
 
+O deploy do dev sai do job `deploy-dev` do `pull-request.yml` (PR para `main`, rascunho
+também), que roda `db:migrate` no Neon dev antes do deploy. **O primeiro run do PR da feature
+004 aplica a `0002` no Neon dev e, a partir daí, ela fica congelada**: qualquer mudança de
+schema vira migration nova (`0003`…), nunca edição da `0002`.
+
 1. **Envio assinado (R1)**: registrar o output do spike na SF0 (`PUT` com N±1 bytes ⇒ 403; com N
    ⇒ 200; **segundo `PUT` na mesma URL ⇒ 412**; `PUT` sem `if-none-match` ⇒ 403).
 2. **Cron (R3)**: com o cron temporário `*/5 * * * *` no `env.dev`, `npx wrangler tail --env dev`
@@ -152,8 +157,12 @@ comparação fraca, como manda o `If-None-Match`). Itens 6 e 8 não fazem parte 
    **confirmação** com foto de 1 MB e de **`sugerirProduto`** com 3 fotos de 1 MB, abaixo do
    limite do free tier.
 4. **Aparelhos reais (SF10, R4)**, com `FOTOS_VERIFICACAO=registro` no `env.dev`:
-   - Chrome Android e Safari iOS: 1 foto tirada na hora, 1 da galeria com localização ativa, e
-     no iPhone 1 HEIC; cadastrar um produto com elas.
+   - **Só Chrome Android** (decisão de 2026-10-11): 1 foto tirada na hora, 1 da galeria com
+     localização ativa e, se o aparelho tiver, 1 HEIF da galeria (o Chrome abre ⇒ cenário 1 da
+     US2; não abre ⇒ mensagem do cenário 7 e nova tentativa); cadastrar um produto com elas.
+   - **Risco aceito:** o Safari iOS (WebP indisponível ⇒ JPEG, perfil Display P3) não foi
+     provado com aparelho; só os testes unitários da SF8 o cobrem. **Refazer a parte iOS da
+     SF10 antes de liberar uma admin com iPhone.**
    - `npx wrangler tail --env dev` mostra os blocos de cada confirmação.
    - Baixar cada objeto e inspecionar:
      ```bash

@@ -749,40 +749,50 @@ do R4 registrado na T007.
   ambiente e no `.dev.vars.example`); `npm run check` com output real; revisão do
   diff pelo tech-lead; commit pelo humano (`chore(wrangler): liga o modo registro no dev para a
   prova com aparelhos`) e push confirmado para o deploy do dev, antes da T095 — **principal**
-- [ ] T095 **Humano executa — captura com aparelhos** (dev, `FOTOS_VERIFICACAO=registro`):
-  em **Chrome Android** e **Safari iOS**, 1 foto tirada na hora e 1 da galeria com localização
-  ativa; no iPhone, 1 HEIC; cadastrar um produto com elas. Em paralelo, `npx wrangler tail --env
-  dev` mostrando os blocos de cada confirmação e, em cada recusa, o `motivo` e o subcódigo
-  `regra` (§3 passo 5, §4). Entregar o output do `tail` — **humano**
+- [ ] T095 **Humano executa — captura com aparelho** (dev, `FOTOS_VERIFICACAO=registro`):
+  **só Chrome Android** (decisão do humano em 2026-10-11: não há iPhone e as três
+  administradoras usam Android; o caminho do Safari iOS é **risco aceito**, ver research §3 R4
+  e a emenda do ADR-009). 1 foto tirada na hora e 1 da galeria com localização ativa; se o
+  aparelho tiver, 1 foto **HEIF da galeria** (esperado: o Chrome abre ⇒ recorte e envio em
+  WebP/JPEG, cenário 1 da US2; não abre ⇒ mensagem do cenário 7 da US2 e nova tentativa
+  possível); cadastrar um produto com elas. Em paralelo, `npx wrangler tail --env dev`
+  mostrando os blocos de cada confirmação e, em cada recusa, o `motivo` e o subcódigo `regra`
+  (§3 passo 5, §4). Entregar o output do `tail` — **humano**
 - [ ] T096 **Humano executa — inspeção**: baixar cada objeto (`npx wrangler r2 object get
   roseshop-dev/fotos/<arquivo> --remote --file /tmp/<arquivo>`) e rodar `exiftool -a -G1
   /tmp/<arquivo>`. Esperado: nenhum grupo EXIF/GPS/XMP/IPTC. Entregar os outputs e os arquivos
   confirmados — **humano**
-- [ ] T097 Copiar os arquivos confirmados para `src/test/fixtures/fotos/aparelho/` (somente os
-  que o humano autorizar; sem localização real) e escrever os testes de verificação com as
+- [ ] T097 Copiar os arquivos confirmados do Chrome Android para
+  `src/test/fixtures/fotos/aparelho/` (somente os que o humano autorizar; sem localização real;
+  nenhuma fixture de Safari iOS nesta SF) e escrever os testes de verificação com as
   fixtures reais: todos aceitos por `verificarImagem`; confirmar `blocos` contra o `tail` —
   **test-writer**
-- [ ] T098 **[TL✅]** Com os outputs reais: fechar a lista de blocos permitidos e a regra do
+- [ ] T098 **[TL✅]** Com os outputs reais do Chrome Android: fechar a lista de blocos permitidos e a regra do
   ICC (tags e limite de 8 KB provisório), reavaliar APP14 "Adobe" e qualquer bloco novo; ler
   no `tail` a `regra` de cada recusa e confirmar ou afrouxar os apertos da revisão da SF2
   (`jfif_posicao`, `sof_precisao`, `sof_componentes`, `vp8x_reservado`, `alph_sem_flag`,
   `alph_com_vp8l`); ajustar
   `src/lib/r2/verificacao/` e os testes da SF2 de acordo. Se algum aparelho produzir bloco fora
-  da lista e a decisão mudar o desenho, **parar e trazer ao humano** — **principal**
+  da lista e a decisão mudar o desenho, **parar e trazer ao humano**. O que só o Safari iOS
+  produziria (JPEG por falta de WebP, perfil Display P3) **não** é fechado aqui: continua coberto
+  só pelos testes unitários da SF8 (risco aceito) — **principal**
 - [ ] T099 **[TL✅]** Tirar `FOTOS_VERIFICACAO` de `env.dev` em `wrangler.jsonc` e atualizar a
   conformidade `verificacao-modo.test.ts` para **negar a variável em qualquer lugar** (inclusive
-  `env.dev`). O modo registro permanece implementado no código e coberto pelo teste unitário —
-  **principal**
+  `env.dev`). O modo registro permanece implementado no código e coberto pelo teste unitário.
+  Passos: apagar o `it` que **exige** `"registro"` em `env.dev.vars` (entrou na T094a) e a função
+  `semPermitida`; voltar a `contemChave(config)` sem exceção; tirar a chave e o comentário do
+  `env.dev` no `wrangler.jsonc`; rodar `npm run cf-typegen` de novo — **principal**
 - [ ] T100 Rodar `npm run check`; colar o output real; o humano confirma no dev (após novo
   deploy) que a recusa está ligada — **principal**
 - [ ] T101 Revisão do diff pelo tech-lead (opus): lista final, regra do ICC, `wrangler.jsonc`,
   conformidade — **tech-lead**
 - [ ] T102 Commits (humano), mensagens, em dois commits:
   ```text
-  test(r2): fixtures reais de Chrome Android e Safari iOS
+  test(r2): fixtures reais de Chrome Android
 
   Arquivos confirmados no dev em modo registro e inspecionados com exiftool;
-  lista de blocos permitidos e regra do ICC fechadas com eles.
+  lista de blocos permitidos e regra do ICC fechadas com eles. Safari iOS
+  fica como risco aceito, a refazer antes de liberar uma admin com iPhone.
   ```
   ```text
   chore(wrangler): desliga o modo registro no dev

@@ -9,8 +9,8 @@
 > [`specs/adr/008-integridade-de-dados-neon-http.md`](../../specs/adr/008-integridade-de-dados-neon-http.md).
 > **Fotos**: a feature 004 (em andamento, ver [F04](./F04-fotos.md)) mudou o
 > servidor: `criarProduto` exige 1 a 3 fotos e `removerProduto` apaga os objetos no
-> R2. A tela de cadastro **ainda não envia fotos** (SF9), então criar produto pela
-> tela devolve "Coloque pelo menos 1 foto do produto."; o texto abaixo sobre
+> R2. A tela de cadastro agora tem o passo Fotos antes dos dados (SF9, ver
+> [F04](./F04-fotos.md#telas-do-cadastro-painelprodutosnovo-sf9)); o texto abaixo sobre
 > cadastro descreve a 003 original.
 
 ## Visão leiga
@@ -184,7 +184,7 @@ explícitas por arquivo, só em testes). `produtos-paginas-guard.test.ts` exige
   do banco local. A medição no `preview` (SC-007) é da SF9.
 - **Fotos (feature 004)**: `obterPorId` já devolve `fotosVersao` e `fotos`, e `listar`
   a `capa` (posição 1), mas `DetalheProduto.fotos` em `painel.ts` segue vazio e as telas
-  mostram o quadro "sem foto" até a UI (SF9). `remover` devolve `{ tipo: "removido",
+  mostram o quadro "sem foto" até a UI de detalhe e edição (SF11). `remover` devolve `{ tipo: "removido",
   chaves }`. Ver [F04](./F04-fotos.md).
 - **`criadoPor`/`atualizadoPor` guardam o e-mail da sessão**, exibido no
   detalhe ("Cadastrado por …").

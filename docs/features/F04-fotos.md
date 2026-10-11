@@ -1,19 +1,22 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF8: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF9: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
-> (adicionar, trocar, remover, mover: SF7) e o pipeline de tratamento da foto no
-> aparelho (SF8, ainda sem tela que o chame). **Ainda não existem**: a UI de fotos
-> (SF9 e SF11), IA e limpeza diária (cron). Spec:
+> (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
+> aparelho (SF8) e as telas do cadastro com fotos (SF9). **Ainda não existem**: a UI
+> de fotos no detalhe e na edição do produto (SF11), a prova em aparelhos reais
+> (SF10), IA e limpeza diária (cron). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
-> contrato em `contracts/fotos.md` e decisões no
+> contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
 
 ## Visão leiga
 
-Cada produto precisa de 1 a 3 fotos. Depois de cadastrado, o conjunto pode ser
+Cada produto precisa de 1 a 3 fotos. No cadastro (`/painel/produtos/novo`) a
+administradora primeiro coloca as fotos e só depois preenche os dados (ver
+"Telas do cadastro" abaixo). Depois de cadastrado, o conjunto pode ser
 alterado foto a foto: adicionar (até 3), trocar uma, remover (nunca a última) e
 mudar a ordem (a foto da posição 1 é a capa). Essas operações já existem como
 actions, mas ainda sem tela (SF11). A foto não passa pelo servidor do site: a
@@ -26,13 +29,13 @@ quem está logada no painel consegue vê-las.
 Antes de enviar, o próprio aparelho **prepara** a foto: confere que é uma imagem de
 verdade, endireita a orientação da câmera, recorta em quadrado, reduz se for grande
 demais e regrava em WebP ou JPEG abaixo de 1 MB. Isso também descarta os metadados do
-original (localização, câmera). Esse tratamento já existe como código
-(`src/lib/fotos/aparelho/`, SF8), mas nenhuma tela o chama ainda (SF9).
+original (localização, câmera). Esse tratamento está em
+`src/lib/fotos/aparelho/` (SF8) e é chamado pela tela do cadastro (SF9).
 
-> **Observação de UX (até a SF9)**: a tela de cadastro ainda não envia fotos.
-> Criar um produto pela tela devolve "Coloque pelo menos 1 foto do produto.",
-> porque `criarProduto` agora exige 1 a 3 fotos. O cadastro só funciona
-> chamando as actions por código/teste até a SF9.
+> **Observação de UX**: o cadastro pela tela envia de 1 a 3 fotos (SF9). Sem
+> nenhuma foto enviada, o "Continuar" fica indisponível; se alguém chamar
+> `criarProduto` sem fotos, a resposta é "Coloque pelo menos 1 foto do produto.".
+> A tela de detalhe e de edição do produto ainda não mostra nem altera fotos (SF11).
 
 ## Aprofundamento técnico
 
@@ -108,6 +111,9 @@ graph TD
   em `nao_enviada`.
 - **Memória**: a imagem aberta é fechada sempre (`close`) e o canvas é zerado
   (`width`/`height` = 0) ao fim, porque o Safari do iOS limita a memória de canvas.
+- **Rastro da falha**: ao cair no `catch`, `prepararFoto` faz
+  `console.warn("fotos.aparelho.nao_enviada", { erro: e.name })` (dev e produção). Só o
+  `name`: o `message` pode conter o nome do arquivo.
 - **Foto de entrada animada**: só o primeiro quadro é desenhado.
 - O servidor **não confia** nesse tratamento: `confirmarEnvio` verifica o arquivo
   recebido de novo (`verificarImagem`).
@@ -229,6 +235,71 @@ a action apaga os objetos no R2 **depois do banco**, em melhor esforço (log
 `produtos.remocao.objetos_nao_apagados` só com a quantidade). Falha do R2 não
 desfaz a remoção.
 
+### Telas do cadastro (`/painel/produtos/novo`, SF9)
+
+`page.tsx` (servidor: `requireAdminPage`, lista as categorias) renderiza o client
+component `cadastro-produto.tsx`, com **dois passos**: **Fotos** e **Dados do produto**.
+Os dois ficam montados e o inativo fica `hidden`, então "Voltar às fotos" não perde o
+que foi digitado; nada vai para storage do navegador (recarregar a página zera tudo).
+A troca de passo (e o fechamento do recorte) leva o foco ao título do passo, para o leitor
+de tela. Contrato: `specs/004-fotos-produto/contracts/telas.md`.
+
+```mermaid
+graph TD
+  A["Passo Fotos: lista + Escolher"] -->|"escolhe arquivo"| B["conferirArquivo (tipo, abre, tamanho)"]
+  B -->|recusa| A
+  B --> C["RecorteFoto (1:1)"]
+  C -->|Cancelar| A
+  C -->|"Usar esta foto"| D["useEnvioFotos.enviar"]
+  D --> E["foto na lista: Enviando..."]
+  E -->|"enviada"| A
+  E -->|"nao enviada"| F["Nao enviada + Tentar de novo"]
+  F --> E
+  A -->|"Continuar (>= 1 foto, nenhuma pendente)"| G["Passo Dados: FormProduto"]
+  G -->|"Salvar: campos fotos ocultos"| H["criarProduto"]
+  H -->|"foto_expirada"| A
+  H -->|ok| I["detalhe do produto"]
+  G -->|"Voltar as fotos"| A
+```
+
+| Arquivo (em `src/app/painel/(protegido)/produtos/`) | Papel |
+|---|---|
+| `novo/cadastro-produto.tsx` | Orquestra os passos, o recorte e o `useEnvioFotos`. "Continuar" fica desabilitado sem foto enviada ou com alguma foto *enviando* / *não enviada*; com *não enviada*, mostra `CONTINUAR_COM_NAO_ENVIADA` ligado ao botão por `aria-describedby`. Com o recorte aberto, o passo mostra só título, aviso e recorte. |
+| `_fotos/escolher-foto.tsx` | No celular (`(pointer: coarse)`): "Tirar foto" (`capture="environment"`) e "Escolher da galeria" separados; no computador: só "Escolher arquivo". Na hidratação vale o layout de computador. Com 3 fotos, botões desabilitados e o texto "Máximo de 3 fotos". |
+| `_fotos/recorte-foto.tsx` | `react-easy-crop`: recorte 1:1, `restrictPosition` (a moldura não sai da imagem), zoom de 1 até `min(lado menor / 400, 4)` (aproximar mais deixaria o recorte abaixo de `LADO_MINIMO`), controle "Aproximar". "Usar esta foto" devolve a área em pixels da imagem original; nada é enviado aqui. |
+| `_fotos/lista-fotos.tsx` | Lista vertical, uma foto por linha, capa = primeira (selo "Capa"). Reordena por **arrasto pela miniatura** (pointer events: captura do ponteiro, destino pelo centro vertical dos outros itens) ou pelos botões "Usar como capa", "Mover para cima", "Mover para baixo"; "Remover" sem confirmação por padrão (`confirmarRemocao` existe para a SF11). Mostra "Enviando…" e "Não enviada" (com "Tentar de novo" quando permitido). |
+| `_fotos/usar-envio.ts` | Hook `useEnvioFotos` e `conferirArquivo`; ver abaixo. |
+| `_fotos/tipos.ts` | `EstadoFoto` (`enviando`, `enviada` com `envioId`, `nao_enviada` com `mensagem` e `podeTentar`) e `FotoLocal`. |
+| `form-produto.tsx` | Ganhou o modo `cadastro`: props `envioIds`, `envioEmCurso` e `onFotoExpirada`. |
+
+**Envio de cada foto** (`useEnvioFotos`): `conferirArquivo` antes do recorte (tipo pelos
+bytes, se o aparelho abre a imagem, lado mínimo; recusa vira aviso e a foto nem entra) →
+recorte → `prepararFoto` → `pedirEnvio` → `PUT` direto na URL assinada com **tempo limite
+de 60 s** (`TEMPO_LIMITE_ENVIO_MS`, aborta e deixa a foto *não enviada*) → `confirmarEnvio`.
+Cada etapa só vale se a foto ainda existe, a tentativa é a mesma e a tela continua montada
+(remover, "Tentar de novo" e sair da tela abortam o `PUT` em curso).
+
+- **"Tentar de novo"** reaproveita o arquivo original e o recorte guardados em memória (não
+  pede novo recorte). Depois da confirmação, só o blob já tratado fica (miniatura e reenvio).
+- **Foto expirada** (envio com mais de 24 h ou invalidado): reenvia o **blob já tratado**,
+  sem nova preparação, pedindo um `pedirEnvio` novo.
+- **Recusas no aparelho** (`formato`, `nao_abre`, `pequena`, `grande`): a foto sai da
+  lista e o motivo vira aviso. `nao_enviada` (falha inesperada) mantém a foto com "Tentar de novo".
+- **`muitos_pendentes`**: sem "Tentar de novo"; a miniatura e a memória da foto são soltas e
+  a mensagem ocupa o lugar. Para `nao_passou` repetido seguido, a mensagem muda
+  (`mensagemFoto("nao_passou", { repetida })`).
+- **Miniatura**: só existe a do blob **tratado** (nenhuma blob URL do arquivo original na
+  lista); as blob URLs são revogadas ao remover e ao desmontar.
+- **`pendentes`** = alguma foto que não está *enviada* (enviando ou não enviada): trava
+  "Continuar" e "Salvar" (decisão D1 do contrato).
+
+**Modo cadastro do `FormProduto`**: envia um campo oculto `fotos` por `envioId`, na ordem
+da lista (sem nenhuma foto, **nenhum** campo; nunca `fotos=""`). "Salvar" fica desabilitado
+com `envioEmCurso`. Se `criarProduto` devolver `foto_expirada`, o formulário avisa a tela
+uma única vez por resultado (`onFotoExpirada(envioIds)`): as fotos citadas viram *não
+enviada* com "Tentar de novo" e a tela volta ao passo Fotos. A mensagem de `foto_expirada`
+no formulário some quando alguma das fotos expiradas já foi reenviada ou removida.
+
 ### Arquivos
 
 | Arquivo | Papel |
@@ -237,12 +308,13 @@ desfaz a remoção.
 | `src/lib/fotos/aparelho/` | Pipeline da foto no navegador (SF8): `detectar-tipo.ts`, `suporta-webp.ts`, `recortar.ts`, `codificar.ts`, `preparar-foto.ts` e o teste de fronteira; ver a seção acima. |
 | `src/lib/fotos/conjunto.ts` | `aplicarAcao` (regra pura do conjunto), `MAXIMO_FOTOS`, tipos `AcaoConjunto` e `NovaFoto`. |
 | `src/lib/fotos/tipos.ts` | `MotivoFoto`, `FotoVista`, `Conjunto`, `FalhaFoto`, `ResultadoFotos`; sem imports de runtime (seguro para o client). |
-| `src/lib/fotos/mensagens.ts` | Textos pt-BR por motivo, avisos de sucesso e confirmação; sem imports de runtime. |
+| `src/lib/fotos/mensagens.ts` | Textos pt-BR por motivo, avisos de sucesso e confirmação (inclui `CONTINUAR_COM_NAO_ENVIADA`, o texto do "Continuar" travado); sem imports de runtime. |
 | `src/lib/fotos/erros.ts` | `falhaFoto` e o mapa motivo da verificação → motivo da tela. |
 | `src/lib/fotos/validacao.ts` | `uuidEnvio` (normaliza para minúsculas) e `envioIdsCadastro` (1..3 distintos). |
 | `src/lib/fotos/exibicao.ts` | `fotoExibivel` (`server-only`): a rota não importa `db/fotos` direto. |
 | `src/lib/db/fotos.ts` | SQL: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`, `descartarEnvio`, `enviosValidos`, `chaveExibivel`, `lerConjunto`, `substituirConjunto`; `TETO_PENDENTES = 20`; `envioValido` (a regra `VALIDO`). |
 | `src/lib/db/produtos.ts` | `inserirComFotos`, `remover` (devolve as chaves), `obterPorId` (traz `fotosVersao` e `fotos`) e `listar` (traz `capa`, a posição 1). |
+| `src/app/painel/(protegido)/produtos/novo/` e `_fotos/` | Telas do cadastro (SF9); ver "Telas do cadastro". |
 | `src/lib/r2/` | Módulo R2, ver [architecture.md](../architecture.md#módulo-r2-feature-004-sf2-sf3-e-sf6); `servirObjeto` foi acrescentado na SF6. |
 | `src/test/db/fotos-fixtures.ts` | Infra de teste (não é produção). |
 
@@ -275,9 +347,16 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
 
 ### Pegadinhas
 
-- **Criar produto pela tela falha até a SF9** (ver a observação no topo).
-- **Pipeline do aparelho sem tela**: `prepararFoto` só é exercido por teste até a SF9
-  (telas do cadastro, com `react-easy-crop` para a área do recorte).
+- **`react-easy-crop` fixada em `6.2.3`** (versão exata, dependência de runtime): entrou
+  pelo gesto de pinça, arriscado de fazer à mão; não substitui nada da stack. Bump só
+  deliberado.
+- **Nada sobrevive a recarregar a página**: as fotos enviadas e não usadas ficam como
+  `confirmado` em `fotos_envio` até a limpeza diária (ainda não existe).
+- **Prova em aparelho real pendente (SF10)**: o roteiro da SF9 foi feito no `preview` do
+  Chrome com emulação de celular (360 px). Chrome Android e Safari iOS reais, e o
+  fechamento da lista de permitidos da verificação, são da SF10.
+- **Detalhe e edição ainda não mostram fotos** (SF11): a lista do cadastro não tem
+  miniatura da capa em outras telas.
 - **Actions do conjunto sem UI**: `adicionarFoto`, `trocarFoto`, `removerFoto` e
   `moverFoto` só são exercidas por teste até a SF11.
 - **`pedirEnvio` valida a config do R2 antes de gravar**: sem
@@ -289,5 +368,10 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
   id é normalizado para minúsculas (o Postgres devolve assim).
 - **Objetos órfãos** (recusa que não apagou o objeto, troca/remoção de foto ou de produto com R2
   fora) dependem da limpeza diária, que ainda não existe (dívida da feature).
+- **Validação no runtime real (SF9, T093, 2026-10-11, quickstart §4)**: roteiro pela tela no
+  `preview`. O `PUT` em `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` respondeu 200
+  com a foto tratada em WebP de ~20 KB; objetos de produtos removidos somem do R2 local; a
+  rota da foto em janela anônima dá 404; o `If-None-Match` dá **304** tanto com ETag forte
+  quanto com a fraca `W/"…"` (o R2 local usa comparação fraca).
 - **Valide no `preview`**: o binding do R2 e o endpoint S3 local só existem no
   worker, nunca no `next dev`.

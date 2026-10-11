@@ -1,6 +1,7 @@
 # ADR-009 — Fotos de produto no R2
 
-**Status:** aceito em 2026-10-09 (aprovado pelo humano na T013 da feature 004)
+**Status:** aceito em 2026-10-09 (aprovado pelo humano na T013 da feature 004); emendado em
+2026-10-11 (Decisão 3, prova da SF10 só com Chrome Android)
 **Data:** 2026-10-09
 **Origem:** `specs/004-fotos-produto/` — plan (seção "ADRs", "Complexity Tracking"), research
 D1–D6, D11–D16 e §3 (provas R1–R3; R4 adiado para a SF10), data-model, contracts/fotos.md §2,
@@ -74,6 +75,11 @@ enviado não pode ser trocado depois de confirmado.
   (com log de aviso, nunca bytes); formato, tamanho, dimensões, animação e truncamento continuam
   recusando. Teste de conformidade falha se a variável existir no nível de cima, em
   `env.production` ou no `.dev.vars.example`, e em qualquer lugar depois da SF10.
+- **Emenda (humano, 2026-10-11):** a prova da SF10 que fecha as listas é feita **só com Chrome
+  Android** (não há iPhone disponível; as três administradoras usam Android). O caminho do
+  **Safari iOS** (WebP indisponível ⇒ JPEG, perfil Display P3) é **risco aceito**, coberto só
+  pelos testes unitários da SF8. **Refazer a parte iOS da SF10 antes de liberar uma admin com
+  iPhone.**
 
 **4. Exibição só com sessão.** Rota `GET /painel/fotos/[arquivo]` (D12): sem sessão de
 administradora ⇒ 404; valida `arquivo` como `uuid v4 + .webp|.jpg` **antes** de tocar no
@@ -163,6 +169,7 @@ binding; só serve chaves que existem em `produto_fotos` ou em `fotos_envio` com
   carência mais até 24 h até a próxima execução diária. Envio expirado também pode levar até
   ~48 h para ser expirado e apagado. Falha de `delete` na limpeza repete no dia seguinte.
 - (−) A lista de permitidos só fecha com aparelhos reais (SF10); até lá, a verificação pode
-  recusar arquivo legítimo.
+  recusar arquivo legítimo. Fechada só com Chrome Android (emenda de 2026-10-11): um JPEG do
+  Safari iOS com bloco ou tag de ICC fora da lista pode ser recusado até a parte iOS ser refeita.
 - (−) `triggers.crons` precisa ser declarado em todo ambiente, para um deploy não deixar cron
   antigo publicado.

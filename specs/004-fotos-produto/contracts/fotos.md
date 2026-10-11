@@ -356,7 +356,9 @@ só se `process.env.FOTOS_VERIFICACAO === "registro"` (exato). Teste unitário d
 valores ⇒ `"recusar"`. Conformidade (TL-17): lê `wrangler.jsonc` (parser JSONC do `typescript`)
 e `.dev.vars.example`; falha se `FOTOS_VERIFICACAO` existir **em qualquer lugar** do
 `wrangler.jsonc` (inclusive `env.dev`) ou no exemplo. Só durante a SF10 a conformidade permite
-a variável nas `vars` do `env.dev` (ajuste na T094a) e volta à proibição total na T099. Toda
+a variável nas `vars` do `env.dev` (ajuste na T094a) e volta à proibição total na T099. Na
+T094a a conformidade **exige** o valor exato `"registro"` em `env.dev.vars` (garante que o deploy
+do dev da SF10 sai em modo registro) e nega a chave em qualquer outro lugar. Toda
 confirmação aceita em modo registro grava log de aviso.
 
 ## 5. Rota de exibição — `src/app/painel/fotos/[arquivo]/route.ts`

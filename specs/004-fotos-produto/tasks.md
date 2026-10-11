@@ -735,21 +735,21 @@ EXIF do recorte (retrato de iPhone e Android, miniatura = moldura); rótulos em 
 **Usa**: F§4 (regra do ICC, modo registro), F§7 (`FOTOS_VERIFICACAO` por ambiente); Q§5.4;
 research R4 e D4; plan: linha SF10. Pré-requisito: SF6, SF8 e SF9 publicadas no dev (push
 confirmado pelo humano), segredos do dev da T038 e a limpeza da T060 já feitas.
-**Arquivos**: `src/test/fixtures/fotos/aparelho/` (arquivos reais), testes de verificação com as
-fixtures, `src/lib/r2/verificacao/` (ajustes da lista), `wrangler.jsonc`,
+**Arquivos**: `src/test/fixtures/fotos/aparelho/` (só o perfil ICC extraído; as fotos reais não
+entram, decisão do humano na T097), testes de verificação com a fixture, `src/lib/r2/verificacao/` (ajustes da lista), `wrangler.jsonc`,
 `src/test/conformance/verificacao-modo.test.ts`.
 **Fecha**: US2-AC1, US2-AC2 (arquivos reais, sem EXIF/GPS/XMP/IPTC), fecho do critério de saída
 do R4 registrado na T007.
 **Revisão TL**: ✅.
 
-- [ ] T094a **[TL✅]** Ligar o modo registro **só para esta SF**: `FOTOS_VERIFICACAO: "registro"`
+- [x] T094a **[TL✅]** Ligar o modo registro **só para esta SF**: `FOTOS_VERIFICACAO: "registro"`
   nas `vars` de `env.dev` em `wrangler.jsonc` (nunca no nível de cima nem em `env.production`)
   e ajustar `src/test/conformance/verificacao-modo.test.ts` para permitir a variável **só** em
   `env.dev.vars` (continua negando no nível de cima, em `env.production`, em qualquer outro
   ambiente e no `.dev.vars.example`); `npm run check` com output real; revisão do
   diff pelo tech-lead; commit pelo humano (`chore(wrangler): liga o modo registro no dev para a
   prova com aparelhos`) e push confirmado para o deploy do dev, antes da T095 — **principal**
-- [ ] T095 **Humano executa — captura com aparelho** (dev, `FOTOS_VERIFICACAO=registro`):
+- [x] T095 **Humano executa — captura com aparelho** (dev, `FOTOS_VERIFICACAO=registro`):
   **só Chrome Android** (decisão do humano em 2026-10-11: não há iPhone e as três
   administradoras usam Android; o caminho do Safari iOS é **risco aceito**, ver research §3 R4
   e a emenda do ADR-009). 1 foto tirada na hora e 1 da galeria com localização ativa; se o
@@ -757,17 +757,20 @@ do R4 registrado na T007.
   WebP/JPEG, cenário 1 da US2; não abre ⇒ mensagem do cenário 7 da US2 e nova tentativa
   possível); cadastrar um produto com elas. Em paralelo, `npx wrangler tail --env dev`
   mostrando os blocos de cada confirmação e, em cada recusa, o `motivo` e o subcódigo `regra`
-  (§3 passo 5, §4). Entregar o output do `tail` — **humano**
-- [ ] T096 **Humano executa — inspeção**: baixar cada objeto (`npx wrangler r2 object get
+  (§3 passo 5, §4). Entregar o output do `tail` — **humano**. Feito em 2026-10-11 (Xiaomi Poco
+  X7 Pro): 3 fotos aceitas, nenhuma recusa; **HEIF não testada** (cenário 7 da US2 coberto pelos
+  testes da SF8); resultado no research §3, R4
+- [x] T096 **Humano executa — inspeção**: baixar cada objeto (`npx wrangler r2 object get
   roseshop-dev/fotos/<arquivo> --remote --file /tmp/<arquivo>`) e rodar `exiftool -a -G1
   /tmp/<arquivo>`. Esperado: nenhum grupo EXIF/GPS/XMP/IPTC. Entregar os outputs e os arquivos
   confirmados — **humano**
-- [ ] T097 Copiar os arquivos confirmados do Chrome Android para
-  `src/test/fixtures/fotos/aparelho/` (somente os que o humano autorizar; sem localização real;
-  nenhuma fixture de Safari iOS nesta SF) e escrever os testes de verificação com as
-  fixtures reais: todos aceitos por `verificarImagem`; confirmar `blocos` contra o `tail` —
-  **test-writer**
-- [ ] T098 **[TL✅]** Com os outputs reais do Chrome Android: fechar a lista de blocos permitidos e a regra do
+- [x] T097 **Ajustada (humano, 2026-10-11):** as fotos reais **não** entram no repositório
+  (público). Fixture sintética: o perfil ICC real do Chrome Android, extraído pelo humano em
+  `src/test/fixtures/fotos/aparelho/chrome-android-srgb.icc` (456 bytes), dentro de um WebP
+  montado no teste (`src/lib/r2/verificacao/aparelho.test.ts`, VP8X só com ICC + ICCP + VP8,
+  lado 1200): aceito por `verificarImagem` com a recusa ligada e `blocos` = `[VP8X, ICCP, VP8]`,
+  igual ao `tail`. Nenhuma fixture de Safari iOS nesta SF — **principal**
+- [x] T098 **[TL✅]** Com os outputs reais do Chrome Android: fechar a lista de blocos permitidos e a regra do
   ICC (tags e limite de 8 KB provisório), reavaliar APP14 "Adobe" e qualquer bloco novo; ler
   no `tail` a `regra` de cada recusa e confirmar ou afrouxar os apertos da revisão da SF2
   (`jfif_posicao`, `sof_precisao`, `sof_componentes`, `vp8x_reservado`, `alph_sem_flag`,
@@ -775,8 +778,14 @@ do R4 registrado na T007.
   `src/lib/r2/verificacao/` e os testes da SF2 de acordo. Se algum aparelho produzir bloco fora
   da lista e a decisão mudar o desenho, **parar e trazer ao humano**. O que só o Safari iOS
   produziria (JPEG por falta de WebP, perfil Display P3) **não** é fechado aqui: continua coberto
-  só pelos testes unitários da SF8 (risco aceito) — **principal**
-- [ ] T099 **[TL✅]** Tirar `FOTOS_VERIFICACAO` de `env.dev` em `wrangler.jsonc` e atualizar a
+  só pelos testes unitários da SF8 (risco aceito) — **principal**. Andamento (2026-10-11): parte
+  do ICC fechada (8 KB e 13 tags mantidos), nenhum bloco novo, `vp8x_reservado` confirmado pelo
+  arquivo real (`aparelho.test.ts`). **Decisão do humano (2026-10-11, opção 1):** os apertos só
+  de JPEG (APP14 "Adobe", `jfif_posicao`, `sof_precisao`, `sof_componentes`) e os de ALPH
+  (`alph_sem_flag`, `alph_com_vp8l`), sem dado real, ficam **estritos como estão** e são **risco
+  aceito junto com o Safari iOS**: entram na revisão da parte iOS da SF10, antes de liberar uma
+  admin com iPhone. Nenhuma mudança de código em `src/lib/r2/verificacao/`
+- [x] T099 **[TL✅]** Tirar `FOTOS_VERIFICACAO` de `env.dev` em `wrangler.jsonc` e atualizar a
   conformidade `verificacao-modo.test.ts` para **negar a variável em qualquer lugar** (inclusive
   `env.dev`). O modo registro permanece implementado no código e coberto pelo teste unitário.
   Passos: apagar o `it` que **exige** `"registro"` em `env.dev.vars` (entrou na T094a) e a função
@@ -788,11 +797,13 @@ do R4 registrado na T007.
   conformidade — **tech-lead**
 - [ ] T102 Commits (humano), mensagens, em dois commits:
   ```text
-  test(r2): fixtures reais de Chrome Android
+  test(r2): perfil ICC real do Chrome Android na verificação
 
-  Arquivos confirmados no dev em modo registro e inspecionados com exiftool;
-  lista de blocos permitidos e regra do ICC fechadas com eles. Safari iOS
-  fica como risco aceito, a refazer antes de liberar uma admin com iPhone.
+  Prova no dev em modo registro com Chrome Android: 3 WebP aceitos, sem
+  EXIF, GPS, XMP ou IPTC no exiftool. As fotos não entram no repositório;
+  só o perfil ICC extraído, num WebP montado no teste. Regra do ICC fechada
+  com 8 KB e 13 tags. Safari iOS fica como risco aceito, a refazer antes de
+  liberar uma admin com iPhone.
   ```
   ```text
   chore(wrangler): desliga o modo registro no dev

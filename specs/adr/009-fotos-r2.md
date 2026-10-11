@@ -67,9 +67,10 @@ enviado não pode ser trocado depois de confirmado.
 - O formato detectado pelo conteúdo deve ser **igual ao declarado** na emissão (extensão da
   chave e `content-type` assinado); divergência ⇒ recusa por formato.
 - **Regra do ICC** (JPEG APP2, WebP ICCP): só tags de cor (`wtpt`, `bkpt`, `rXYZ`/`gXYZ`/`bXYZ`,
-  `rTRC`/`gTRC`/`bTRC`, `chad`, `chrm`, `lumi`) mais `desc` e `cprt`, perfil de até **8 KB**
-  (valor provisório); qualquer outra tag ⇒ `metadado`. A lista de blocos e a do ICC fecham na
-  SF10 (R4, aparelhos reais).
+  `rTRC`/`gTRC`/`bTRC`, `chad`, `chrm`, `lumi`) mais `desc` e `cprt`, perfil de até **8 KB**;
+  qualquer outra tag ⇒ `metadado`. A lista do WebP e a regra do ICC fecharam na SF10 (R4) com o
+  Chrome Android: nada fora da lista, limite e tags mantidos. A parte JPEG fica sem dado real
+  (T098) e é risco aceito junto com o Safari iOS.
 - Modo `registro` (`FOTOS_VERIFICACAO=registro`, valor exato) existe **só nas `vars` do
   `env.dev` e só durante a SF10**; nunca em produção. Ele relaxa **só** a recusa por `metadado`
   (com log de aviso, nunca bytes); formato, tamanho, dimensões, animação e truncamento continuam

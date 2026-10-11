@@ -326,19 +326,23 @@ O motivo não muda:
 | **WebP** (`RIFF….WEBP`) | VP8 ou VP8L (simples); ou VP8X (flags só ICC e/ou alpha; bits e bytes reservados zerados) + ICCP (regra do ICC) + ALPH (só com a flag de alpha) + VP8/VP8L | flag de animação no VP8X; ANIM; ANMF | flags EXIF/XMP no VP8X; EXIF; XMP; qualquer outro chunk | tamanho do RIFF + 8 `≠` tamanho do arquivo (**bytes além do RIFF** ou truncado); chunk além do fim; dimensões do VP8X `≠` do bitstream; bit ou byte reservado do VP8X ligado; ALPH sem a flag de alpha ou antes de VP8L; ICCP sem a flag de ICC |
 
 Os apertos da revisão da SF2 (JFIF único e logo após o SOI; SOF com precisão 8 e 1 ou 3
-componentes; reservados do VP8X zerados; ALPH só com a flag de alpha e nunca antes de VP8L) são
-**confirmados na SF10** com os arquivos reais dos aparelhos (T098): três deles recusam como
+componentes; reservados do VP8X zerados; ALPH só com a flag de alpha e nunca antes de VP8L) seriam
+**confirmados na SF10** com os arquivos reais dos aparelhos (T098). Resultado (Chrome Android,
+2026-10-11): só **reservados do VP8X zerados** foi confirmado pelo arquivo real; os de JPEG e os
+de ALPH ficaram **sem dado real** (o Chrome gerou só WebP opaco). Três deles recusam como
 `formato`/`corrompida`, que o modo registro não relaxa, e por isso a recusa em modo registro
 loga `motivo` e `regra` (§3, passo 5). Recusar bits e bytes reservados do VP8X é **mais estrito
 que a spec do WebP** (que manda o leitor ignorá-los), por decisão deliberada da lista de
 permitidos; a T098 pode afrouxar com dado real.
 
-**Regra do ICC** (decisão C, TL-8): perfil completo de até **8 KB** (valor provisório, fechado na
-SF10); cabeçalho de 128 bytes e tabela de tags consistentes (cada tag dentro do perfil). Tags
+**Regra do ICC** (decisão C, TL-8): perfil completo de até **8 KB**; cabeçalho de 128 bytes e tabela de tags consistentes (cada tag dentro do perfil). Tags
 permitidas: `wtpt`, `bkpt`, `rXYZ`, `gXYZ`, `bXYZ`, `rTRC`, `gTRC`, `bTRC`, `chad`, `chrm`,
 `lumi`, `desc`, `cprt`. Qualquer outra (inclusive `dmnd`, `dmdd`, `meta` e tags privadas) ⇒
 `metadado`. Estrutura inconsistente (tamanho declarado `≠` real, sem `acsp`, tabela ou tag fora
-do perfil) ⇒ `corrompida`. Lista final fechada com as fixtures reais da SF10.
+do perfil) ⇒ `corrompida`. **Fechada na SF10 (parte ICC da T098)** com o perfil real do Chrome Android
+(456 bytes; `desc`, `cprt`, `wtpt`, `rXYZ`/`gXYZ`/`bXYZ`, `rTRC`/`gTRC`/`bTRC`): limite e lista
+mantidos. As 4 tags não vistas (`bkpt`, `chad`, `chrm`, `lumi`) e a margem até 8 KB ficam para
+o Safari iOS (perfil Display P3, risco aceito), sem dado real.
 
 - Dimensões: JPEG pelo SOF; WebP pelo VP8 (14 bits após `9D 01 2A`), VP8L (14+14 bits após
   `0x2F`) ou VP8X (24 bits + 1).

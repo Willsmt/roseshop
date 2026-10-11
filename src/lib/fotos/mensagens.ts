@@ -40,3 +40,6 @@ export const SUCESSO_FOTO = {
 
 export const CONFIRMAR_REMOCAO_FOTO = "Remover esta foto do produto? Ela será apagada.";
 export const AVISO_REMOCAO_PRODUTO = "As fotos do produto também serão apagadas.";
+
+// Cadastro (SF9, D1): "Continuar" fica indisponível com foto *Não enviada*; este texto explica.
+export const CONTINUAR_COM_NAO_ENVIADA = "Para continuar, tente de novo ou remova as fotos não enviadas.";

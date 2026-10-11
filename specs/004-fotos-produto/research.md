@@ -165,6 +165,8 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 
 ### D8 — Arrasto e recorte: **arrasto próprio (pointer events); `react-easy-crop` no recorte**
 - Arrasto horizontal de 3 posições com pointer events; botões do FR-022 sempre visíveis.
+  *Revisto na SF9 (humano, 2026-10-09):* lista vertical, uma foto por linha, arrasto vertical
+  pela miniatura e botões "Mover para cima", "Mover para baixo" e "Usar como capa" (contracts/telas.md §3).
 - `react-easy-crop` com versão **exata** fixada no `package.json` e justificada no commit (II).
   Não antecipa o ADR-005 (não é biblioteca de componentes).
 

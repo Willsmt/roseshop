@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TETO_BYTES } from "./codificar";
 import {
   abrirImagem,
@@ -12,6 +12,14 @@ import type { CanvasDesenhavel, Pincel } from "./recortar";
 // Feature 004, T080: abrirImagem e prepararFoto com dependências injetadas
 // (US2-AC1/AC2, US2-AC3, US2-AC7, FR-013, FR-017, SC-005).
 
+
+// O nao_enviada deixa console.warn (SF9); silenciado aqui, conferido nos testes próprios.
+beforeEach(() => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+afterEach(() => {
+  vi.mocked(console.warn).mockRestore();
+});
 const ascii = (s: string) => Array.from(s, (c) => c.charCodeAt(0));
 const preencher = (inicio: number[], n = 200) => {
   const r = new Uint8Array(n);
@@ -267,6 +275,35 @@ describe("prepararFoto: recorte e codificação", () => {
     const m = montar({ webpRejeita: true });
     await expect(prepararFoto(arquivo(ENTRADAS.jpeg), AREA, m.deps)).resolves.toEqual({ motivo: "nao_enviada" });
     expect(m.img.close).toHaveBeenCalled();
+  });
+
+  it("nao_enviada deixa console.warn só com o tipo do erro (nota 1 da SF8): sem mensagem nem nome de arquivo", async () => {
+    const warn = vi.mocked(console.warn);
+    const m = montar();
+    const a = new File([ENTRADAS.jpeg], "casa-da-rose.jpg", { type: "image/jpeg" });
+    vi.spyOn(a, "slice").mockReturnValue({
+      arrayBuffer: () => Promise.reject(new TypeError("falhou ao ler casa-da-rose.jpg")),
+    } as unknown as Blob);
+    await prepararFoto(a, AREA, m.deps);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("fotos.aparelho.nao_enviada", { erro: "TypeError" });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("casa-da-rose");
+  });
+
+  it("valor lançado que não é Error ⇒ warn com erro \"desconhecido\"", async () => {
+    const warn = vi.mocked(console.warn);
+    const m = montar();
+    const a = arquivo(ENTRADAS.jpeg);
+    vi.spyOn(a, "slice").mockReturnValue({ arrayBuffer: () => Promise.reject("casa-da-rose.jpg") } as unknown as Blob);
+    await prepararFoto(a, AREA, m.deps);
+    expect(warn).toHaveBeenCalledWith("fotos.aparelho.nao_enviada", { erro: "desconhecido" });
+  });
+
+  it("motivos previstos (formato, nao_abre) não deixam warn", async () => {
+    const warn = vi.mocked(console.warn);
+    const m = montar({ imagem: "falha" });
+    await prepararFoto(arquivo(ENTRADAS.jpeg), AREA, m.deps);
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("abrir que falha continua dando nao_abre, não nao_enviada (regressão)", async () => {

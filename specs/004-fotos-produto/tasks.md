@@ -656,7 +656,12 @@ SF9. Dependência nova: `react-easy-crop` (versão exata). Q§4 (roteiro pela te
 `lista-fotos.tsx`, `usar-envio.ts`); `form-produto.tsx` da 003 (modo cadastro); testes de
 componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
 **Fecha**: US1-AC1–9, US2-AC3/AC7/AC8/AC10, edge cases de envio durante "Salvar" e de expiração.
-**Revisão TL**: —.
+**Revisão TL**: — (sem zona protegida). Mesmo assim o tech-lead revisou o diff em duas passadas
+(2026-10-09). Decisões do humano registradas em `contracts/telas.md` §3: lista vertical com
+arrasto pela miniatura, "Continuar"/"Salvar" indisponíveis com foto *Não enviada* (e o texto
+`CONTINUAR_COM_NAO_ENVIADA` de F§8), prévia só da foto tratada, tempo-limite de 60 s no `PUT`.
+Para a SF10: o tempo-limite cobre só o `PUT` (não `pedirEnvio`/`confirmarEnvio`); orientação
+EXIF do recorte (retrato de iPhone e Android, miniatura = moldura); rótulos em tela de 320 px.
 **Notas da revisão TL da SF8** (entram nas tasks T088, T090 e no `telas.md`):
 1. `nao_enviada` vindo do `prepararFoto` deixa rastro no navegador: `console.warn` com o tipo de
    erro, sem bytes nem nome de arquivo. Só em desenvolvimento ou também em produção: **decisão do
@@ -666,27 +671,27 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
 3. A linha do `usar-envio.ts` em `contracts/telas.md` §2 passa a citar, além da falha de rede, o
    `nao_enviada` do `prepararFoto` como causa de *Não enviada*.
 
-- [ ] T084 `npm install --save-exact react-easy-crop` e anotar a justificativa para o commit
+- [X] T084 `npm install --save-exact react-easy-crop` e anotar a justificativa para o commit
   (gesto de pinça com risco de erro próprio; não substitui nada da stack) — **principal**
-- [ ] T085 [P] **Teste primeiro** — `escolher-foto.test.tsx`: celular (`(pointer: coarse)`) mostra
+- [X] T085 [P] **Teste primeiro** — `escolher-foto.test.tsx`: celular (`(pointer: coarse)`) mostra
   "Tirar foto" (`capture="environment"`) e "Escolher da galeria" (sem `capture`), ambos ≥ 48 px;
   desktop mostra "Escolher arquivo"; com 3 fotos os botões ficam indisponíveis e aparece "Máximo
   de 3 fotos" (US1-AC4); "Tirar" só em "Tirar foto" — **test-writer**
-- [ ] T086 [P] **Teste primeiro** — `recorte-foto.test.tsx`: moldura 1:1, mover e aproximar
+- [X] T086 [P] **Teste primeiro** — `recorte-foto.test.tsx`: moldura 1:1, mover e aproximar
   (pinça e controle deslizante), "Usar esta foto" e "Cancelar"; **nada é enviado antes de "Usar
   esta foto"** (US1-AC2, FR-007) — **test-writer**
-- [ ] T087 [P] **Teste primeiro** — `lista-fotos.test.tsx`: miniaturas em ordem, selo "Capa" na 1ª
+- [X] T087 [P] **Teste primeiro** — `lista-fotos.test.tsx`: miniaturas em ordem, selo "Capa" na 1ª
   (US1-AC3, AC5), estados *enviando* e *Não enviada* + "Tentar de novo" (US2-AC8), "Remover"
   (lixeira **com o texto**) sem confirmação no cadastro e as demais sobem (US1-AC6), "Mover para
   a esquerda/direita" e "Usar como capa" ≥ 48 px, arrasto horizontal por pointer events muda a
   ordem (US1-AC5) — **test-writer**
-- [ ] T088 [P] **Teste primeiro** — `usar-envio.test.ts`: fluxo `prepararFoto` → `pedirEnvio` →
+- [X] T088 [P] **Teste primeiro** — `usar-envio.test.ts`: fluxo `prepararFoto` → `pedirEnvio` →
   `PUT` com **exatamente** os `headers` devolvidos (inclui `if-none-match`) → `confirmarEnvio`;
   falha de rede ⇒ *Não enviada* (US2-AC8); `formato` e `nao_abre` mostram as mensagens de
   F§8 (US2-AC3, AC7); 1ª recusa `nao_passou` ⇒ "Não deu para usar essa foto…" e **2ª seguida,
   mesma tela, ⇒ "Essa foto não está passando…"** (US2-AC10); `muitos_pendentes` no lugar da
   miniatura, sem "Tentar de novo"; blob URLs revogadas ao sair — **test-writer**
-- [ ] T089 [P] **Teste primeiro** — página `novo` e passo Dados: "Continuar" só com ≥ 1 foto
+- [X] T089 [P] **Teste primeiro** — página `novo` e passo Dados: "Continuar" só com ≥ 1 foto
   confirmada e **nenhum envio em curso** (US1-AC1, AC3); "Voltar às fotos" mantém o digitado;
   "Salvar" indisponível enquanto houver envio em curso; `fotos` enviadas como campos ocultos em
   ordem (US1-AC7); `sem_foto` mostra a mensagem do US1-AC8; nome repetido mantém as fotos já
@@ -694,16 +699,16 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
   enviada*; recarregar começa vazio; **nenhum campo `fotos` vazio (`fotos=""`) é enviado**: a
   action trata `""` como adulteração (`falha_geral`, não `sem_foto`; revisão TL da SF6).
   `produtos-paginas-guard` continua verde — **test-writer**
-- [ ] T090 `ui-dev` implementa `escolher-foto.tsx`, `recorte-foto.tsx`, `lista-fotos.tsx` e
+- [X] T090 `ui-dev` implementa `escolher-foto.tsx`, `recorte-foto.tsx`, `lista-fotos.tsx` e
   `usar-envio.ts` em `src/app/painel/(protegido)/produtos/_fotos/`, consumindo só o contrato
   existente (`pedirEnvio`, `confirmarEnvio`, `prepararFoto`, mensagens e primitivos de
   `src/components/ui/`). `<img>` simples com `width`/`height` (sem `next/image`); sem tocar
   `src/lib/`. Faltou campo ou action: parar e reportar — **ui-dev**
-- [ ] T091 `ui-dev` implementa a página `novo/page.tsx` com os dois passos (estado do client) e
+- [X] T091 `ui-dev` implementa a página `novo/page.tsx` com os dois passos (estado do client) e
   adapta `form-produto.tsx` ao modo cadastro (recebe `envioIds`, campos ocultos `fotos`, "Salvar"
   condicionado a envios concluídos; sem campo `fotos` vazio) — **ui-dev**
-- [ ] T092 Rodar `npm run check` e colar o output real — **principal**
-- [ ] T093 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 1–4, 5 sem IA, 7 e 9):
+- [X] T092 Rodar `npm run check` e colar o output real — **principal**
+- [X] T093 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 1–4, 5 sem IA, 7 e 9):
   tela de fotos com "Continuar" indisponível; JPEG grande ⇒ recorte ⇒ miniatura "Capa" e, no
   DevTools, `PUT` para `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` com ≤ 1 MB (SC-005);
   GIF ⇒ mensagem de formato e nada enviado; imagem 300×300 ⇒ "muito pequena"; 3 fotos ⇒ "Máximo
@@ -712,6 +717,7 @@ componente ao lado; `src/test/conformance/produtos-paginas-guard.test.ts`.
   `npx wrangler r2 object get roseshop-local/fotos/<arquivo> --local --file /dev/null`;
   `/painel/fotos/<arquivo>` em janela anônima ⇒ 404; Q§4 item 10 (304 com `If-None-Match` e o
   status com ETag fraca `W/"…"`, TL-19). Entregar o resultado — **humano**
+  Feita em 2026-10-11, tudo conforme o roteiro; ETag fraca ⇒ 304. Registro em Q§4 — **humano**
 - [ ] T094 Commit (humano), mensagem:
   ```text
   feat(painel): cadastro de produto começando pelas fotos

@@ -1,7 +1,8 @@
 import { sanitizar } from "./analise";
 
 // Regra do ICC (contracts/fotos.md §4, TL-8): só tags de cor + desc e cprt,
-// perfil de até 8 KB (provisório, fechado na SF10).
+// perfil de até 8 KB. Fechada na SF10 (T098) com o perfil real do Chrome Android
+// (456 bytes, 9 tags, aparelho.test.ts); a margem e as 13 tags ficam para o Safari iOS.
 export const ICC_LIMITE_BYTES = 8192;
 
 const TAGS_PERMITIDAS = new Set([

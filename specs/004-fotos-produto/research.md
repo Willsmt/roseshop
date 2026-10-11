@@ -437,10 +437,30 @@ Decisões destravadas (parte online):
     This Worker does not exist on your account. [code: 10007]
   ```
 
-#### R4 — **adiado para a SF10** (T007)
+#### R4 — **aprovado no Chrome Android** (2026-10-11, SF10, dev, humano executou); Safari iOS: risco aceito
+
+Adiado na SF0 (T007) e feito na SF10. Aparelho: Xiaomi Poco X7 Pro, Android e Chrome na versão
+mais recente em 2026-10-11, `env.dev` com `FOTOS_VERIFICACAO=registro`. Fotos: 1 tirada na hora
+e 2 da galeria com localização ligada na câmera. **HEIF não testada** (o cenário 7 da US2 fica
+coberto pelos testes da SF8). `wrangler tail`: 3 × `fotos.verificacao.registro`, `resultado`
+`aceito`, `blocos` `[VP8X, ICCP, VP8]`; nenhuma recusa. Objetos baixados com `--remote`: 3 WebP de
+1200×1200 (36534, 38390 e 163062 bytes). `exiftool -a -G1`: nenhuma linha de IFD0, ExifIFD, GPS,
+XMP ou IPTC; VP8X só com a flag de ICC; perfil ICC v4.3.0, Display Device, RGB/XYZ, 2016-01-01,
+fabricante e modelo vazios, tags `desc` ("sRGB"), `cprt` ("Google Inc. 2016"), `wtpt`,
+`rXYZ`/`gXYZ`/`bXYZ`, `rTRC`/`gTRC`/`bTRC` (curvas de 40 bytes): todas permitidas.
+
+**Fixtures (humano):** as fotos reais **não** entram no repositório (público). Entra só o perfil
+ICC extraído (`src/test/fixtures/fotos/aparelho/chrome-android-srgb.icc`, 456 bytes), usado num
+WebP montado no teste (`src/lib/r2/verificacao/aparelho.test.ts`). **Lista fechada (T098):**
+nenhum bloco nem tag fora da lista; limite de 8 KB e as 13 tags mantidos; `vp8x_reservado`
+confirmado pelo arquivo real (reservados zerados). Sem dado real: ALPH/VP8L (o Chrome não gerou
+alpha) e todo o JPEG (só o Safari iOS gera JPEG no fluxo normal).
+
+Texto original do adiamento:
 
 R4 (aparelhos reais, Chrome Android e Safari iOS) **adiado para a SF10**. Ponteiro: SF10,
-Q§5.4. **Critério de saída**: fixtures reais commitadas, lista de blocos e do ICC fechadas (tags
+Q§5.4. **Critério de saída**: fixtures reais commitadas (substituído na SF10: só o perfil ICC
+extraído, decisão do humano), lista de blocos e do ICC fechadas (tags
 e limite), `FOTOS_VERIFICACAO` fora do `env.dev` e `exiftool` sem EXIF/GPS/XMP/IPTC nos objetos
 baixados. Nenhum spike de R4 foi feito na SF0.
 

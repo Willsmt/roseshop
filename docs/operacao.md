@@ -8,7 +8,7 @@
 > `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
-> `/painel/fotos/<arquivo>`, ainda sem UI de fotos); IA não está
+> `/painel/fotos/<arquivo>`; o cadastro de produto já envia fotos, o detalhe e a edição ainda não); IA não está
 > configurada.
 
 ## Visão leiga
@@ -311,8 +311,8 @@ no `wrangler.jsonc`) é **experimental** e seu comportamento depende da versão
 - **Prova já feita** (SF3, T039): `specs/004-fotos-produto/research.md` §3, "R2 no app
   completo" (`PUT` assinado aceito; N±1 bytes ⇒ 403; segundo `PUT` na mesma URL ⇒ 412;
   objeto íntegro no bucket local). O script da prova **não é versionado**.
-- **Até a SF9**: o `wrangler` não é atualizado.
-- **A partir da SF9**: todo bump repete o `specs/004-fotos-produto/quickstart.md` §4
+- **Até a SF9**: o `wrangler` não foi atualizado.
+- **Desde a SF9** (roteiro feito em 2026-10-11): todo bump repete o `specs/004-fotos-produto/quickstart.md` §4
   (envio pela tela no `preview`, com o `PUT` para
   `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` visto no DevTools, aba Rede).
 
@@ -828,9 +828,9 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
   script é `"lint": "eslint ."` em `package.json`, com `eslint.config.mjs`
   (flat config). Confirmado: a CLI instalada (`next@16.3.8`) não traz
   `next-lint`. Não "restaure" o script para `next lint`.
-- **Criar produto pela tela dá "Coloque pelo menos 1 foto do produto."** (feature 004,
-  até a SF9): esperado. `criarProduto` exige 1 a 3 fotos e o formulário ainda não as
-  envia. Não é bug de ambiente; ver [F04](./features/F04-fotos.md).
+- **"Continuar" ou "Salvar" indisponível no cadastro** (feature 004): há foto *enviando* ou
+  *não enviada*. Aguarde, use "Tentar de novo" ou remova a foto. Com `next dev` o envio ao R2
+  não funciona (sem o endpoint S3 do binding): use o `preview`. Ver [F04](./features/F04-fotos.md).
 - **`/painel/fotos/<arquivo>` responde 404**: sem sessão, nome fora de
   `<uuid v4>.(webp|jpg)`, chave que não está em `produto_fotos` nem em envio
   `confirmado`, ou objeto ausente no R2. Todos dão o mesmo 404 de propósito. 500 com o

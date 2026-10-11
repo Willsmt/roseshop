@@ -718,7 +718,7 @@ EXIF do recorte (retrato de iPhone e Android, miniatura = moldura); rótulos em 
   `/painel/fotos/<arquivo>` em janela anônima ⇒ 404; Q§4 item 10 (304 com `If-None-Match` e o
   status com ETag fraca `W/"…"`, TL-19). Entregar o resultado — **humano**
   Feita em 2026-10-11, tudo conforme o roteiro; ETag fraca ⇒ 304. Registro em Q§4 — **humano**
-- [ ] T094 Commit (humano), mensagem:
+- [X] T094 Commit (humano), mensagem:
   ```text
   feat(painel): cadastro de produto começando pelas fotos
 

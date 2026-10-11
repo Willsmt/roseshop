@@ -2,8 +2,9 @@
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
-> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7 e
-> o pipeline da foto no aparelho (SF8), sem UI de fotos**. Este documento descreve apenas o que existe hoje
+> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7, o
+> pipeline da foto no aparelho (SF8) e as telas do cadastro com fotos (SF9); sem UI de
+> fotos no detalhe e na edição (SF11)**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -53,6 +54,7 @@ Fotos de produto (feature 004, em andamento), dependências de runtime e de buil
 | Pacote | Versão | Observação |
 |---|---|---|
 | `aws4fetch` | `1.0.20` (**exata**) | Assinatura SigV4 (`AwsV4Signer`) da URL pré-assinada de envio ao R2. Sem dependências próprias (ADR-009 D1). |
+| `react-easy-crop` | `6.2.3` (**exata**) | Recorte 1:1 com gesto de pinça no passo Fotos do cadastro (SF9); componente de cliente, sem binding nem variável de ambiente. |
 | `wrangler` (dev) | `4.147.0` (**exata**, sem `^`) | O endpoint S3 local do R2 é experimental e depende da versão; ver [operacao.md, "wrangler fixado"](./operacao.md#wrangler-fixado-em-41470-devdependency). |
 
 Não há ainda no `package.json`: SDK da OpenAI (a feature 004 prevê `fetch` direto). A IA
@@ -70,7 +72,8 @@ src/app/
   painel/entrar/page.tsx            # tela de entrada (pública)
   painel/(protegido)/               # layout (moldura + "Sair"), page (saudação + links Produtos e Categorias), bfcache-reload
   painel/(protegido)/categorias/    # lista, nova/, [id]/renomear/, [id]/remover/ (F02)
-  painel/(protegido)/produtos/      # lista, novo/, [id]/ (detalhe), [id]/editar/, [id]/remover/ (F03)
+  painel/(protegido)/produtos/      # lista, novo/ (cadastro em 2 passos), [id]/ (detalhe), [id]/editar/, [id]/remover/ (F03)
+  painel/(protegido)/produtos/_fotos/  # passo Fotos do cadastro: escolher, recortar, listar, enviar (F04, SF9)
   painel/fotos/[arquivo]/route.ts   # GET /painel/fotos/<arquivo>: exibição da foto, fora do grupo (protegido) (F04)
 src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
@@ -342,11 +345,9 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   `vitest.probe.config.mts` agora inclui também `fk-produtos.int.test.ts`
   (escreve e apaga linhas marcadas). Config fora do escopo do doc-sync; ajustar
   em PR próprio.
-- **Cadastro pela tela quebrado até a SF9 da feature 004**: `criarProduto` exige 1 a 3
-  fotos, mas o formulário (`form-produto.tsx`) ainda não envia o campo `fotos`; criar
-  produto pela tela devolve "Coloque pelo menos 1 foto do produto." (ver
-  [F04](./features/F04-fotos.md)). `DetalheProduto.fotos` de `src/lib/produtos/painel.ts`
-  segue vazio até a UI de fotos.
+- **Detalhe e edição sem fotos ainda** (SF11 da feature 004): o cadastro pela tela já envia
+  de 1 a 3 fotos (SF9), mas `DetalheProduto.fotos` de `src/lib/produtos/painel.ts` segue
+  vazio e as telas mostram o quadro "sem foto" até a UI de fotos do conjunto.
 - **Sem limpeza de objetos órfãos ainda** (cron da feature 004, SF12): recusa de
   confirmação e remoção de produto apagam objetos do R2 em melhor esforço e dependem
   dela para o resto.
@@ -424,11 +425,21 @@ reverifica o arquivo. Detalhes, motivos e pegadinhas em
 
 Diferença `next dev` × navegadores: o suporte a WebP em canvas varia (Safari antigo devolve
 PNG), e por isso `suportaWebp` e a conferência do `blob.type` existem. A prova em aparelho
-real (Chrome Android e Safari iOS) é da SF10, depois da tela da SF9.
+real (Chrome Android e Safari iOS) é da SF10. `prepararFoto` deixa rastro de falha em dev e
+em produção (`console.warn("fotos.aparelho.nao_enviada", { erro: e.name })`, só o `name`).
+
+### Telas do cadastro com fotos (feature 004, SF9)
+
+`/painel/produtos/novo` renderiza o client component `cadastro-produto.tsx` (passos
+Fotos → Dados). O envio vai do navegador direto ao R2: `prepararFoto` → `pedirEnvio` (Server
+Action) → `PUT` na URL assinada (tempo limite de 60 s) → `confirmarEnvio`; o `criarProduto`
+recebe só os `envioIds`. Nenhum binding ou variável nova. Em `next dev` o `PUT` não funciona
+sem o endpoint S3 do R2, que só existe no worker: valide no `preview`. Detalhes em
+[F04](./features/F04-fotos.md#telas-do-cadastro-painelprodutosnovo-sf9).
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, telas de fotos (SF9 e SF11) e integração de IA (OpenAI) são
+Catálogo público, sacola, telas de fotos do detalhe e da edição (SF11) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

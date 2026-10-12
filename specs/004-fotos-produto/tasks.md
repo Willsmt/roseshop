@@ -936,7 +936,7 @@ Spec: US6-AC1/AC3–6, SC-008.
 - [X] T119 Revisão do diff pelo tech-lead (opus): rota (404 uniforme, comparação em tempo
   fixo), worker, `tsconfig`, `wrangler.jsonc` (cron restaurado), lock e snapshot da limpeza —
   **tech-lead**
-- [ ] T120 Commit (humano), mensagem:
+- [X] T120 Commit (humano), mensagem:
   ```text
   feat(fotos): limpeza diária de fotos sem uso
 

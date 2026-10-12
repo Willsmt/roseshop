@@ -1,14 +1,14 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF11: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF12: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
 > (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
 > aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
 > Android (SF10, ver "Prova com aparelho real") e a tela de fotos do produto já
-> cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto").
-> **Ainda não existem**: IA e limpeza diária (cron, SF12). Spec:
+> cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto") e a
+> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). **Ainda não existe**: IA. Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -356,6 +356,49 @@ ganhou o botão "Fotos"; sem fotos (produto herdado da 003) mostra o quadro "sem
 lista `produtos/` mostra a capa em miniatura 64×64 com `loading="lazy"`. A tela de remover
 produto avisa "As fotos do produto também serão apagadas." (`AVISO_REMOCAO_PRODUTO`).
 
+### Limpeza diária (SF12)
+
+**Visão leiga**: fotos que foram enviadas mas nunca usadas (cadastro abandonado, troca ou
+remoção em que o R2 estava fora) ficariam no armazenamento para sempre. Uma vez por dia, às
+03:00 de Brasília, o sistema apaga essas fotos sem uso.
+
+```mermaid
+sequenceDiagram
+  participant CF as Cron Trigger (0 6 * * * UTC)
+  participant W as cloudflare/worker.ts (scheduled)
+  participant R as POST /api/interno/limpeza
+  participant L as executarLimpeza
+  participant DB as Postgres
+  participant R2 as R2 (fotos/)
+  CF->>W: scheduled
+  W->>R: Request em processo, Bearer CRON_SECRET
+  R->>L: segredo confere (SHA-256, tempo fixo)
+  L->>DB: expirarEnvios (lock 4001)
+  L->>R2: apaga objetos dos envios expirados
+  L->>R2: lista fotos/ e filtra com mais de 25 h
+  L->>DB: chavesConhecidas (um statement)
+  L->>R2: apaga órfãos em lotes de 1000
+  R-->>W: 200 com contagens
+  W-->>CF: lança erro se status diferente de 200
+```
+
+| Peça | Papel |
+|---|---|
+| `cloudflare/worker.ts` | Worker próprio. `fetch` é o do OpenNext; `scheduled` chama em processo `POST https://interno.invalid/api/interno/limpeza` (sem rede) com `Authorization: Bearer <CRON_SECRET>`, aguarda e **lança** se o status não for 200, para o cron aparecer como falha. |
+| `cloudflare/open-next-worker.d.ts` | Declara o módulo `open-next-worker` (o `.open-next/worker.js` gerado). |
+| `src/app/api/interno/limpeza/route.ts` | Só `POST` com o segredo (hash SHA-256 de ambos comparado em laço de tempo fixo). Segredo ausente ou errado, ou qualquer outro método: **404 sem corpo**, igual em todos os casos. Erro interno: 500 sem corpo, log sem mensagem. |
+| `src/lib/fotos/limpeza.ts` | `executarLimpeza(agora)`: (a) `expirarEnvios` apaga as linhas de `fotos_envio` com 24 h ou mais sob o lock 4001 e remove os objetos; (b) lista `fotos/` no R2, separa os objetos com mais de 25 h e apaga os ausentes das duas tabelas (`chavesConhecidas`). Lotes de 1000; falha de um lote só soma em `falhas` e a próxima execução tenta de novo. Log só com contagens (`enviosExpirados`, `orfaosApagados`, `falhas`), nunca chave de objeto. |
+| `src/lib/db/fotos.ts` | `expirarEnvios` (batch: lock + `DELETE ... RETURNING chave`) e `chavesConhecidas` (`produto_fotos` UNION ALL `fotos_envio` em **um** statement, mesmo snapshot). |
+| `wrangler.jsonc` | `main` = `cloudflare/worker.ts`; `alias` `open-next-worker`; `triggers.crons` nos três ambientes. |
+
+- **Por que 25 h**: 1 h além das 24 h de validade do envio, para cobrir diferença de relógio
+  entre R2 e Postgres. As tabelas são lidas **depois** de listar o R2.
+- **`CRON_SECRET`**: `.dev.vars` no local; `wrangler secret` no dev (cadastrado); produção
+  fica para a SF15. Ver [operacao.md](../operacao.md#variáveis-de-ambiente).
+- **Prova local** (feita, resposta 200):
+  `npx opennextjs-cloudflare build && npx wrangler dev --test-scheduled`, e em outro terminal
+  `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"`.
+
 ### Arquivos
 
 | Arquivo | Papel |
@@ -368,7 +411,9 @@ produto avisa "As fotos do produto também serão apagadas." (`AVISO_REMOCAO_PRO
 | `src/lib/fotos/erros.ts` | `falhaFoto` e o mapa motivo da verificação → motivo da tela. |
 | `src/lib/fotos/validacao.ts` | `uuidEnvio` (normaliza para minúsculas) e `envioIdsCadastro` (1..3 distintos). |
 | `src/lib/fotos/exibicao.ts` | `fotoExibivel` (`server-only`): a rota não importa `db/fotos` direto. |
-| `src/lib/db/fotos.ts` | SQL: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`, `descartarEnvio`, `enviosValidos`, `chaveExibivel`, `lerConjunto`, `substituirConjunto`; `TETO_PENDENTES = 20`; `envioValido` (a regra `VALIDO`). |
+| `src/lib/fotos/limpeza.ts` | `executarLimpeza` (SF12); ver "Limpeza diária". |
+| `cloudflare/worker.ts` | Worker próprio com o `scheduled` da limpeza (SF12). |
+| `src/lib/db/fotos.ts` | SQL: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`, `descartarEnvio`, `enviosValidos`, `chaveExibivel`, `lerConjunto`, `substituirConjunto`; `expirarEnvios`, `chavesConhecidas` (SF12); `TETO_PENDENTES = 20`; `envioValido` (a regra `VALIDO`). |
 | `src/lib/db/produtos.ts` | `inserirComFotos`, `remover` (devolve as chaves), `obterPorId` (traz `fotosVersao` e `fotos`) e `listar` (traz `capa`, a posição 1). |
 | `src/lib/produtos/painel.ts` | Expõe à UI `capaUrl`, `fotos` e `fotosVersao` com URL pela rota com sessão (SF11). |
 | `src/app/painel/(protegido)/produtos/novo/` e `_fotos/` | Telas do cadastro (SF9); ver "Telas do cadastro". |
@@ -446,7 +491,7 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
   pelo gesto de pinça, arriscado de fazer à mão; não substitui nada da stack. Bump só
   deliberado.
 - **Nada sobrevive a recarregar a página**: as fotos enviadas e não usadas ficam como
-  `confirmado` em `fotos_envio` até a limpeza diária (ainda não existe).
+  `confirmado` em `fotos_envio` até a limpeza diária (SF12) apagá-las, depois de 24 h.
 - **Safari iOS e HEIF não provados em aparelho real**: risco aceito da SF10 (ver
   "Prova com aparelho real"). Antes de liberar uma administradora com iPhone, refazer a
   parte iOS da SF10.
@@ -465,7 +510,13 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
 - **`foto_expirada` por 24 h**: o envio só vale se `confirmado` e com menos de 24 h; o
   id é normalizado para minúsculas (o Postgres devolve assim).
 - **Objetos órfãos** (recusa que não apagou o objeto, troca/remoção de foto ou de produto com R2
-  fora) dependem da limpeza diária, que ainda não existe (dívida da feature).
+  fora) são recolhidos pela limpeza diária (SF12), com atraso de até cerca de um dia.
+- **T118b pendente**: o cron ainda não foi provado no `roseshop-dev`. O deploy veio do CI do
+  PR #19; conferir em roseshop-dev → Logs após a primeira execução das 03:00 de Brasília.
+  Falha ou ausência volta ao tech-lead antes da SF15.
+- **Cron declarado nos três ambientes**: deploy sem `triggers.crons` não remove o cron já
+  publicado; `src/test/conformance/worker-typecheck.test.ts` barra qualquer outro valor. A rota é exceção declarada em `painel-guard.test.ts` (protegida por segredo, não por sessão).
+- **Durable Objects do OpenNext**: não reexportados pelo worker próprio (não há `durable_objects`).
 - **Validação no runtime real (SF9, T093, 2026-10-11, quickstart §4)**: roteiro pela tela no
   `preview`. O `PUT` em `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` respondeu 200
   com a foto tratada em WebP de ~20 KB; objetos de produtos removidos somem do R2 local; a

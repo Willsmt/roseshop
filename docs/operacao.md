@@ -366,8 +366,9 @@ ambiente) e o bucket precisa aceitar o envio vindo do site (CORS).
   `npx wrangler secret put R2_ACCESS_KEY_ID --env <amb>` (idem `R2_SECRET_ACCESS_KEY`),
   com o procedimento por pipe de "Cadastrar um secret". **Dev já cadastrado**; **produção
   fica para a SF15** da feature 004.
-- **`CRON_SECRET`**: entrou no `.dev.vars.example` (local: qualquer valor não vazio) para a
-  limpeza diária (SF12); ainda sem consumidor.
+- **`CRON_SECRET`**: protege `POST /api/interno/limpeza` (limpeza diária, SF12). Local:
+  `.dev.vars` (qualquer valor não vazio). Dev: `wrangler secret` **já cadastrado**. Produção:
+  fica para a SF15.
 - **CORS** versionado em `infra/r2/` (formato do wrangler, `rules[].allowed`, **não** o do S3):
 
 ```bash
@@ -399,12 +400,12 @@ local").
 | `R2_S3_ENDPOINT` | Endpoint S3 do bucket do ambiente (já inclui o nome do bucket). | `src/lib/r2/config.ts` (`configR2`), usado por `assinarEnvio`. Declarada em `vars` no `wrangler.jsonc`, redeclarada por ambiente. | Var pública (`wrangler.jsonc`) |
 | `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
 | `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
-| `CRON_SECRET` | Protege a limpeza diária de fotos (SF12). | Nenhum consumidor ainda. | A definir na SF12; local: qualquer valor não vazio |
+| `CRON_SECRET` | Protege a limpeza diária de fotos (SF12): o `scheduled` o envia como Bearer. | `cloudflare/worker.ts` (`scheduled`) e `src/app/api/interno/limpeza/route.ts`. | Secret em dev online (cadastrado) e produção (SF15); local: qualquer valor não vazio |
 | `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | Nenhum consumidor ainda (feature 005, IA). | Secret em dev online e produção |
 
 As variáveis de auth, R2 e `CRON_SECRET` estão em `.dev.vars.example` e tipadas em
 `cloudflare-env.d.ts`. As de auth e R2 têm consumidor (coluna "Onde é usada");
-`OPENAI_API_KEY` e `CRON_SECRET` **ainda não são referenciadas** em `src/`. O **bucket** é
+`OPENAI_API_KEY` **ainda não é referenciada** em `src/`. O **bucket** é
 binding (`PRODUCT_IMAGES`); as chaves e o endpoint S3 são variáveis (ver "R2: segredos,
 endpoint e CORS" em "Bindings").
 
@@ -510,6 +511,10 @@ Regras:
 - O nível de cima tem nome inofensivo (`roseshop-local`): um `wrangler deploy`
   sem `--env` nunca atinge dev nem produção. **Nunca** use `"remote": true`
   no nível de cima.
+- O `main` é `cloudflare/worker.ts` (worker próprio: `fetch` do OpenNext + `scheduled`). O
+  `alias` `open-next-worker` e `triggers.crons` (`0 6 * * *`, nos três ambientes) ficam no
+  `wrangler.jsonc`; o `alias` só vale no nível de cima. O build do OpenNext precisa rodar
+  antes do `wrangler` (gera `.open-next/worker.js`).
 - O nome do binding é o mesmo nos três (`PRODUCT_IMAGES`, `IMAGES`,
   `WORKER_SELF_REFERENCE`); só o recurso muda. `r2_buckets`, `images` e
   `services` são **redeclarados por env** (não herdados); `ASSETS` (`assets`) é
@@ -731,6 +736,16 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
 
 ## Troubleshooting
 
+- **Cron da limpeza não aparece ou falha no dev (T118b pendente)**: confira em Cloudflare →
+  roseshop-dev → Logs depois da primeira execução das 03:00 de Brasília (06:00 UTC). A
+  falha mostra `limpeza: status <N>` (o `scheduled` lança de propósito). Status 404 indica
+  `CRON_SECRET` ausente ou diferente no ambiente; 500 indica erro no banco ou no R2 (o log
+  da rota não traz a mensagem). Testar localmente:
+  `npx opennextjs-cloudflare build && npx wrangler dev --test-scheduled` e
+  `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"`.
+- **`typecheck` diferente com e sem build local**: não deveria; `.open-next` está no `exclude`
+  do `tsconfig.json` e o worker importa `open-next-worker` (declarado em
+  `cloudflare/open-next-worker.d.ts`). Ver `src/test/conformance/worker-typecheck.test.ts`.
 - **Smoke test do CI falha com 503**: o worker foi publicado, mas faltam os
   secrets de runtime no ambiente (Cloudflare, não GitHub). Cadastre-os (ver
   "Cadastrar um secret") e reexecute o job.

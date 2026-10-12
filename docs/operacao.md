@@ -8,8 +8,8 @@
 > `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
-> `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); IA não está
-> configurada.
+> `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); a sugestão por IA
+> existe só no servidor (SF13), com `OPENAI_API_KEY`.
 
 ## Visão leiga
 
@@ -34,6 +34,7 @@ da Cloudflare e, futuramente, publicar.
 | `npm test` | `vitest run` — roda os testes **unitários** (`*.test.ts`, sem banco) uma vez (modo CI). Exclui `*.int.test.ts`. Sem `passWithNoTests`: suíte vazia agora falha. |
 | `npm run test:int` | `vitest run --config vitest.int.config.mts` — roda os testes de **integração** (`*.int.test.ts`), que exigem `npm run db:up`, **migrations aplicadas** (`npm run db:migrate`) e `DATABASE_URL` no `.dev.vars`. Não faz parte do `check` nem do `pre-push`. |
 | `npm run test:perf` | `vitest run --config vitest.perf.config.mts --disableConsoleIntercept` — medição de desempenho de `listar` com **500 produtos**, só no banco **local** (exige `db:up` e `db:migrate`). Popula, mede (meta < 2 s) e limpa; usa `resetCategorias`, então **recria as categorias** do banco local. Fora do `check` e do `test:int`. |
+| `npm run test:ia` | `vitest run --config vitest.ia.config.mts --disableConsoleIntercept` — **medição manual da IA** (SF13), só pelo humano: roda só `src/lib/ai/medicao.ia.test.ts`, lê a pasta `ia-medicao/` (ignorada pelo git; ≥ 10 produtos com 1 a 3 fotos e um `gabarito.json`) e a chave dev do `.dev.vars`, e imprime acerto de categoria, p50/p90 e tokens/custo por candidato × esforço. **Gasta dinheiro real** (projeto OpenAI dev). Fora do `check`, do `test:int` e do CI. |
 | `npm run test:watch` | `vitest` — modo watch para desenvolvimento. |
 | `npm run check` | `npm run lint && npm run typecheck && npm run test` — o gate de "pronto" (lint + tipos + testes), encadeado e interrompido no primeiro erro. |
 | `npm run prepare` | `husky` — roda sozinho no `npm install` e aponta `core.hooksPath` para `.husky/_`, ativando os hooks de git. Não precisa ser chamado à mão. |
@@ -215,7 +216,8 @@ actions de categorias e fronteira de imports; ver
 `produtos-acesso.test.ts` e `produtos-paginas-guard.test.ts` (o mesmo para
 produtos; ver [F03](./features/F03-produtos.md#fronteira-de-acesso-e-guards)),
 `fotos-acesso.test.ts` e `fotos-rota-guard.test.ts` (fronteiras de import das fotos e
-ordem da rota de exibição; ver [F04](./features/F04-fotos.md#fronteira-de-acesso-e-guards)) e
+ordem da rota de exibição; ver [F04](./features/F04-fotos.md#fronteira-de-acesso-e-guards)),
+`ia-acesso.test.ts` (fronteira da IA; ver [F04](./features/F04-fotos.md#sugestão-por-ia-sf13)) e
 `src/next-config.test.ts` (header `no-store` em `/painel`). Em
 `vitest.setup.ts`, `server-only` é trocado por um mock vazio. Configuração
 do tipo unitário (`vitest.config.mts`):
@@ -401,11 +403,10 @@ local").
 | `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
 | `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
 | `CRON_SECRET` | Protege a limpeza diária de fotos (SF12): o `scheduled` o envia como Bearer. | `cloudflare/worker.ts` (`scheduled`) e `src/app/api/interno/limpeza/route.ts`. | Secret em dev online (cadastrado) e produção (SF15); local: qualquer valor não vazio |
-| `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | Nenhum consumidor ainda (feature 005, IA). | Secret em dev online e produção |
+| `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | `src/lib/ai/sugestao.ts` (`pedirSugestao`), lida de `process.env`; sem a chave a sugestão falha com `sem_chave` (vira `ia_indisponivel`). | Secret em dev online e produção |
 
 As variáveis de auth, R2 e `CRON_SECRET` estão em `.dev.vars.example` e tipadas em
-`cloudflare-env.d.ts`. As de auth e R2 têm consumidor (coluna "Onde é usada");
-`OPENAI_API_KEY` **ainda não é referenciada** em `src/`. O **bucket** é
+`cloudflare-env.d.ts`. Todas têm consumidor (coluna "Onde é usada"); `OPENAI_API_KEY` só é referenciada em `src/lib/ai/`. O **bucket** é
 binding (`PRODUCT_IMAGES`); as chaves e o endpoint S3 são variáveis (ver "R2: segredos,
 endpoint e CORS" em "Bindings").
 
@@ -736,6 +737,17 @@ Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
 
 ## Troubleshooting
 
+- **`sugerirProduto` sempre devolve `ia_indisponivel`**: a action esconde a causa de
+  propósito. Veja o log `ia.sugestao` (Cloudflare → Logs, ou o terminal do `preview`): o campo
+  `falha` diz `sem_chave` (falta `OPENAI_API_KEY` no ambiente), `http` com `status` 401/403/404
+  (chave sem acesso ao modelo; `MODELO` é provisório), `tempo` (passou de 20 s), `recusa`,
+  `status`, `json_invalido` ou `fora_do_schema`. Sem esse log, a falha foi antes da chamada
+  (envio inválido ou com 24 h ou mais, objeto ausente no R2, banco).
+- **`ia_pausada`**: acabou a vaga do dia (30 por pessoa ou 100 no total, dia de Brasília). A
+  vaga é consumida antes da chamada, então tentativas que falham também gastam. Zerar só
+  por SQL em `ia_uso` (banco local: `npm run db:psql`).
+- **`npm run test:ia` falha de cara**: falta a pasta `ia-medicao/` (ignorada pelo git, com
+  fotos reais e `gabarito.json`) ou a chave dev no `.dev.vars`. Cada execução custa dinheiro.
 - **Cron da limpeza não aparece ou falha no dev (T118b pendente)**: confira em Cloudflare →
   roseshop-dev → Logs depois da primeira execução das 03:00 de Brasília (06:00 UTC). A
   falha mostra `limpeza: status <N>` (o `scheduled` lança de propósito). Status 404 indica

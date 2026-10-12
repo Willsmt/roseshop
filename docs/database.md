@@ -7,7 +7,7 @@
 > cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Só o
 > schema existe; desde as SF4 a SF7 da feature 004, `fotos_envio` e `produto_fotos`
 já são gravadas por código (`src/lib/db/fotos.ts`, `inserirComFotos` em
-`produtos.ts`); `ia_uso` ainda não. A sessão de login
+`produtos.ts`); `ia_uso` é gravada por `consumirSugestao` (`src/lib/db/ia-uso.ts`, SF13). A sessão de login
 > é JWT e não tem tabelas ([F01](./features/F01-autenticacao.md)). Fonte do
 > schema: `src/lib/db/schema.ts`.
 
@@ -204,8 +204,12 @@ por pessoa em 24 h. Fluxo em [F04](./features/F04-fotos.md). SQL real em
 Contador diário de sugestões da IA por administradora (feature 004). `dia`
 (`date`, data de Brasília calculada pelo writer sob `LOCK_IA_USO`) e `email`
 (`text`) formam a PK `ia_uso_pkey`; `n` (`integer NOT NULL`) tem
-`ia_uso_n_minimo` (`n >= 1`). Linhas antigas ficam (sem limpeza). Nada grava
-nela ainda (a IA é de outra etapa).
+`ia_uso_n_minimo` (`n >= 1`). Linhas antigas ficam (sem limpeza). Quem grava é
+`consumirSugestao` (`src/lib/db/ia-uso.ts`), chamada só por `sugerirProduto`: um `db.batch`
+(lock + `INSERT ... ON CONFLICT DO UPDATE`) que soma 1 em `(dia, email)` se `n` da pessoa
+< `LIMITE_POR_PESSOA` (30) e a soma do dia < `LIMITE_TOTAL` (100); sem linha devolvida, não há
+vaga (`ia_pausada`). O consumo ocorre **antes** da chamada à IA, então uma chamada que falha
+também gasta vaga. Ver [F04](./features/F04-fotos.md#sugestão-por-ia-sf13).
 
 ### Regras de exclusão e integridade
 

@@ -1,7 +1,8 @@
 # ADR-009 — Fotos de produto no R2
 
 **Status:** aceito em 2026-10-09 (aprovado pelo humano na T013 da feature 004); emendado em
-2026-10-11 (Decisão 3, prova da SF10 só com Chrome Android)
+2026-10-11 (Decisão 3, prova da SF10 só com Chrome Android) e em 2026-10-12 (Decisão 5, import
+do worker do OpenNext por alias)
 **Data:** 2026-10-09
 **Origem:** `specs/004-fotos-produto/` — plan (seção "ADRs", "Complexity Tracking"), research
 D1–D6, D11–D16 e §3 (provas R1–R3; R4 adiado para a SF10), data-model, contracts/fotos.md §2,
@@ -92,6 +93,11 @@ binding; só serve chaves que existem em `produto_fotos` ou em `fotos_envio` com
   `handler.fetch(new Request("https://interno.invalid/api/interno/limpeza", { method: "POST",
   … }), env, ctx)` **em processo, sem rede**, aguarda a resposta (`await`) e **lança erro se o
   status não for 200**.
+- **Emenda (humano, 2026-10-12, SF12):** o worker importa o OpenNext pelo nome não relativo
+  `open-next-worker`, ligado a `./.open-next/worker.js` por `alias` no nível de cima do
+  `wrangler.jsonc` e declarado em `cloudflare/open-next-worker.d.ts`. O `.d.ts` com o caminho
+  relativo `../.open-next/worker.js` não resolve (TS2307) e `rootDirs` muda o resultado do
+  `typecheck` quando há build local; com o alias o resultado é o mesmo com e sem `.open-next/`.
 - Rota `POST /api/interno/limpeza` autenticada por `CRON_SECRET` (SHA-256 dos dois valores
   comparados em tempo fixo); ausente, errado ou outro método ⇒ 404 sem corpo, igual em todos os
   casos.

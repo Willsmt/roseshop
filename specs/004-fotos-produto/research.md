@@ -132,6 +132,9 @@ SF0 (plan.md); se a prova falhar, vale a reserva indicada e a decisão volta ao 
 - `cloudflare/worker.ts` importa `.open-next/worker.js` por um `.d.ts` próprio, sem
   `@ts-expect-error`, e `.open-next` entra no `exclude` do `tsconfig`, para o `typecheck` não
   depender de haver build local (TL-6).
+  [Corrigido em 2026-10-12, SF12: o import é pelo nome não relativo `open-next-worker`, com
+  `alias` no `wrangler.jsonc`; declaração ambiente não resolve caminho relativo (ADR-009,
+  emenda da Decisão 5).]
 - Cron `0 6 * * *` (03:00 em Brasília) em `env.dev`, `env.production` e no nível de cima (para o
   `--test-scheduled` local).
 - Algoritmo e corrida com o FR-038: [contracts/fotos.md §6](./contracts/fotos.md#6-limpeza).

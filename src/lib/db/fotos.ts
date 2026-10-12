@@ -277,3 +277,24 @@ function chaveNovaDoEnvio(chaves: string[], atuais: string[], chaveEnvio: string
     chaves.every((c) => permitidas.has(c)) && (chaveEnvio === null || chaves.includes(chaveEnvio))
   );
 }
+
+// Limpeza diária (contracts/fotos.md §2.6 e §6). Expirar consome envio: sob o LOCK_FOTOS, como as
+// adoções, que exigem `criado_em > now() - 24 h`; aqui o corte é `<=`, então nunca se cruzam.
+export async function expirarEnvios(db: Db): Promise<string[]> {
+  const [, r] = await db.batch([
+    db.execute(sql`SELECT pg_advisory_xact_lock(${LOCK_FOTOS}::bigint)`),
+    db.execute(sql`
+      DELETE FROM fotos_envio WHERE criado_em <= now() - interval '24 hours' RETURNING chave`),
+  ]);
+  return (r.rows as { chave: string }[]).map((l) => l.chave);
+}
+
+// Um statement só (TL-12): as duas tabelas no mesmo snapshot. Em duas consultas, uma adoção entre
+// elas tiraria a chave de `fotos_envio` antes de ela aparecer em `produto_fotos`.
+export async function chavesConhecidas(db: Db): Promise<Set<string>> {
+  const r = await db.execute(sql`
+    SELECT chave_objeto AS chave FROM produto_fotos
+    UNION ALL
+    SELECT chave FROM fotos_envio`);
+  return new Set((r.rows as { chave: string }[]).map((l) => l.chave));
+}

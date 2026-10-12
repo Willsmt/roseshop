@@ -177,6 +177,25 @@ describe("editar (US4)", () => {
     expect(l.a_partir_de).toBe(false);
   });
 
+  it("US4-AC2 (complemento): preço 1990 com aPartirDe true ⇒ ok e a_partir_de gravado TRUE (a defesa não zera com preço)", async () => {
+    const id = await inserirProduto(db, cat1);
+    const r = await editar(db, sessao, id, 1, campos({ precoCentavos: 1990, aPartirDe: true }));
+    expect(r).toEqual({ tipo: "ok" });
+    const l = (await linha(id))!;
+    expect(l.preco_centavos).toBe(1990);
+    expect(l.a_partir_de).toBe(true);
+  });
+
+  it("US4-AC2 (complemento): preço 1990 com aPartirDe false ⇒ ok e a_partir_de gravado false (mesmo partindo de true)", async () => {
+    const id = await inserirProduto(db, cat1);
+    expect(await editar(db, sessao, id, 1, campos({ precoCentavos: 1990, aPartirDe: true }))).toEqual({ tipo: "ok" });
+    const r = await editar(db, sessao, id, 2, campos({ precoCentavos: 1990, aPartirDe: false }));
+    expect(r).toEqual({ tipo: "ok" });
+    const l = (await linha(id))!;
+    expect(l.preco_centavos).toBe(1990);
+    expect(l.a_partir_de).toBe(false);
+  });
+
   it("US4-AC3: versao velha ⇒ versao_diferente; linha inalterada", async () => {
     const id = await inserirProduto(db, cat1);
     expect(await editar(db, sessao, id, 1, campos())).toEqual({ tipo: "ok" });

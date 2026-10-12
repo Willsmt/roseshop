@@ -16,6 +16,14 @@ const EXCECOES_PUBLICAS: readonly string[] = [
   "src/lib/auth/actions.ts#entrarComGoogle",
   // Sair sem sessão não tem efeito.
   "src/lib/auth/actions.ts#sair",
+  // Limpeza diária: protegidas por CRON_SECRET (404 uniforme), não por sessão (contracts/fotos.md §6).
+  "src/app/api/interno/limpeza/route.ts#POST",
+  "src/app/api/interno/limpeza/route.ts#GET",
+  "src/app/api/interno/limpeza/route.ts#HEAD",
+  "src/app/api/interno/limpeza/route.ts#PUT",
+  "src/app/api/interno/limpeza/route.ts#PATCH",
+  "src/app/api/interno/limpeza/route.ts#DELETE",
+  "src/app/api/interno/limpeza/route.ts#OPTIONS",
 ];
 
 // Handlers guardados por SESSÃO (getAdminSession) em vez de requireAdminAction, POR FUNÇÃO.

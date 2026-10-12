@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import type { Esforco } from "./config";
+import { type LinhaMedicao, montarResultadoMd } from "./medicao-relatorio";
 import { type ImagemSugestao, pedirSugestao } from "./sugestao";
 
 // Feature 004, T130/T132 (SF13): medição manual do modelo (contracts/ia.md §5). Roda só por
@@ -11,7 +12,9 @@ import { type ImagemSugestao, pedirSugestao } from "./sugestao";
 // do CI. Entrada em `ia-medicao/` (ignorada pelo git): uma pasta por produto com 1 a 3 fotos já
 // tratadas pelo pipeline do aparelho (a primeira em ordem alfabética é a capa) e
 // `gabarito.json` = [{ "produto": "<pasta>", "categoria": "<nome do seed>" }].
-// Imprime acertos de categoria (SC-003), p50/p90 da duração (SC-004) e o `usage` médio.
+// Imprime acertos de categoria (SC-003), p50/p90 da duração (SC-004) e o `usage` médio, com
+// nome e descrição inteiros, e grava `ia-medicao/resultado.md` (uma linha por produto, modelo
+// e esforço; a coluna "inventa?" é preenchida pelo humano na T132).
 
 if (!process.env.OPENAI_API_KEY && existsSync(".dev.vars")) process.loadEnvFile(".dev.vars");
 
@@ -82,6 +85,25 @@ type Uso = { input_tokens?: number; output_tokens?: number };
 
 describe("medição da sugestão por IA (SC-003, SC-004)", () => {
   const produtos = carregar();
+  const tabela: LinhaMedicao[] = [];
+
+  // O resultado.md anterior vira resultado-<data>.md antes de gravar: rodar de novo não apaga a
+  // coluna "inventa?" que o humano já preencheu.
+  afterAll(() => {
+    const arquivo = path.join(PASTA, "resultado.md");
+    if (tabela.length === 0) {
+      console.log(`\nnada gravado: nenhum pedido feito (${arquivo} não mudou)`);
+      return;
+    }
+    const data = new Date().toISOString();
+    if (existsSync(arquivo)) {
+      const anterior = path.join(PASTA, `resultado-${data.replace(/[:.]/g, "-")}.md`);
+      renameSync(arquivo, anterior);
+      console.log(`\nresultado anterior guardado em ${anterior}`);
+    }
+    writeFileSync(arquivo, montarResultadoMd(tabela, { data, rodadas: RODADAS }));
+    console.log(`tabela gravada em ${arquivo} (${tabela.length} linhas)`);
+  });
 
   it("OPENAI_API_KEY (dev) está no .dev.vars", () => {
     expect(process.env.OPENAI_API_KEY ?? "").not.toBe("");
@@ -105,7 +127,15 @@ describe("medição da sugestão por IA (SC-003, SC-004)", () => {
           const r = await pedirSugestao({ imagens: p.imagens, categorias: CATEGORIAS, modelo, esforco });
           duracoes.push(r.duracaoMs);
           if (r.usage) usos.push(r.usage as Uso);
+          const base = {
+            produto: p.produto,
+            modelo,
+            esforco,
+            rodada: rodada + 1,
+            esperada: p.categoria,
+          };
           if (!r.ok) {
+            tabela.push({ ...base, resultado: { ok: false, falha: r.falha } });
             falhas[r.falha] = (falhas[r.falha] ?? 0) + 1;
             linhas.push(`  ${p.produto}: FALHA ${r.falha} · ${r.duracaoMs} ms`);
             continue;
@@ -114,10 +144,21 @@ describe("medição da sugestão por IA (SC-003, SC-004)", () => {
           const escolhida = CATEGORIAS.find((c) => c.id === id)?.nome ?? null;
           if (id !== null && !escolhida) foraDaLista++;
           if (escolhida === p.categoria) acertos++;
+          // Fora da lista conta como sugerida "vazia" na tabela, como na tela (US3-AC4).
+          tabela.push({
+            ...base,
+            resultado: {
+              ok: true,
+              sugerida: escolhida,
+              nome: r.sugestao.nome,
+              descricao: r.sugestao.descricao,
+            },
+          });
           linhas.push(
             `  ${p.produto}: ${escolhida === p.categoria ? "certa" : "ERRADA"} ` +
-              `(${escolhida ?? "vazia"}; gabarito ${p.categoria}) · ${r.duracaoMs} ms · ` +
-              `nome=${JSON.stringify(r.sugestao.nome?.slice(0, 80) ?? null)}`,
+              `(${escolhida ?? "vazia"}; gabarito ${p.categoria}) · ${r.duracaoMs} ms\n` +
+              `    nome=${JSON.stringify(r.sugestao.nome)}\n` +
+              `    descricao=${JSON.stringify(r.sugestao.descricao)}`,
           );
         }
       }

@@ -1,6 +1,7 @@
 // Feature 004, T132: tabela da medição manual da IA (`ia-medicao/resultado.md`, fora do git).
 // Puro e sem server-only: o `medicao.ia.test.ts` coleta as linhas e grava o arquivo; a
-// coluna "inventa?" fica em branco para o humano preencher (observação da T120a).
+// coluna "inventa?" fica em branco para o humano preencher (observação da T120a). Ordem e
+// colunas em contracts/ia.md §5.
 
 export type LinhaMedicao = {
   produto: string;
@@ -47,6 +48,18 @@ function linhaTabela(l: LinhaMedicao, rodadas: number): string {
   return `| ${[...celulas, ""].join(" | ")} |`;
 }
 
+// Agrupa por produto, na ordem da primeira ocorrência (a do gabarito); dentro do produto, mantém
+// a ordem recebida (candidato e depois rodada). Não muta a lista recebida.
+function porProduto(linhas: LinhaMedicao[]): LinhaMedicao[] {
+  const grupos = new Map<string, LinhaMedicao[]>();
+  for (const l of linhas) {
+    const grupo = grupos.get(l.produto);
+    if (grupo) grupo.push(l);
+    else grupos.set(l.produto, [l]);
+  }
+  return [...grupos.values()].flat();
+}
+
 export function montarResultadoMd(
   linhas: LinhaMedicao[],
   o: { data: string; rodadas: number },
@@ -59,6 +72,6 @@ export function montarResultadoMd(
     "",
     `| ${CABECALHO.join(" | ")} |`,
     `|${CABECALHO.map(() => "---").join("|")}|`,
-    ...linhas.map((l) => linhaTabela(l, o.rodadas)),
+    ...porProduto(linhas).map((l) => linhaTabela(l, o.rodadas)),
   ].join("\n") + "\n";
 }

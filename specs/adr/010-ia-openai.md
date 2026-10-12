@@ -1,9 +1,8 @@
 # ADR-010 — Sugestão de produto por IA (OpenAI)
 
 **Status:** aceito em 2026-10-09 (aprovado pelo humano na T013 da feature 004), com ressalvas:
-os campos **modelo** e **esforço** são provisórios até a medição da SF13; o **teto de gasto no
-provedor** está configurado mas não aplicado no projeto dev, e aplicá-lo (T014b) é **condição
-de entrada da SF13**.
+os campos **modelo** e **esforço** são provisórios até a medição da SF13. O **teto de gasto no
+provedor** do projeto dev, condição de entrada da SF13, foi aplicado em 2026-10-12 (T014b).
 **Data:** 2026-10-09
 **Origem:** `specs/004-fotos-produto/` — plan (seção "ADRs"), research D7 e §3 (prova R5),
 contracts/ia.md §1–§5, quickstart §1.
@@ -53,12 +52,13 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
   (teste de conformidade, contracts/ia.md §1).
 - **Teto de gasto mensal no provedor** por projeto, com alerta por e-mail (sugestão do
   quickstart §1, item 5: US$ 5 no dev, US$ 10 em produção).
-  - **Estado em 2026-10-09**: no projeto dev o limite está **configurado (US$ 5, alerta em
-    100%) mas não aplicado**. Até a T014b, a III.5 não está atendida no dev e só o contador do
-    app limita o gasto; a prova R5 já fez chamadas reais nessa condição.
-  - **A T014b (aplicar o teto) é condição de entrada da SF13.** Se a conta não permitir
-    aplicar o teto, este ADR é emendado registrando a limitação do provedor, e o contador do
-    app passa a ser o controle principal de gasto.
+  - **Estado em 2026-10-09**: no projeto dev o limite estava **configurado (US$ 5, alerta em
+    100%) mas não aplicado**; só o contador do app limitava o gasto, e a prova R5 fez chamadas
+    reais nessa condição.
+  - **Estado em 2026-10-12 (T014b fechada)**: o teto do projeto dev está **aplicado** (o painel
+    da OpenAI não mostra mais "Limit not enforced"). A partir desta data a III.5 está atendida
+    no dev: o gasto é limitado pelo provedor e pelo contador do app. O teto do projeto de
+    produção é aplicado na configuração de produção (quickstart §1).
 - **Modelo e esforço: provisórios, definidos pela medição da SF13** (`npm run test:ia`, ≥ 10
   produtos reais): fica o **mais barato que passar** SC-003 (≥ 8/10 de categoria certa; 100%
   existente ou vazia) e SC-004 (p90 ≤ 15 s). Custo estimado por cadastro no research D7
@@ -92,8 +92,10 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
 
 - (+) Sem dependência nova; o pedido é um JSON versionado no contrato.
 - (+) A saída tem forma garantida pelo provedor e validada de novo no servidor.
-- (+) Gasto limitado pelo contador do app e, aplicado o teto (T014b), pelo provedor.
-- (−) Até a T014b, só o contador do app limita o gasto no dev (III.5 não atendida).
+- (+) Gasto limitado pelo contador do app e pelo teto do provedor; no dev, III.5 atendida a
+  partir de 2026-10-12 (T014b).
+- (−) De 2026-10-09 a 2026-10-12, só o contador do app limitava o gasto no dev (III.5 não
+  atendida nesse intervalo; a prova R5 rodou nele).
 - (−) Modelo e esforço só fecham na SF13; o ADR é emendado com o resultado da medição.
 - (−) Um candidato pode depender de liberação de acesso na conta (caso do `gpt-5.4-mini`).
 - (−) Prompt injection por texto na imagem é mitigado (instruções + schema + validação), não

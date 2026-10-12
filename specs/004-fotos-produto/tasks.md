@@ -132,8 +132,8 @@ são registrados) e research D2/D6. Nenhum código de produção é escrito nest
 - [X] T014a **Humano executa** — depois do R1, remover do `.dev.vars` as três linhas
   `SPIKE_R2_DEV_ENDPOINT`, `SPIKE_R2_DEV_ACCESS_KEY_ID` e `SPIKE_R2_DEV_SECRET_ACCESS_KEY`; o
   token do bucket dev passa a viver só no `wrangler secret --env dev` (SF3) — **humano**
-- [ ] T014b **Humano executa — condição de entrada da SF13**: aplicar o limite de gasto do
-  projeto OpenAI dev (configurado em US$ 5 com alerta em 100%, ainda **não aplicado**; research
+- [X] T014b **Humano executa — condição de entrada da SF13**: aplicar o limite de gasto do
+  projeto OpenAI dev (configurado em US$ 5 com alerta em 100%; **aplicado em 2026-10-12**; research
   §3, R5; constitution III.5). Se a conta não permitir aplicar, emendar o ADR-010 registrando a
   limitação do provedor e o contador do app como controle principal. **A SF13 não começa sem
   esta task fechada** — **humano**
@@ -964,19 +964,19 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
   `none` e `low`), depois de resolver o acesso (403 `model_not_found` na SF0; research §3, R5).
   Sem acesso, a medição (T132) roda só com o `gpt-6-luna` ou o humano escolhe outro candidato —
   **humano**
-- [ ] T121 **Primeiro de tudo** (antes de criar a pasta): linha `ia-medicao/` no `.gitignore`
+- [X] T121 **Primeiro de tudo** (antes de criar a pasta): linha `ia-medicao/` no `.gitignore`
   (TL-21) — **principal**
 - [ ] T122 **Humano executa — chave dev**: `npx wrangler secret put OPENAI_API_KEY --env dev`
   (se ainda não existir) e `OPENAI_API_KEY` (chave **dev**, com teto de gasto) no `.dev.vars`
   local — **humano**
-- [ ] T123 [P] **Teste primeiro** — `src/lib/ai/sugestao.test.ts` (fetch simulado): pedido com
+- [X] T123 [P] **Teste primeiro** — `src/lib/ai/sugestao.test.ts` (fetch simulado): pedido com
   `store: false`, `max_output_tokens: 800`, `reasoning.effort`, `text.format` `json_schema`
   estrito com `categoria_id` limitado aos ids atuais (+ `null`), imagens `detail: low`, uma por
   foto na ordem; `AbortSignal.timeout(20_000)`; HTTP ≠ 200, `status ≠ "completed"`, recusa do
   modelo, JSON inválido e fora do schema ⇒ indisponível; log com modelo, status, duração e
   `usage`, **nunca** chave, imagem, prompt ou texto devolvido; instruções com a defesa contra
   texto nas imagens e sem pedir preço — **test-writer**
-- [ ] T124 [P] **Teste primeiro** — `src/lib/produtos/sugestao.test.ts` (action
+- [X] T124 [P] **Teste primeiro** — `src/lib/produtos/sugestao.test.ts` (action
   `sugerirProduto`, mocks): ordem guard → Zod → `enviosValidos` (nenhuma foto não confirmada vai
   para a IA, FR-033) → `consumirSugestao` (consome antes de chamar; sem vaga ⇒ `ia_pausada`) →
   `listarCategorias` → bytes pelo binding → `pedirSugestao` → validação campo a campo
@@ -984,43 +984,46 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
   inválido ⇒ `null`; todos `null` ⇒ `ia_indisponivel`); **base64 nativo (TL-9), sem laço de
   `String.fromCharCode`** (teste que inspeciona o fonte ou o spy); sugestão não é gravada;
   **SC-009**: IA fora/erro ⇒ cadastro manual segue possível (`ia_indisponivel`) — **test-writer**
-- [ ] T125 [P] **Teste primeiro** — `src/lib/db/ia-uso.int.test.ts`: `consumirSugestao` com
+- [X] T125 [P] **Teste primeiro** — `src/lib/db/ia-uso.int.test.ts`: `consumirSugestao` com
   limites como **parâmetros** (TL-15) e CTE do dia de Brasília; 1 linha ⇒ pode chamar, 0 ⇒
   pausada; 30/pessoa e 100/dia **exatos sob concorrência real** (lock 4_002); outro dia zera —
   **test-writer**
-- [ ] T126 [P] **Teste primeiro** — conformidade de acesso à IA (em `fotos-acesso` ou
+- [X] T126 [P] **Teste primeiro** — conformidade de acesso à IA (em `fotos-acesso` ou
   `ia-acesso`): `api.openai.com` e `OPENAI_API_KEY` só em `src/lib/ai/`; nada de `src/lib/ai/`
   importado por código de client; `consumirSugestao` e `src/lib/ai/` só importados por
   `src/lib/produtos/sugestao.ts`; `sugerirProduto` só importado pelo passo Dados de
   `/painel/produtos/novo` (FR-034) — **test-writer**
-- [ ] T127 **[TL✅]** `src/lib/ai/config.ts` (`MODELO`, `ESFORCO` provisórios,
+- [X] T127 **[TL✅]** `src/lib/ai/config.ts` (`MODELO`, `ESFORCO` provisórios,
   `TEMPO_LIMITE_MS = 20_000`, `MAX_SAIDA = 800`, `LIMITE_POR_PESSOA = 30`, `LIMITE_TOTAL = 100`),
   `sugestao.ts` (`pedirSugestao({ imagens, categorias })`), `index.ts` (barrel `server-only`) —
   **principal**
-- [ ] T128 **[TL✅]** `src/lib/db/ia-uso.ts`: `consumirSugestao(db, sessao)` conforme I§3 (batch
-  com `pg_advisory_xact_lock(${LOCK_IA_USO}::bigint)`, CTE do dia, `ON CONFLICT … WHERE`) —
+- [X] T128 **[TL✅]** `src/lib/db/ia-uso.ts`: `consumirSugestao(db, sessao, { porPessoa, total })`
+  conforme I§3 (batch com `pg_advisory_xact_lock(${LOCK_IA_USO}::bigint)`, CTE do dia,
+  `porPessoa >= 1` no INSERT, `ON CONFLICT … WHERE`) —
   **principal**
-- [ ] T129 **[TL✅]** `src/lib/produtos/sugestao.ts` (`"use server"`): `sugerirProduto` conforme
+- [X] T129 **[TL✅]** `src/lib/produtos/sugestao.ts` (`"use server"`): `sugerirProduto` conforme
   I§2, com base64 por rotina nativa (`Buffer.from(bytes).toString("base64")` ou
   `Uint8Array.prototype.toBase64`) — **principal**
-- [ ] T130 `vitest.ia.config.mts` (um único arquivo `src/lib/ai/medicao.ia.test.ts`, fora de
+- [X] T130 `vitest.ia.config.mts` (um único arquivo `src/lib/ai/medicao.ia.test.ts`, fora de
   `check`, `test:int` e CI), script `npm run test:ia` no `package.json`; a medição roda cada
   candidato × esforço (`none`, `low`) e imprime acertos de categoria (SC-003: ≥ 8/10; 100%
   existente ou vazia), p50/p90 de duração (SC-004: p90 ≤ 15 s) e `usage` médio ⇒ custo por
   cadastro; lê `ia-medicao/` e `gabarito.json` — **principal**
-- [ ] T131 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
+- [X] T131 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
   colar o output real — **principal**
 - [ ] T132 **Humano executa — medição real**: criar `ia-medicao/` (≥ 10 produtos reais, 1 a 3
   fotos já tratadas pelo pipeline do aparelho, sem metadado) com `gabarito.json`
   (`{ produto, categoria }`, categorias do seed); rodar `npm run test:ia` com a chave dev;
-  entregar o output real. Medir também o **CPU de `sugerirProduto` com 3 fotos de 1 MB e o da
-  confirmação com foto de 1 MB** no dev (Q§5.3: painel Workers → `roseshop-dev` → Métricas) —
+  entregar o output real. Medir também o **CPU da confirmação com foto de 1 MB** no dev
+  (Q§5.3: painel Workers → `roseshop-dev` → Métricas). **Ressalva aberta**: o CPU de
+  `sugerirProduto` com 3 fotos de 1 MB só é medível com a tela da SF14 e passou para a T139
+  (decisão do humano, 2026-10-12, opção A) —
   **humano**
 - [ ] T133 **[TL✅]** Com a medição: escolher o **modelo mais barato que passar** (SC-003 e
   SC-004), fixar `MODELO` e `ESFORCO` em `src/lib/ai/config.ts` e atualizar o ADR-010 (modelo,
   esforço, custo real por cadastro). **Alteração de ADR com aprovação do humano.** Se nenhum
   candidato passar, parar e trazer ao humano — **principal** + **humano** (aprovação)
-- [ ] T134 Revisão do diff pelo tech-lead (opus): `src/lib/ai/`, `ia-uso.ts`, action, base64,
+- [X] T134 Revisão do diff pelo tech-lead (opus): `src/lib/ai/`, `ia-uso.ts`, action, base64,
   log sem dados sensíveis, `.gitignore`, limites como parâmetro — **tech-lead**
 - [ ] T135 Commit (humano), mensagem:
   ```text
@@ -1058,7 +1061,10 @@ cadastro), componentes de sugestão em `_fotos/` ou ao lado (sugerido), testes a
 - [ ] T138 Rodar `npm run check` e colar o output real — **principal**
 - [ ] T139 **Humano executa — roteiro pela tela no `preview`** (Q§4 item 5, com IA): "Continuar"
   ⇒ "Preenchendo a partir das fotos…" ⇒ campos sugeridos com "Sugestão — confira" (chave dev);
-  completar o preço e "Salvar" ⇒ detalhe com as fotos na ordem. Entregar o resultado — **humano**
+  completar o preço e "Salvar" ⇒ detalhe com as fotos na ordem. Entregar o resultado. Fecha a
+  **ressalva aberta da T132**: no dev (deploy do PR), pedir a sugestão com 3 fotos de 1 MB e
+  registrar o CPU de `sugerirProduto` (Q§5.3: painel Workers → `roseshop-dev` → Métricas),
+  abaixo do limite do free tier — **humano**
 - [ ] T140 Commit (humano), mensagem:
   ```text
   feat(painel): sugestão da IA no cadastro de produto

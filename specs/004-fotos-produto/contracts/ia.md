@@ -10,7 +10,7 @@ Zonas protegidas: `src/lib/ai/`, `src/lib/db/` (`ia_uso`). Revisão do tech-lead
 | `src/lib/ai/config.ts` | `MODELO`, `ESFORCO`, `TEMPO_LIMITE_MS = 20_000`, `MAX_SAIDA = 800`, `LIMITE_POR_PESSOA = 30`, `LIMITE_TOTAL = 100` | `src/lib/ai/` |
 | `src/lib/ai/sugestao.ts` | `pedirSugestao({ imagens, categorias })`: monta o pedido, chama, valida a forma | barrel |
 | `src/lib/ai/index.ts` | barrel `server-only` | só `src/lib/produtos/sugestao.ts` |
-| `src/lib/db/ia-uso.ts` | `consumirSugestao(db, sessao)` | só `src/lib/produtos/sugestao.ts` |
+| `src/lib/db/ia-uso.ts` | `consumirSugestao(db, sessao, { porPessoa, total })` (limites como parâmetro, TL-15) | só `src/lib/produtos/sugestao.ts` |
 | `src/lib/produtos/sugestao.ts` (`"use server"`) | action `sugerirProduto` | tela de cadastro |
 
 Conformidade (`fotos-acesso` ou `ia-acesso`): `api.openai.com` e `OPENAI_API_KEY` só aparecem em
@@ -47,12 +47,14 @@ A sugestão não é gravada (FR-030); preço, "a partir de", status e destaque n
 ## 3. Contador — `consumirSugestao`
 
 ```sql
--- db.batch; $pessoa = LIMITE_POR_PESSOA, $total = LIMITE_TOTAL (parâmetros de config.ts, TL-15)
+-- db.batch; $pessoa = limites.porPessoa, $total = limites.total; a action passa
+-- LIMITE_POR_PESSOA e LIMITE_TOTAL de config.ts (TL-15)
 SELECT pg_advisory_xact_lock(${LOCK_IA_USO}::bigint);
 WITH d AS (SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS dia)
 INSERT INTO ia_uso (dia, email, n)
   SELECT d.dia, $me, 1 FROM d
-  WHERE (SELECT coalesce(sum(u.n), 0) FROM ia_uso u, d WHERE u.dia = d.dia) < $total
+  WHERE $pessoa >= 1
+    AND (SELECT coalesce(sum(u.n), 0) FROM ia_uso u, d WHERE u.dia = d.dia) < $total
 ON CONFLICT (dia, email) DO UPDATE SET n = ia_uso.n + 1
   WHERE ia_uso.n < $pessoa
     AND (SELECT sum(u.n) FROM ia_uso u WHERE u.dia = EXCLUDED.dia) < $total
@@ -60,7 +62,9 @@ RETURNING n;
 ```
 
 1 linha ⇒ pode chamar; 0 linhas ⇒ `ia_pausada`. O lock 4_002 torna os dois limites exatos
-(revisão do tech-lead: verificado sem defeito).
+(revisão do tech-lead: verificado sem defeito). O `$pessoa >= 1` no INSERT faz o limite por
+pessoa valer também na criação da linha: sem ele, `$pessoa = 0` criaria a linha com `n = 1`
+(SF13, revisão do tech-lead na T134).
 
 ## 4. Pedido à OpenAI (Responses API)
 

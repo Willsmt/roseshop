@@ -10,6 +10,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "cloudflare/**/*.test.ts"],
-    exclude: [...configDefaults.exclude, "src/**/*.int.test.{ts,tsx}"],
+    // Medição da IA roda só em `npm run test:ia` (vitest.ia.config.mts).
+    exclude: [...configDefaults.exclude, "src/**/*.int.test.{ts,tsx}", "src/**/*.ia.test.ts"],
   },
 });

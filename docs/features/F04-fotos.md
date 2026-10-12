@@ -1,13 +1,14 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF10: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF11: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
 > (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
 > aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
-> Android (SF10, ver "Prova com aparelho real"). **Ainda não existem**: a UI de
-> fotos no detalhe e na edição do produto (SF11), IA e limpeza diária (cron). Spec:
+> Android (SF10, ver "Prova com aparelho real") e a tela de fotos do produto já
+> cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto").
+> **Ainda não existem**: IA e limpeza diária (cron, SF12). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -18,8 +19,9 @@ Cada produto precisa de 1 a 3 fotos. No cadastro (`/painel/produtos/novo`) a
 administradora primeiro coloca as fotos e só depois preenche os dados (ver
 "Telas do cadastro" abaixo). Depois de cadastrado, o conjunto pode ser
 alterado foto a foto: adicionar (até 3), trocar uma, remover (nunca a última) e
-mudar a ordem (a foto da posição 1 é a capa). Essas operações já existem como
-actions, mas ainda sem tela (SF11). A foto não passa pelo servidor do site: a
+mudar a ordem (a foto da posição 1 é a capa). Isso é feito na tela **Fotos** do
+produto (`/painel/produtos/<id>/fotos`, botão "Fotos" no detalhe): cada ação grava na
+hora, sem botão "Salvar". A foto não passa pelo servidor do site: a
 administradora escolhe a foto, o sistema pede uma **autorização de envio**
 (`pedirEnvio`), o aparelho manda o arquivo direto ao armazenamento (R2) e o
 sistema **confere** o que chegou (`confirmarEnvio`). Só então a foto fica
@@ -35,7 +37,8 @@ original (localização, câmera). Esse tratamento está em
 > **Observação de UX**: o cadastro pela tela envia de 1 a 3 fotos (SF9). Sem
 > nenhuma foto enviada, o "Continuar" fica indisponível; se alguém chamar
 > `criarProduto` sem fotos, a resposta é "Coloque pelo menos 1 foto do produto.".
-> A tela de detalhe e de edição do produto ainda não mostra nem altera fotos (SF11).
+> O detalhe do produto mostra as fotos (capa primeiro) e a lista mostra a capa em
+> miniatura; para alterar as fotos de um produto existente, ver "Tela Fotos do produto".
 
 ## Aprofundamento técnico
 
@@ -145,7 +148,7 @@ Pontos de projeto:
 
 ### Actions do conjunto (`src/lib/fotos/actions.ts`)
 
-Quatro actions chamadas pela tela do produto já cadastrado (a tela é a SF11). Todas
+Quatro actions chamadas pela tela Fotos do produto já cadastrado (SF11, ver abaixo). Todas
 passam por `alterarConjunto`, que fixa a ordem dos passos.
 
 | Action | Entrada | Regra aplicada (`aplicarAcao`) |
@@ -267,7 +270,7 @@ graph TD
 | `novo/cadastro-produto.tsx` | Orquestra os passos, o recorte e o `useEnvioFotos`. "Continuar" fica desabilitado sem foto enviada ou com alguma foto *enviando* / *não enviada*; com *não enviada*, mostra `CONTINUAR_COM_NAO_ENVIADA` ligado ao botão por `aria-describedby`. Com o recorte aberto, o passo mostra só título, aviso e recorte. |
 | `_fotos/escolher-foto.tsx` | No celular (`(pointer: coarse)`): "Tirar foto" (`capture="environment"`) e "Escolher da galeria" separados; no computador: só "Escolher arquivo". Na hidratação vale o layout de computador. Com 3 fotos, botões desabilitados e o texto "Máximo de 3 fotos". |
 | `_fotos/recorte-foto.tsx` | `react-easy-crop`: recorte 1:1, `restrictPosition` (a moldura não sai da imagem), zoom de 1 até `min(lado menor / 400, 4)` (aproximar mais deixaria o recorte abaixo de `LADO_MINIMO`), controle "Aproximar". "Usar esta foto" devolve a área em pixels da imagem original; nada é enviado aqui. |
-| `_fotos/lista-fotos.tsx` | Lista vertical, uma foto por linha, capa = primeira (selo "Capa"). Reordena por **arrasto pela miniatura** (pointer events: captura do ponteiro, destino pelo centro vertical dos outros itens) ou pelos botões "Usar como capa", "Mover para cima", "Mover para baixo"; "Remover" sem confirmação por padrão (`confirmarRemocao` existe para a SF11). Mostra "Enviando…" e "Não enviada" (com "Tentar de novo" quando permitido). |
+| `_fotos/lista-fotos.tsx` | Lista vertical, uma foto por linha, capa = primeira (selo "Capa"). Reordena por **arrasto pela miniatura** (pointer events: captura do ponteiro, destino pelo centro vertical dos outros itens) ou pelos botões "Usar como capa", "Mover para cima", "Mover para baixo"; "Remover" sem confirmação por padrão (`confirmarRemocao` é ligado pela tela Fotos). Props opcionais da SF11: `onTrocar`, `podeRemover`, `desabilitado`. Mostra "Enviando…" e "Não enviada" (com "Tentar de novo" quando permitido). |
 | `_fotos/usar-envio.ts` | Hook `useEnvioFotos` e `conferirArquivo`; ver abaixo. |
 | `_fotos/tipos.ts` | `EstadoFoto` (`enviando`, `enviada` com `envioId`, `nao_enviada` com `mensagem` e `podeTentar`) e `FotoLocal`. |
 | `form-produto.tsx` | Ganhou o modo `cadastro`: props `envioIds`, `envioEmCurso` e `onFotoExpirada`. |
@@ -300,6 +303,59 @@ uma única vez por resultado (`onFotoExpirada(envioIds)`): as fotos citadas vira
 enviada* com "Tentar de novo" e a tela volta ao passo Fotos. A mensagem de `foto_expirada`
 no formulário some quando alguma das fotos expiradas já foi reenviada ou removida.
 
+### Tela Fotos do produto (`/painel/produtos/[id]/fotos`, SF11)
+
+`page.tsx` (servidor: `requireAdminPage`, `obterProdutoDoPainel`; produto inexistente mostra
+"Produto não encontrado" e "Voltar à lista") renderiza o client component
+`gerenciar-fotos.tsx` com o `Conjunto` inicial (`fotosVersao` + `fotos`). Reaproveita
+`EscolherFoto`, `RecorteFoto`, `ListaFotos` e o hook `useEnvioFotos` do cadastro.
+
+| Ação | Como a tela chama |
+|---|---|
+| Adicionar | "Escolher" → `conferirArquivo` → recorte → `useEnvioFotos` (`pedirEnvio`, `PUT`, `confirmarEnvio`) → `adicionarFoto` com o `envioId` |
+| Trocar | "Trocar foto" no item (mostra `PEDIDO_TROCA(n)`, foco no pedido) → mesmo caminho de envio → `trocarFoto` na posição |
+| Mover | botões "Usar como capa" / "Mover para cima" / "Mover para baixo" ou arrasto → `moverFoto` |
+| Remover | "Remover" com **confirmação** (`confirmarRemocao`, `CONFIRMAR_REMOCAO_FOTO`) → `removerFoto` |
+
+- **Grava na hora, uma ação por vez**: `executar` liga `pendente` (e um `ref` síncrono) e
+  trava todos os botões e o arrasto (`desabilitado` da `ListaFotos`) até a resposta;
+  durante o envio/gravação aparece "Salvando…" (`SALVANDO`). A ação seguinte usa a
+  `fotosVersao` devolvida pela anterior (US4-AC7).
+- **Estado vem do servidor**: no sucesso a tela troca o estado por `{ fotosVersao, fotos }`
+  da resposta; nas falhas com `atual` (`alterado`, `foto_expirada`, `limite`, `ultima`,
+  `falha_geral` da regra) também, então a mudança de outra pessoa aparece com as fotos
+  correntes. `nao_existe` (produto apagado por outra pessoa) mostra só o aviso e "Voltar à
+  lista". Exceção em qualquer action vira `falha_geral`.
+- **Com 1 foto**: sem "Remover" (`podeRemover={fotos.length > 1}`), com "Trocar foto" e o
+  texto de `mensagemFoto("ultima")`. Com 3 fotos, `EscolherFoto` fica sem espaço ("Máximo
+  de 3 fotos"); durante a troca recebe `quantidade={0}` para permitir a escolha.
+- **Troca sem perder a antiga até o fim**: a foto antiga só sai quando `trocarFoto` dá
+  certo; "Cancelar" (no pedido, no recorte ou na foto *não enviada*) descarta o envio sem
+  tocar no conjunto.
+- **Uma chamada por envio**: o `useEffect` que detecta a foto *enviada* marca a chave em
+  `processada` para chamar `adicionarFoto`/`trocarFoto` uma única vez; depois remove a
+  foto do hook.
+- **`muitos_pendentes`**: `telaFotos` troca o texto do cadastro por
+  `MUITOS_PENDENTES_TELA_FOTOS` ("Você enviou muitas fotos que não foram usadas. Tente de
+  novo amanhã."), porque aqui cada ação já grava.
+- **Foco**: ao pedir a foto nova o foco vai ao pedido; após cada ação, ao aviso.
+- **Textos novos** (`src/lib/fotos/mensagens.ts`, aprovados na SF11): `PEDIDO_TROCA`,
+  `SALVANDO`, `MUITOS_PENDENTES_TELA_FOTOS`; os de sucesso são os `SUCESSO_FOTO`.
+
+**`ListaFotos`** ganhou props opcionais (o cadastro não muda): `onTrocar` (mostra "Trocar
+foto"), `podeRemover` (padrão `true`) e `desabilitado` (trava botões e arrasto).
+`EstadoFoto` ganhou `salva` (foto já gravada no produto; `previa` é a URL `/painel/fotos/<arquivo>`).
+
+**Leitura do painel** (`src/lib/produtos/painel.ts`, T104a): `ItemLista.capaUrl` e
+`DetalheProduto.fotos: FotoVista[]` + `fotosVersao`. As URLs são sempre
+`/painel/fotos/<arquivo>` (rota com sessão), nunca a do bucket; chave fora do formato
+(`arquivoDaChave` do barrel R2) é omitida em vez de virar imagem quebrada.
+
+**Outras telas**: o detalhe `[id]` lista as fotos em ordem, capa primeiro (selo "Capa"), e
+ganhou o botão "Fotos"; sem fotos (produto herdado da 003) mostra o quadro "sem foto". A
+lista `produtos/` mostra a capa em miniatura 64×64 com `loading="lazy"`. A tela de remover
+produto avisa "As fotos do produto também serão apagadas." (`AVISO_REMOCAO_PRODUTO`).
+
 ### Arquivos
 
 | Arquivo | Papel |
@@ -314,7 +370,9 @@ no formulário some quando alguma das fotos expiradas já foi reenviada ou remov
 | `src/lib/fotos/exibicao.ts` | `fotoExibivel` (`server-only`): a rota não importa `db/fotos` direto. |
 | `src/lib/db/fotos.ts` | SQL: `emitirEnvio`, `obterEnvio`, `marcarConfirmado`, `descartarEnvio`, `enviosValidos`, `chaveExibivel`, `lerConjunto`, `substituirConjunto`; `TETO_PENDENTES = 20`; `envioValido` (a regra `VALIDO`). |
 | `src/lib/db/produtos.ts` | `inserirComFotos`, `remover` (devolve as chaves), `obterPorId` (traz `fotosVersao` e `fotos`) e `listar` (traz `capa`, a posição 1). |
+| `src/lib/produtos/painel.ts` | Expõe à UI `capaUrl`, `fotos` e `fotosVersao` com URL pela rota com sessão (SF11). |
 | `src/app/painel/(protegido)/produtos/novo/` e `_fotos/` | Telas do cadastro (SF9); ver "Telas do cadastro". |
+| `src/app/painel/(protegido)/produtos/[id]/fotos/` | `page.tsx` e `gerenciar-fotos.tsx` (SF11); ver "Tela Fotos do produto". |
 | `src/lib/r2/` | Módulo R2, ver [architecture.md](../architecture.md#módulo-r2-feature-004-sf2-sf3-e-sf6); `servirObjeto` foi acrescentado na SF6. |
 | `src/test/db/fotos-fixtures.ts` | Infra de teste (não é produção). |
 | `src/test/fixtures/fotos/aparelho/chrome-android-srgb.icc` | Perfil ICC real do Chrome Android (SF10), usado por `src/lib/r2/verificacao/aparelho.test.ts`. |
@@ -392,10 +450,13 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
 - **Safari iOS e HEIF não provados em aparelho real**: risco aceito da SF10 (ver
   "Prova com aparelho real"). Antes de liberar uma administradora com iPhone, refazer a
   parte iOS da SF10.
-- **Detalhe e edição ainda não mostram fotos** (SF11): a lista do cadastro não tem
-  miniatura da capa em outras telas.
-- **Actions do conjunto sem UI**: `adicionarFoto`, `trocarFoto`, `removerFoto` e
-  `moverFoto` só são exercidas por teste até a SF11.
+- **Fotos não passam pela edição de dados**: `[id]/editar` não mexe nas fotos; elas só
+  mudam na tela `[id]/fotos`, com `fotosVersao` própria.
+- **Fotos pelo `<img>` simples** (`@next/next/no-img-element` desligado com comentário):
+  a rota exige sessão e não há otimização de imagem; a miniatura da lista usa
+  `loading="lazy"`.
+- **Concorrência entre pessoas**: se outra pessoa mudar o conjunto, a ação seguinte falha
+  com `alterado` e a tela passa a mostrar as fotos atuais (sem refazer a ação sozinha).
 - **`pedirEnvio` valida a config do R2 antes de gravar**: sem
   `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_S3_ENDPOINT` a resposta é
   `falha_geral` e nenhuma linha `emitido` é criada.

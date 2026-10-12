@@ -166,7 +166,7 @@ sem edição manual; a `chave` reaproveita `categoria_chave` da `0000`).
 
 ### Tabela `produto_fotos`
 
-Modelo da 003 estendido pela `0002`; gravada por `inserirComFotos` (cadastro) e `substituirConjunto` (`src/lib/db/fotos.ts`, ainda sem action), apagada em cascata por `remover`.
+Modelo da 003 estendido pela `0002`; gravada por `inserirComFotos` (cadastro) e `substituirConjunto` (`src/lib/db/fotos.ts`, chamada pelas actions do conjunto e usada pela tela Fotos do produto), apagada em cascata por `remover`.
 `id` identity; `produto_id` FK com `ON DELETE CASCADE` (remover produto leva as
 fotos); `posicao` 1 a 3 (`produto_fotos_posicao_faixa`),
 `UNIQUE(produto_id, posicao)`; `chave_objeto` `text NOT NULL` (chave do objeto no

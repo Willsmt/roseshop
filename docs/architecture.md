@@ -3,8 +3,8 @@
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
 > servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7, o
-> pipeline da foto no aparelho (SF8) e as telas do cadastro com fotos (SF9); sem UI de
-> fotos no detalhe e na edição (SF11)**. Este documento descreve apenas o que existe hoje
+> pipeline da foto no aparelho (SF8), as telas do cadastro com fotos (SF9) e a tela de
+> fotos do produto existente (SF11); sem IA nem limpeza diária (SF12)**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -18,7 +18,7 @@ catálogo ou sacola foi construída. As funcionalidades de produto são o
 [F01-autenticacao.md](./features/F01-autenticacao.md)) e o **cadastro de
 categorias** (ver [F02-categorias.md](./features/F02-categorias.md)) e o
 **cadastro de produtos** (ver [F03-produtos.md](./features/F03-produtos.md))
-no painel, sem fotos ainda. Uso real do banco: [database.md](./database.md).
+no painel, com fotos de produto em andamento (feature 004). Uso real do banco: [database.md](./database.md).
 
 O que já está de pé é a **esteira de build e deploy**: como o projeto, escrito
 em Next.js, vira um Worker rodando na Cloudflare.
@@ -73,7 +73,8 @@ src/app/
   painel/(protegido)/               # layout (moldura + "Sair"), page (saudação + links Produtos e Categorias), bfcache-reload
   painel/(protegido)/categorias/    # lista, nova/, [id]/renomear/, [id]/remover/ (F02)
   painel/(protegido)/produtos/      # lista, novo/ (cadastro em 2 passos), [id]/ (detalhe), [id]/editar/, [id]/remover/ (F03)
-  painel/(protegido)/produtos/_fotos/  # passo Fotos do cadastro: escolher, recortar, listar, enviar (F04, SF9)
+  painel/(protegido)/produtos/_fotos/  # fotos no cadastro e na tela Fotos: escolher, recortar, listar, enviar (F04, SF9/SF11)
+  painel/(protegido)/produtos/[id]/fotos/  # tela Fotos do produto: adicionar, trocar, mover, remover (F04, SF11)
   painel/fotos/[arquivo]/route.ts   # GET /painel/fotos/<arquivo>: exibição da foto, fora do grupo (protegido) (F04)
 src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
@@ -345,9 +346,9 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   `vitest.probe.config.mts` agora inclui também `fk-produtos.int.test.ts`
   (escreve e apaga linhas marcadas). Config fora do escopo do doc-sync; ajustar
   em PR próprio.
-- **Detalhe e edição sem fotos ainda** (SF11 da feature 004): o cadastro pela tela já envia
-  de 1 a 3 fotos (SF9), mas `DetalheProduto.fotos` de `src/lib/produtos/painel.ts` segue
-  vazio e as telas mostram o quadro "sem foto" até a UI de fotos do conjunto.
+- **Fotos servidas por `<img>` simples** (SF11): detalhe, lista e tela Fotos apontam para
+  `/painel/fotos/<arquivo>` (rota com sessão, `Cache-Control` privado e imutável); não há
+  otimização de imagem do Next (`no-img-element` desligado com comentário).
 - **Sem limpeza de objetos órfãos ainda** (cron da feature 004, SF12): recusa de
   confirmação e remoção de produto apagam objetos do R2 em melhor esforço e dependem
   dela para o resto.
@@ -361,7 +362,7 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 ### Módulo R2 (feature 004, SF2, SF3 e SF6)
 
 > Estado: o módulo já tem chamadores desde a SF6 (actions de `src/lib/fotos/`, remoção
-> de produto e a rota de exibição). **Não existem** UI de fotos, IA nem cron.
+> de produto e a rota de exibição). UI de fotos existe desde a SF11; **não existem** IA nem cron.
 
 **Visão leiga**: a foto do produto não passa pelo servidor do site. A administradora
 pede uma "autorização de envio" (uma URL temporária, válida por 5 minutos), o aparelho
@@ -439,7 +440,7 @@ sem o endpoint S3 do R2, que só existe no worker: valide no `preview`. Detalhes
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, telas de fotos do detalhe e da edição (SF11) e integração de IA (OpenAI) são
+Catálogo público, sacola, limpeza diária de fotos (SF12) e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

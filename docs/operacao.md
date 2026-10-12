@@ -8,7 +8,7 @@
 > `0000`) e pelos produtos (feature 003: migration `0001`) do painel. O login das administradoras
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
-> `/painel/fotos/<arquivo>`; o cadastro de produto já envia fotos, o detalhe e a edição ainda não); IA não está
+> `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); IA não está
 > configurada.
 
 ## Visão leiga

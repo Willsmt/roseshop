@@ -53,7 +53,7 @@ function falha(motivo: Motivo, campo?: CampoProduto): Falha {
 
 const texto = (v: unknown): string => (typeof v === "string" ? v : "");
 
-function validarNome(v: unknown): { nome?: string; falha?: Falha } {
+export function validarNome(v: unknown): { nome?: string; falha?: Falha } {
   const nome = normalizarNome(texto(v));
   if (nome === "") return { falha: falha("nome_vazio", "nome") };
   if (/[\p{Cc}\p{Cf}]/u.test(nome) || !/[\p{L}\p{N}]/u.test(nome))
@@ -70,7 +70,7 @@ function validarCategoria(v: unknown): { id?: number; falha?: Falha } {
   return r.success ? { id: r.data } : { falha: falha("categoria_invalida", "categoria") };
 }
 
-function validarDescricao(v: unknown): { descricao?: string | null; falha?: Falha } {
+export function validarDescricao(v: unknown): { descricao?: string | null; falha?: Falha } {
   const d = texto(v).replace(/\r\n/g, "\n").trim();
   if (d === "") return { descricao: null };
   if (tamanho(d) > DESCRICAO_MAX) return { falha: falha("descricao_tamanho", "descricao") };

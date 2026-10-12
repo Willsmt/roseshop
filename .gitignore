@@ -62,3 +62,6 @@ references/
 
 # Saída de ferramentas de teste
 .vitest/
+
+# Medição da IA (fotos reais da loja; nunca versionar)
+ia-medicao/

@@ -22,6 +22,7 @@
     "db:migrate": "drizzle-kit migrate",
     "test:int": "vitest run --config vitest.int.config.mts",
     "test:perf": "vitest run --config vitest.perf.config.mts --disableConsoleIntercept",
+    "test:ia": "vitest run --config vitest.ia.config.mts --disableConsoleIntercept",
     "deploy:dev": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env dev",
     "deploy:production": "node scripts/require-ci.mjs && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production"
   },

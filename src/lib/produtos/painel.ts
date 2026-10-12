@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { dbDoContexto } from "@/lib/db/contexto";
 import { listar, obterPorId, type FiltroDb, type ProdutoDb } from "@/lib/db/produtos";
+import type { FotoVista } from "@/lib/fotos/tipos";
+import { arquivoDaChave } from "@/lib/r2";
 
 import { formatarCodigo, interpretarCodigoBusca } from "./codigo";
 import { mensagemDoMotivo } from "./mensagens";
@@ -44,13 +46,15 @@ export type ItemLista = {
   esgotado: boolean;
   emDestaque: boolean;
   preco: string | null;
+  capaUrl: string | null;
   href: string;
 };
 
 export type DetalheProduto = ProdutoDb & {
   codigo: string;
   preco: string | null;
-  fotos: never[];
+  fotosVersao: number;
+  fotos: FotoVista[];
   podeDestacar: boolean;
   voltarHref: string;
 };
@@ -115,6 +119,22 @@ function avisoDaLista(aviso: FiltroLista["aviso"]): AvisoLista | null {
   return null;
 }
 
+// Imagens só pela rota com sessão (contracts/fotos.md §5), nunca pela URL do bucket. Chave
+// fora do formato não vira imagem.
+function urlDaFoto(chave: string | null | undefined): { arquivo: string; url: string } | null {
+  const arquivo = chave == null ? null : arquivoDaChave(chave);
+  return arquivo ? { arquivo, url: `/painel/fotos/${arquivo}` } : null;
+}
+
+function fotosVista(fotos: { posicao: number; chave: string }[]): FotoVista[] {
+  return [...fotos]
+    .sort((a, b) => a.posicao - b.posicao)
+    .flatMap((f) => {
+      const foto = urlDaFoto(f.chave);
+      return foto ? [{ posicao: f.posicao, ...foto }] : [];
+    });
+}
+
 export async function listarProdutosDoPainel(searchParams: unknown): Promise<{
   itens: ItemLista[];
   verMais: string | null;
@@ -135,6 +155,7 @@ export async function listarProdutosDoPainel(searchParams: unknown): Promise<{
       esgotado: p.esgotado,
       emDestaque: p.destaqueVaga !== null,
       preco: precoFormatado(p),
+      capaUrl: urlDaFoto(p.capa)?.url ?? null,
       href: `${LISTA}/${p.id}${voltar}`,
     })),
     verMais: haMais && ultimo ? hrefDaLista(queryDaLista(f, ultimo.id)) : null,
@@ -164,7 +185,7 @@ export async function obterProdutoDoPainel(
     ...p,
     codigo: formatarCodigo(p.id),
     preco: precoFormatado(p),
-    fotos: [],
+    fotos: fotosVista(p.fotos),
     podeDestacar: !p.esgotado && p.destaqueVaga === null,
     voltarHref: voltarHrefSeguro(voltar),
   };

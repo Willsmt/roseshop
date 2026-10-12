@@ -30,6 +30,11 @@ describe("ConfirmarRemocao (US6)", () => {
     ).toBeInTheDocument();
   });
 
+  it("avisa que as fotos também serão apagadas (US6-AC2, FR-035)", () => {
+    render(<ConfirmarRemocao {...props} />);
+    expect(screen.getByText("As fotos do produto também serão apagadas.")).toBeInTheDocument();
+  });
+
   it("Cancelar volta ao detalhe sem chamar a action (AC2)", () => {
     render(<ConfirmarRemocao {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));

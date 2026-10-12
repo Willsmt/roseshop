@@ -571,3 +571,117 @@ describe("ListaFotos — arrasto vertical pela alça (US1-AC5; D2, D5, correçã
     expect(onMover).not.toHaveBeenCalled();
   });
 });
+
+// T103 (SF11) — extensão da lista para fotos já salvas: "Trocar foto", sem "Remover" e estado "salva".
+describe("ListaFotos — fotos salvas e troca (SF11, US4-AC1, US4-AC4, US5-AC1)", () => {
+  const salva = (arquivo: string): FotoLocal => ({
+    chave: arquivo,
+    previa: `/painel/fotos/${arquivo}`,
+    estado: { tipo: "salva" },
+  });
+  const salvas = [salva("a.webp"), salva("b.webp"), salva("c.webp")];
+
+  it('onTrocar presente ⇒ cada item tem o botão "Trocar foto" e o clique chama onTrocar(chave)', () => {
+    const onTrocar = vi.fn();
+    render(
+      <ListaFotos fotos={salvas} onRemover={vi.fn()} onMover={vi.fn()} onTentarDeNovo={vi.fn()} onTrocar={onTrocar} />,
+    );
+    expect(screen.getAllByRole("button", { name: "Trocar foto" })).toHaveLength(3);
+    fireEvent.click(within(item(2)).getByRole("button", { name: "Trocar foto" }));
+    expect(onTrocar).toHaveBeenCalledTimes(1);
+    expect(onTrocar).toHaveBeenCalledWith("b.webp");
+  });
+
+  it('onTrocar ausente (cadastro) ⇒ não há "Trocar foto"', () => {
+    montar(tres);
+    expect(screen.queryByRole("button", { name: "Trocar foto" })).toBeNull();
+  });
+
+  it('podeRemover={false} ⇒ nenhum botão "Remover"', () => {
+    render(
+      <ListaFotos fotos={[salva("a.webp")]} onRemover={vi.fn()} onMover={vi.fn()} onTentarDeNovo={vi.fn()} podeRemover={false} />,
+    );
+    expect(screen.queryByRole("button", { name: /Remover/ })).toBeNull();
+  });
+
+  it('padrão (podeRemover omitido) ⇒ "Remover" com o texto visível em cada item', () => {
+    montar(tres);
+    const botoes = screen.getAllByRole("button", { name: "Remover" });
+    expect(botoes).toHaveLength(3);
+    expect(botoes[0]).toHaveTextContent("Remover");
+  });
+
+  it('estado "salva" ⇒ sem "Enviando…" nem "Não enviada"', () => {
+    render(<ListaFotos fotos={salvas} onRemover={vi.fn()} onMover={vi.fn()} onTentarDeNovo={vi.fn()} />);
+    expect(screen.queryByText("Enviando…")).toBeNull();
+    expect(screen.queryByText(mensagemFoto("nao_enviada"))).toBeNull();
+    expect(screen.queryByRole("button", { name: "Tentar de novo" })).toBeNull();
+  });
+
+  it("estado salva: o <img> usa a previa /painel/fotos/<arquivo> como src", () => {
+    render(<ListaFotos fotos={salvas} onRemover={vi.fn()} onMover={vi.fn()} onTentarDeNovo={vi.fn()} />);
+    expect(within(item(1)).getByRole("img", { name: "Foto 1" })).toHaveAttribute("src", "/painel/fotos/a.webp");
+    expect(within(item(3)).getByRole("img", { name: "Foto 3" })).toHaveAttribute("src", "/painel/fotos/c.webp");
+  });
+});
+
+// T105a (SF11, R3): `desabilitado` trava todos os botões do item e o arrasto.
+describe("ListaFotos — desabilitado (SF11 T105a, R3)", () => {
+  const toque = (clientY: number) => ({ pointerId: 1, clientX: 100, clientY, button: 0, isPrimary: true });
+
+  it("desabilitado ⇒ todos os botões de todos os itens têm disabled e cliques não chamam callbacks", () => {
+    const onRemover = vi.fn();
+    const onMover = vi.fn();
+    const onTrocar = vi.fn();
+    const onTentarDeNovo = vi.fn();
+    render(
+      <ListaFotos
+        fotos={[
+          enviada("a"),
+          enviada("b"),
+          { chave: "c", previa: "blob:c", estado: { tipo: "nao_enviada", mensagem: mensagemFoto("foto_expirada"), podeTentar: true } },
+        ]}
+        onRemover={onRemover}
+        onMover={onMover}
+        onTentarDeNovo={onTentarDeNovo}
+        onTrocar={onTrocar}
+        desabilitado
+      />,
+    );
+    const botoes = screen.getAllByRole("button");
+    expect(botoes.length).toBeGreaterThanOrEqual(9);
+    for (const b of botoes) {
+      expect(b).toBeDisabled();
+      fireEvent.click(b);
+    }
+    for (const nome of ["Usar como capa", "Mover para cima", "Mover para baixo", "Remover", "Trocar foto", "Tentar de novo"]) {
+      expect(screen.getAllByRole("button", { name: nome }).length).toBeGreaterThan(0);
+    }
+    expect(onRemover).not.toHaveBeenCalled();
+    expect(onMover).not.toHaveBeenCalled();
+    expect(onTrocar).not.toHaveBeenCalled();
+    expect(onTentarDeNovo).not.toHaveBeenCalled();
+  });
+
+  it("desabilitado ⇒ pointerdown na alça não inicia arrasto nem chama onMover", () => {
+    const onMover = vi.fn();
+    render(<ListaFotos fotos={tres} onRemover={vi.fn()} onMover={onMover} onTentarDeNovo={vi.fn()} desabilitado />);
+    const a = within(item(1)).getByTestId("alca-foto");
+    fireEvent.pointerDown(a, toque(80));
+    fireEvent.pointerMove(a, toque(500));
+    expect(itens().filter((li) => li.getAttribute("data-destino") === "true")).toHaveLength(0);
+    fireEvent.pointerUp(a, toque(500));
+    expect(onMover).not.toHaveBeenCalled();
+  });
+
+  it("padrão (sem desabilitado) ⇒ botões habilitados e arrasto funciona", () => {
+    const onMover = vi.fn();
+    render(<ListaFotos fotos={tres} onRemover={vi.fn()} onMover={onMover} onTentarDeNovo={vi.fn()} />);
+    for (const b of screen.getAllByRole("button")) expect(b).toBeEnabled();
+    const a = within(item(1)).getByTestId("alca-foto");
+    fireEvent.pointerDown(a, toque(80));
+    fireEvent.pointerMove(a, toque(500));
+    fireEvent.pointerUp(a, toque(500));
+    expect(onMover).toHaveBeenCalledTimes(1);
+  });
+});

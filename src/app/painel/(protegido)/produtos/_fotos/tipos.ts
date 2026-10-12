@@ -1,8 +1,9 @@
-// Estado de cada foto no passo Fotos do cadastro (contrato interno da SF9).
+// Estado de cada foto no passo Fotos do cadastro (contrato interno da SF9). "salva" = foto já gravada no produto (SF11).
 
 export type EstadoFoto =
 	| { tipo: "enviando" }
 	| { tipo: "enviada"; envioId: string }
+	| { tipo: "salva" }
 	| { tipo: "nao_enviada"; mensagem: string; podeTentar: boolean };
 
 // previa: blob URL do blob tratado; null enquanto ele não existe (espaço reservado com

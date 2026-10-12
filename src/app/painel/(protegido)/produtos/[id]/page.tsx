@@ -49,9 +49,31 @@ export default async function DetalheProdutoPage({
 					{emDestaque ? <span className="text-base font-semibold">Em destaque</span> : null}
 				</div>
 			</div>
-			<div className="flex min-h-32 items-center justify-center rounded-lg border-2 border-dashed border-neutral-400 text-base">
-				sem foto
-			</div>
+			{p.fotos.length > 0 ? (
+				<ul className="flex flex-col gap-3">
+					{p.fotos.map((f, i) => (
+						<li key={f.arquivo} className="relative">
+							{/* eslint-disable-next-line @next/next/no-img-element -- rota com sessão, sem otimização */}
+							<img
+								src={f.url}
+								alt={`Foto ${i + 1}`}
+								width={400}
+								height={400}
+								className="aspect-square h-auto w-full max-w-sm rounded-lg object-cover"
+							/>
+							{i === 0 ? (
+								<span className="absolute left-2 top-2 rounded bg-neutral-900 px-2 py-1 text-base font-semibold text-white">
+									Capa
+								</span>
+							) : null}
+						</li>
+					))}
+				</ul>
+			) : (
+				<div className="flex min-h-32 items-center justify-center rounded-lg border-2 border-dashed border-neutral-400 text-base">
+					sem foto
+				</div>
+			)}
 			{p.descricao ? <p className="whitespace-pre-line text-base">{p.descricao}</p> : null}
 			<AcoesProduto
 				id={p.id}
@@ -60,7 +82,10 @@ export default async function DetalheProdutoPage({
 				emDestaque={emDestaque}
 				podeDestacar={p.podeDestacar}
 			/>
-			<div className="flex gap-3">
+			<div className="flex flex-wrap gap-3">
+				<Link href={`/painel/produtos/${p.id}/fotos`} className={linkBotao}>
+					Fotos
+				</Link>
 				<Link href={`/painel/produtos/${p.id}/editar`} className={linkBotao}>
 					Editar
 				</Link>

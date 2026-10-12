@@ -5,6 +5,7 @@ import { useActionState, useEffect } from "react";
 
 import { Aviso } from "@/components/ui/aviso";
 import { Button } from "@/components/ui/button";
+import { AVISO_REMOCAO_PRODUTO } from "@/lib/fotos/mensagens";
 import { removerProduto } from "@/lib/produtos/actions";
 
 import { comFalhaGeral } from "../../com-falha-geral";
@@ -37,6 +38,7 @@ export function ConfirmarRemocao({
 			<input type="hidden" name="id" value={id} />
 			<input type="hidden" name="versao" value={versao} />
 			<p className="text-base">{`O produto ${codigo} ${nome} será apagado de vez e não poderá ser recuperado`}</p>
+			<p className="text-base">{AVISO_REMOCAO_PRODUTO}</p>
 			{falha ? <Aviso tipo="erro">{falha.mensagem}</Aviso> : null}
 			<div className="flex flex-col gap-3 sm:flex-row">
 				<Button type="submit" variant="primary" disabled={enviando}>

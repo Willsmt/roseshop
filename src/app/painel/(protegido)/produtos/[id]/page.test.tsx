@@ -108,4 +108,66 @@ describe("/painel/produtos/[id] — detalhe", () => {
     expect(screen.getByRole("link", { name: "Voltar à lista" })).toHaveAttribute("href", "/painel/produtos");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  // SF11 / T104 (FR-040): fotos no detalhe, selo "Capa" na 1ª, link "Fotos".
+  describe("fotos (SF11, FR-040)", () => {
+    const A = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.webp";
+    const B = "11111111-2222-4333-8444-555555555555.jpg";
+    const C = "aaaaaaaa-bbbb-4ccc-9ddd-eeeeeeeeeeee.webp";
+    const foto = (posicao: number, arquivo: string) => ({ posicao, arquivo, url: `/painel/fotos/${arquivo}` });
+    const comFotos = (fotos: ReturnType<typeof foto>[]) =>
+      obterMock.mockResolvedValue({ ...(produto as object), fotosVersao: 3, fotos } as never);
+
+    it("mostra as fotos na ordem recebida, com src /painel/fotos/<arquivo>", async () => {
+      comFotos([foto(1, A), foto(2, B), foto(3, C)]);
+      const { container } = render(await DetalhePage(props));
+      const imgs = Array.from(container.querySelectorAll("img"));
+      expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+        `/painel/fotos/${A}`,
+        `/painel/fotos/${B}`,
+        `/painel/fotos/${C}`,
+      ]);
+      for (const i of imgs) expect(i.getAttribute("src")).not.toMatch(/^https?:/);
+    });
+
+    it("com fotos, não mostra o marcador 'sem foto'", async () => {
+      comFotos([foto(1, A)]);
+      render(await DetalhePage(props));
+      expect(screen.queryByText("sem foto")).not.toBeInTheDocument();
+    });
+
+    it("selo 'Capa' aparece uma única vez, na 1ª foto", async () => {
+      comFotos([foto(1, A), foto(2, B)]);
+      const { container } = render(await DetalhePage(props));
+      const selos = screen.getAllByText("Capa");
+      expect(selos).toHaveLength(1);
+      const primeira = container.querySelectorAll("img")[0];
+      const segunda = container.querySelectorAll("img")[1];
+      const bloco = (el: Element) => el.parentElement!;
+      expect(bloco(primeira).contains(selos[0]) || bloco(primeira).parentElement!.contains(selos[0])).toBe(true);
+      expect(bloco(segunda).contains(selos[0])).toBe(false);
+    });
+
+    it("uma foto só: ainda tem o selo 'Capa'", async () => {
+      comFotos([foto(1, A)]);
+      render(await DetalhePage(props));
+      expect(screen.getAllByText("Capa")).toHaveLength(1);
+    });
+
+    it("sem fotos (produto legado) ⇒ 'sem foto', sem img e sem selo", async () => {
+      const { container } = render(await DetalhePage(props));
+      expect(screen.getByText("sem foto")).toBeInTheDocument();
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.queryByText("Capa")).not.toBeInTheDocument();
+    });
+
+    it("link 'Fotos' vai para /painel/produtos/<id>/fotos (com e sem fotos)", async () => {
+      const { unmount } = render(await DetalhePage(props));
+      expect(screen.getByRole("link", { name: "Fotos" })).toHaveAttribute("href", "/painel/produtos/42/fotos");
+      unmount();
+      comFotos([foto(1, A)]);
+      render(await DetalhePage(props));
+      expect(screen.getByRole("link", { name: "Fotos" })).toHaveAttribute("href", "/painel/produtos/42/fotos");
+    });
+  });
 });

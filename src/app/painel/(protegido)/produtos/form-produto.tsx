@@ -17,6 +17,9 @@ import type { ResultadoAction } from "@/lib/produtos/actions";
 import type { ValoresFormulario } from "@/lib/produtos/erros";
 
 import { comFalhaGeral } from "./com-falha-geral";
+// Só de textos-sugestao (sem dependências): a edição também usa este form e não pode carregar
+// a action da sugestão (FR-034).
+import { MARCADOR_SUGESTAO, type Sugestao } from "./novo/textos-sugestao";
 
 const LISTA = "/painel/produtos";
 const MAX_DIGITOS = 7; // 99.999,99
@@ -29,6 +32,7 @@ type Props = {
 			envioIds: readonly string[];
 			envioEmCurso: boolean;
 			onFotoExpirada?: (envioIds: string[]) => void;
+			sugestao?: Sugestao | null;
 		}
 	| { modo: "edicao"; id: number; versao: number; inicial: ValoresFormulario }
 );
@@ -83,6 +87,8 @@ function mensagemDoNome(mensagem: string, codigoExistente?: number): React.React
 	);
 }
 
+type CampoSugerido = "nome" | "categoriaId" | "descricao";
+
 type Resultado = ResultadoAction<{ id: number; versao?: number }> | null;
 
 export function FormProduto(props: Props) {
@@ -108,6 +114,49 @@ export function FormProduto(props: Props) {
 		onFotoExpirada?.(estado.envioIds ?? []);
 	}, [estado, onFotoExpirada]);
 
+	// Sugestão da IA (só no cadastro): aplicada no DOM, só em campo vazio, a cada objeto novo.
+	// Os campos seguem não controlados; o estado guarda só quais ganharam o marcador (fica fora
+	// do bloco com `key`, então sobrevive à remontagem após falha do "Salvar").
+	const sugestao = props.modo === "cadastro" ? props.sugestao : undefined;
+	const formRef = useRef<HTMLFormElement>(null);
+	const [marcados, setMarcados] = useState<ReadonlySet<CampoSugerido>>(new Set());
+	// Cada sugestão é aplicada uma vez: re-render não repreenche um campo que a pessoa esvaziou.
+	// Com o "Salvar" em curso, espera: a resposta volta o form aos valores enviados e apagaria
+	// o que fosse escrito agora (o marcador ficaria num campo vazio).
+	const aplicada = useRef<Sugestao | null>(null);
+	useEffect(() => {
+		const form = formRef.current;
+		if (!sugestao || !form || enviando || aplicada.current === sugestao) return;
+		aplicada.current = sugestao;
+		const novos: CampoSugerido[] = [];
+		const aplicar = (campo: CampoSugerido, valor: string | null) => {
+			const el = form.elements.namedItem(campo);
+			const ehCampo =
+				el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
+			if (valor === null || !ehCampo || el.value.trim() !== "") return;
+			el.value = valor;
+			novos.push(campo);
+		};
+		aplicar("nome", sugestao.nome);
+		aplicar("descricao", sugestao.descricao);
+		// Categoria só vale se o id existe nas opções; senão o select fica em "Escolha uma categoria".
+		const id = sugestao.categoriaId;
+		aplicar("categoriaId", id !== null && categorias.some((c) => c.id === id) ? String(id) : null);
+		if (novos.length > 0) setMarcados((antes) => new Set([...antes, ...novos]));
+	}, [sugestao, categorias, enviando]);
+	// Editar um campo tira o marcador dele (aplicar por código não dispara evento).
+	function aoEditar(e: React.SyntheticEvent<HTMLFormElement>) {
+		const nome = (e.target as { name?: string }).name as CampoSugerido | undefined;
+		if (nome && marcados.has(nome)) {
+			setMarcados((antes) => {
+				const resto = new Set(antes);
+				resto.delete(nome);
+				return resto;
+			});
+		}
+	}
+	const dica = (campo: CampoSugerido) => (marcados.has(campo) ? MARCADOR_SUGESTAO : undefined);
+
 	const falha = estado && !estado.ok ? estado : null;
 	// foto_expirada: a mensagem some quando alguma das fotos expiradas já não está entre as
 	// fotos atuais (reenviada ou removida no passo Fotos).
@@ -121,7 +170,7 @@ export function FormProduto(props: Props) {
 	const chave = falha ? `falha:${JSON.stringify(falha.valores)}:${falha.motivo}` : "inicial";
 
 	return (
-		<form action={acao} className="flex flex-col gap-4">
+		<form ref={formRef} action={acao} onChange={aoEditar} className="flex flex-col gap-4">
 			{props.modo === "edicao" ? (
 				<>
 					<input type="hidden" name="id" value={props.id} />
@@ -137,6 +186,7 @@ export function FormProduto(props: Props) {
 					defaultValue={v.nome}
 					maxLength={80}
 					erro={falha?.campo === "nome" ? mensagemDoNome(falha.mensagem, falha.codigoExistente) : undefined}
+					dica={dica("nome")}
 				/>
 				<Selecao
 					name="categoriaId"
@@ -145,8 +195,9 @@ export function FormProduto(props: Props) {
 					defaultValue={v.categoriaId}
 					vazio="Escolha uma categoria"
 					erro={erroDe("categoria")}
+					dica={dica("categoriaId")}
 				/>
-				<AreaTexto name="descricao" rotulo="Descrição" defaultValue={v.descricao} linhas={4} erro={erroDe("descricao")} />
+				<AreaTexto name="descricao" rotulo="Descrição" defaultValue={v.descricao} linhas={4} erro={erroDe("descricao")} dica={dica("descricao")} />
 				<CampoPreco inicial={v.preco} erro={erroDe("preco")} />
 				<CaixaMarcacao name="aPartirDe" rotulo={'Usar "a partir de" no preço'} defaultChecked={v.aPartirDe} erro={erroDe("aPartirDe")} />
 			</div>

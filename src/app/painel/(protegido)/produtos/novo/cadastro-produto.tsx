@@ -11,8 +11,11 @@ import { ListaFotos } from "../_fotos/lista-fotos";
 import { RecorteFoto } from "../_fotos/recorte-foto";
 import { conferirArquivo, useEnvioFotos } from "../_fotos/usar-envio";
 import { FormProduto } from "../form-produto";
+import { AvisoSugestao, type EstadoSugestao, useSugestao } from "./sugestao";
 
 type Props = { categorias: readonly { id: number; nome: string }[] };
+
+const OCIOSO: EstadoSugestao = { tipo: "ocioso" };
 
 // Cadastro em dois passos (Fotos → Dados). Os dois ficam montados e o inativo fica `hidden`:
 // "Voltar às fotos" não perde o que foi digitado. Nada vai para storage (recarregar = vazio).
@@ -25,6 +28,8 @@ export function CadastroProduto({ categorias }: Props) {
 	const tituloDados = useRef<HTMLHeadingElement>(null);
 	const focarTitulo = useRef(false);
 	const idNaoEnviada = useId();
+	// Sugestão da IA: pedida uma vez, ao tocar em "Continuar" (trocar as fotos depois não pede outra).
+	const sugestao = useSugestao();
 	const { fotos, envioIds, pendentes, aviso, mostrarAviso, limparAviso, enviar, tentarDeNovo, remover, mover, marcarExpiradas } =
 		useEnvioFotos();
 
@@ -87,7 +92,10 @@ export function CadastroProduto({ categorias }: Props) {
 							variant="primary"
 							disabled={envioIds.length === 0 || pendentes}
 							aria-describedby={temNaoEnviada ? idNaoEnviada : undefined}
-							onClick={() => setPasso("dados")}
+							onClick={() => {
+								setPasso("dados");
+								sugestao.pedirPrimeira(envioIds);
+							}}
 						>
 							Continuar
 						</Button>
@@ -99,10 +107,24 @@ export function CadastroProduto({ categorias }: Props) {
 					</>
 				)}
 			</section>
+			{/* A região viva do aviso fica fora do `hidden`: montada desde o início, o texto que entra
+			    ao abrir o passo Dados é anunciado como mudança (dentro da seção não seria). */}
+			<div className="flex flex-col gap-6">
+				<div hidden={passo !== "dados"}>
+					<h2 ref={tituloDados} tabIndex={-1} className="text-xl font-bold focus:outline-none">
+						Dados do produto
+					</h2>
+				</div>
+				<AvisoSugestao
+					estado={passo === "dados" ? sugestao.estado : OCIOSO}
+					onTentarDeNovo={() => {
+						// O botão some ao pedir de novo: o foco vai ao título, não ao body.
+						tituloDados.current?.focus();
+						sugestao.tentarDeNovo(envioIds);
+					}}
+				/>
+			</div>
 			<section hidden={passo !== "dados"} className="flex flex-col gap-6">
-				<h2 ref={tituloDados} tabIndex={-1} className="text-xl font-bold focus:outline-none">
-					Dados do produto
-				</h2>
 				<Button type="button" variant="secondary" onClick={() => setPasso("fotos")}>
 					Voltar às fotos
 				</Button>
@@ -112,6 +134,7 @@ export function CadastroProduto({ categorias }: Props) {
 					envioIds={envioIds}
 					envioEmCurso={pendentes}
 					onFotoExpirada={aoFotoExpirada}
+					sugestao={sugestao.estado.tipo === "pronta" ? sugestao.estado.sugestao : null}
 				/>
 			</section>
 		</>

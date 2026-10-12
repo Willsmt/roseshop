@@ -82,6 +82,7 @@ vi.mock("../_fotos/lista-fotos", () => ({
   ),
 }));
 vi.mock("@/lib/produtos/actions", () => ({ criarProduto: vi.fn(), editarProduto: vi.fn() }));
+vi.mock("@/lib/produtos/sugestao", () => ({ sugerirProduto: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: h.push }) }));
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -92,11 +93,13 @@ vi.mock("next/link", () => ({
 }));
 
 import { criarProduto } from "@/lib/produtos/actions";
+import { sugerirProduto } from "@/lib/produtos/sugestao";
 import { CONTINUAR_COM_NAO_ENVIADA, mensagemFoto } from "@/lib/fotos/mensagens";
 
 import { CadastroProduto } from "./cadastro-produto";
 
 const criarMock = vi.mocked(criarProduto);
+const sugerirMock = vi.mocked(sugerirProduto);
 const categorias = [{ id: 1, nome: "Meias" }];
 
 const enviada = (n: number): Foto => ({
@@ -143,6 +146,8 @@ beforeEach(() => {
   h.conferirArquivo.mockReset();
   h.push.mockReset();
   criarMock.mockReset();
+  sugerirMock.mockReset();
+  sugerirMock.mockReturnValue(new Promise(() => {})); // por padrão, a sugestão nunca chega
 });
 afterEach(cleanup);
 
@@ -470,5 +475,346 @@ describe("CadastroProduto — passo Dados (US1-AC7, edge cases de envio e expira
     render(<CadastroProduto categorias={categorias} />);
     fireEvent.click(continuar());
     expect(screen.getByRole("option", { name: "Meias" })).toBeInTheDocument();
+  });
+});
+
+// T136 (SF14): sugestão da IA no passo Dados. Contrato interno da SF14, seções 2 e 3.
+describe("sugestão (SF14)", () => {
+  type Resposta = Awaited<ReturnType<typeof sugerirProduto>>;
+  function deferred() {
+    let resolve!: (v: Resposta) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<Resposta>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+  const MARCADOR = "Sugestão \u2014 confira";
+  const ESPERANDO = "Preenchendo a partir das fotos\u2026";
+  const MSG_INDISPONIVEL = "Não deu para sugerir agora. Preencha você mesma.";
+  const MSG_PAUSADA = "As sugestões estão pausadas por agora. Preencha você mesma.";
+  const SUGESTAO = { nome: "Meia lisa", categoriaId: 1, descricao: "Meia de algodão" };
+  const ok = (sugestao: { nome: string | null; categoriaId: number | null; descricao: string | null } = SUGESTAO): Resposta => ({
+    ok: true,
+    sugestao,
+  });
+  const indisponivel = (): Resposta => ({ ok: false, motivo: "ia_indisponivel", mensagem: MSG_INDISPONIVEL });
+  const pausada = (): Resposta => ({ ok: false, motivo: "ia_pausada", mensagem: MSG_PAUSADA });
+
+  const nome = () => screen.getByLabelText("Nome do produto") as HTMLInputElement;
+  const categoria = () => screen.getByRole("combobox", { name: "Categoria" }) as unknown as HTMLSelectElement;
+  const descricao = () => screen.getByLabelText("Descrição") as HTMLTextAreaElement;
+  const preco = () => screen.getByLabelText("Preço") as HTMLInputElement;
+  const aPartirDe = () => screen.getByLabelText(/a partir de/i) as HTMLInputElement;
+
+  function irParaDados(ids = ["e1", "e2"]) {
+    novoEnvio({ fotos: ids.map((_, i) => enviada(i + 1)), envioIds: ids });
+    const r = render(<CadastroProduto categorias={categorias} />);
+    fireEvent.click(continuar());
+    return r;
+  }
+
+  it("US3-AC1: 'Continuar' abre o passo Dados na hora, editável, com \"Preenchendo a partir das fotos…\"; pede 1 vez, na ordem", () => {
+    irParaDados(["e2", "e1"]);
+    expect(escondido("Dados do produto")).toBe(false);
+    expect(nome()).toBeVisible();
+    expect(nome()).toBeEnabled();
+    expect(categoria()).toBeEnabled();
+    expect(descricao()).toBeEnabled();
+    expect(screen.getByRole("status")).toHaveTextContent(ESPERANDO);
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
+    expect(sugerirMock).toHaveBeenCalledWith({ envioIds: ["e2", "e1"] });
+  });
+
+  it("US3-AC1: nenhuma chamada antes de 'Continuar'", () => {
+    novoEnvio({ fotos: [enviada(1)], envioIds: ["e1"] });
+    render(<CadastroProduto categorias={categorias} />);
+    expect(sugerirMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("status", { hidden: true })).toBeEmptyDOMElement();
+  });
+
+  it("FR-027: digitar durante a espera funciona, inclusive escolher a categoria", () => {
+    sugerirMock.mockReturnValue(deferred().promise);
+    irParaDados();
+    fireEvent.change(nome(), { target: { value: "Minha meia" } });
+    fireEvent.change(categoria(), { target: { value: "1" } });
+    fireEvent.change(descricao(), { target: { value: "Texto meu" } });
+    fireEvent.change(preco(), { target: { value: "1290" } });
+    expect(nome()).toHaveValue("Minha meia");
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Texto meu");
+    expect(preco().value).toBe("12,90");
+  });
+
+  it("voltar às fotos e 'Continuar' de novo (mesmas fotos) NÃO chama de novo", () => {
+    irParaDados();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar às fotos" }));
+    fireEvent.click(continuar());
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("voltar, trocar as fotos (envioIds diferentes) e 'Continuar' de novo NÃO chama de novo", () => {
+    const { rerender } = irParaDados(["e1", "e2"]);
+    fireEvent.click(screen.getByRole("button", { name: "Voltar às fotos" }));
+    novoEnvio({ fotos: [enviada(9)], envioIds: ["e9"] });
+    rerender(<CadastroProduto categorias={categorias} />);
+    fireEvent.click(continuar());
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("voltar e 'Continuar' de novo depois da sugestão pronta não repete nem apaga o que veio", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar às fotos" }));
+    fireEvent.click(continuar());
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
+    expect(nome()).toHaveValue("Meia lisa");
+  });
+
+  it("US3-AC2: sugestão ok ⇒ nome, categoria e descrição preenchidos com 'Sugestão — confira' ligado por aria-describedby; preço vazio e 'a partir de' desmarcado", async () => {
+    const d = deferred();
+    sugerirMock.mockReturnValue(d.promise);
+    irParaDados();
+    d.resolve(ok());
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Meia de algodão");
+    for (const campo of [nome(), categoria(), descricao()]) {
+      expect(campo).toHaveAccessibleDescription(MARCADOR);
+    }
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+    expect(preco().value).toBe("");
+    expect(aPartirDe()).not.toBeChecked();
+    expect(screen.getByRole("status")).not.toHaveTextContent(ESPERANDO);
+  });
+
+  it("US3-AC3: campo já digitado antes da chegada não muda e não ganha marcador; os vazios são preenchidos", async () => {
+    const d = deferred();
+    sugerirMock.mockReturnValue(d.promise);
+    irParaDados();
+    fireEvent.change(nome(), { target: { value: "Minha meia" } });
+    d.resolve(ok());
+    await waitFor(() => expect(descricao()).toHaveValue("Meia de algodão"));
+    expect(nome()).toHaveValue("Minha meia");
+    expect(nome()).toHaveAccessibleDescription("");
+    expect(categoria()).toHaveValue("1");
+    expect(categoria()).toHaveAccessibleDescription(MARCADOR);
+    expect(descricao()).toHaveAccessibleDescription(MARCADOR);
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(2);
+  });
+
+  it("US3-AC3: categoria escolhida e descrição digitada antes da chegada também ficam como estão", async () => {
+    const d = deferred();
+    sugerirMock.mockReturnValue(d.promise);
+    irParaDados();
+    fireEvent.change(categoria(), { target: { value: "1" } });
+    fireEvent.change(descricao(), { target: { value: "Minha descrição" } });
+    d.resolve(ok());
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(descricao()).toHaveValue("Minha descrição");
+    expect(descricao()).toHaveAccessibleDescription("");
+    expect(categoria()).toHaveAccessibleDescription("");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(1);
+  });
+
+  it("o marcador de um campo some quando a pessoa o edita; os outros ficam", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    fireEvent.change(nome(), { target: { value: "Meia lisa 2" } });
+    expect(nome()).toHaveAccessibleDescription("");
+    expect(categoria()).toHaveAccessibleDescription(MARCADOR);
+    expect(descricao()).toHaveAccessibleDescription(MARCADOR);
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(2);
+  });
+
+  it.each([
+    ["id fora das opções", 99],
+    ["null", null],
+  ])("US3-AC4: categoriaId %s ⇒ select em vazio, sem marcador; nome e descrição seguem", async (_n, categoriaId) => {
+    sugerirMock.mockResolvedValue(ok({ nome: "Meia lisa", categoriaId, descricao: "Meia de algodão" }));
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(categoria()).toHaveValue("");
+    expect(categoria()).toHaveAccessibleDescription("");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(2);
+  });
+
+  it("sugestão com nome e descrição null não preenche nem marca esses campos", async () => {
+    sugerirMock.mockResolvedValue(ok({ nome: null, categoriaId: 1, descricao: null }));
+    irParaDados();
+    await waitFor(() => expect(categoria()).toHaveValue("1"));
+    expect(nome()).toHaveValue("");
+    expect(descricao()).toHaveValue("");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(1);
+  });
+
+  it("US3-AC6: ia_indisponivel ⇒ mensagem + 'Tentar sugestão de novo'; o botão chama de novo e, no sucesso, preenche", async () => {
+    sugerirMock.mockResolvedValueOnce(indisponivel());
+    irParaDados(["e1", "e2"]);
+    expect(await screen.findByText(MSG_INDISPONIVEL)).toBeInTheDocument();
+    expect(screen.getByRole("status")).not.toHaveTextContent(ESPERANDO);
+
+    const d = deferred();
+    sugerirMock.mockReturnValueOnce(d.promise);
+    fireEvent.click(screen.getByRole("button", { name: "Tentar sugestão de novo" }));
+    expect(sugerirMock).toHaveBeenCalledTimes(2);
+    expect(sugerirMock).toHaveBeenLastCalledWith({ envioIds: ["e1", "e2"] });
+    expect(screen.getByRole("status")).toHaveTextContent(ESPERANDO);
+    expect(screen.queryByText(MSG_INDISPONIVEL)).toBeNull();
+
+    d.resolve(ok());
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(categoria()).toHaveValue("1");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Tentar sugestão de novo" })).toBeNull();
+    expect(screen.queryByText(MSG_INDISPONIVEL)).toBeNull();
+  });
+
+  it("tentar de novo usa os envioIds atuais (fotos trocadas depois da falha)", async () => {
+    sugerirMock.mockResolvedValueOnce(indisponivel());
+    const { rerender } = irParaDados(["e1", "e2"]);
+    await screen.findByText(MSG_INDISPONIVEL);
+    novoEnvio({ fotos: [enviada(5), enviada(6), enviada(7)], envioIds: ["e5", "e6", "e7"] });
+    rerender(<CadastroProduto categorias={categorias} />);
+    sugerirMock.mockReturnValueOnce(deferred().promise);
+    fireEvent.click(screen.getByRole("button", { name: "Tentar sugestão de novo" }));
+    expect(sugerirMock).toHaveBeenLastCalledWith({ envioIds: ["e5", "e6", "e7"] });
+  });
+
+  it("US3-AC6: action que rejeita ⇒ mensagem de ia_indisponivel com o botão", async () => {
+    sugerirMock.mockRejectedValueOnce(new Error("rede"));
+    irParaDados();
+    expect(await screen.findByText(MSG_INDISPONIVEL)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tentar sugestão de novo" })).toBeInTheDocument();
+  });
+
+  it("US3-AC6: resultado undefined ⇒ mensagem de ia_indisponivel com o botão", async () => {
+    sugerirMock.mockResolvedValueOnce(undefined as never);
+    irParaDados();
+    expect(await screen.findByText(MSG_INDISPONIVEL)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tentar sugestão de novo" })).toBeInTheDocument();
+  });
+
+  it("US3-AC7: ia_pausada ⇒ mensagem sem botão de repetir", async () => {
+    sugerirMock.mockResolvedValueOnce(pausada());
+    irParaDados();
+    expect(await screen.findByText(MSG_PAUSADA)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tentar sugestão de novo" })).toBeNull();
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["ia_indisponivel", () => Promise.resolve(indisponivel())],
+    ["ia_pausada", () => Promise.resolve(pausada())],
+    ["rejeição", () => Promise.reject(new Error("rede"))],
+  ])("FR-027: em falha (%s) o formulário continua editável e 'Salvar' envia", async (_n, resposta) => {
+    sugerirMock.mockImplementationOnce(resposta as never);
+    criarMock.mockResolvedValue({ ok: true, id: 3 });
+    irParaDados(["e1", "e2"]);
+    await waitFor(() => expect(screen.getByRole("status")).not.toHaveTextContent(ESPERANDO));
+    fireEvent.change(nome(), { target: { value: "Meia feita à mão" } });
+    fireEvent.change(categoria(), { target: { value: "1" } });
+    expect(nome()).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(criarMock).toHaveBeenCalledTimes(1));
+    const fd = criarMock.mock.calls[0][1];
+    expect(fd.get("nome")).toBe("Meia feita à mão");
+    expect(fd.getAll("fotos")).toEqual(["e1", "e2"]);
+    await waitFor(() => expect(h.push).toHaveBeenCalledWith("/painel/produtos/3"));
+  });
+
+  it("US3-AC8: 'Cancelar' no passo Dados, com sugestão aplicada, não chama criarProduto", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(h.push).toHaveBeenCalledWith("/painel/produtos");
+    expect(criarMock).not.toHaveBeenCalled();
+  });
+
+  it("US3-AC8: a sugestão pronta sozinha nunca cria produto (nada é salvo sem 'Salvar')", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(criarMock).not.toHaveBeenCalled();
+    expect(h.push).not.toHaveBeenCalled();
+  });
+
+  it("US3-AC5: 'Salvar' com a sugestão aplicada envia os valores sugeridos (e o preço digitado) para criarProduto", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    criarMock.mockResolvedValue({ ok: true, id: 11 });
+    irParaDados(["e2", "e1"]);
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    fireEvent.change(preco(), { target: { value: "1290" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(criarMock).toHaveBeenCalledTimes(1));
+    const fd = criarMock.mock.calls[0][1];
+    expect(fd.get("nome")).toBe("Meia lisa");
+    expect(fd.get("categoriaId")).toBe("1");
+    expect(fd.get("descricao")).toBe("Meia de algodão");
+    expect(fd.get("preco")).toBe("12,90");
+    expect(fd.getAll("fotos")).toEqual(["e2", "e1"]);
+    await waitFor(() => expect(h.push).toHaveBeenCalledWith("/painel/produtos/11"));
+  });
+
+  it("US3-AC5: nome repetido na sugestão ⇒ a recusa aparece como hoje, junto do campo, com link", async () => {
+    sugerirMock.mockResolvedValue(ok());
+    criarMock.mockResolvedValue({
+      ok: false,
+      motivo: "nome_repetido",
+      mensagem: "Já existe um produto com esse nome: #0042.",
+      campo: "nome",
+      codigoExistente: 42,
+      valores: { nome: "Meia lisa", categoriaId: "1", descricao: "Meia de algodão", preco: "", aPartirDe: false },
+    } as never);
+    irParaDados();
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    const link = await screen.findByRole("link", { name: "#0042" });
+    expect(link).toHaveAttribute("href", "/painel/produtos/42");
+    expect(nome()).toHaveAttribute("aria-invalid", "true");
+    expect(nome()).toHaveValue("Meia lisa");
+    expect(h.push).not.toHaveBeenCalled();
+  });
+
+  it("região viva: role=status já existe no passo Fotos, fora de [hidden]; o texto de espera entra no MESMO elemento", () => {
+    novoEnvio({ fotos: [enviada(1)], envioIds: ["e1"] });
+    render(<CadastroProduto categorias={categorias} />);
+    const antes = screen.getByRole("status");
+    expect(antes.closest("[hidden]")).toBeNull();
+    expect(antes).toBeEmptyDOMElement();
+    fireEvent.click(continuar());
+    const depois = screen.getByRole("status");
+    expect(depois).toBe(antes);
+    expect(depois).toHaveTextContent(ESPERANDO);
+  });
+
+  it("'Tentar sugestão de novo' leva o foco ao título 'Dados do produto'", async () => {
+    sugerirMock.mockResolvedValueOnce(indisponivel());
+    irParaDados();
+    const botao = await screen.findByRole("button", { name: "Tentar sugestão de novo" });
+    botao.focus();
+    sugerirMock.mockReturnValueOnce(deferred().promise);
+    fireEvent.click(botao);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Dados do produto" }));
+  });
+
+  it("sugestão que chega com o passo Fotos aberto é aplicada; os marcadores aparecem ao voltar ao passo Dados", async () => {
+    const d = deferred();
+    sugerirMock.mockReturnValue(d.promise);
+    irParaDados();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar às fotos" }));
+    d.resolve(ok());
+    await waitFor(() => expect(sugerirMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(continuar());
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Meia de algodão");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    expect(sugerirMock).toHaveBeenCalledTimes(1);
   });
 });

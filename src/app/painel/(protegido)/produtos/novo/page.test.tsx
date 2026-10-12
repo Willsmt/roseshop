@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/auth", () => ({ requireAdminPage: vi.fn() }));
 vi.mock("@/lib/categorias", () => ({ listarCategorias: vi.fn() }));
 vi.mock("@/lib/produtos/actions", () => ({ criarProduto: vi.fn(), editarProduto: vi.fn() }));
+vi.mock("@/lib/produtos/sugestao", () => ({ sugerirProduto: vi.fn() }));
 vi.mock("@/lib/fotos/actions", () => ({ pedirEnvio: vi.fn(), confirmarEnvio: vi.fn() }));
 vi.mock("react-easy-crop", () => ({ default: () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));

@@ -1046,8 +1046,9 @@ cadastro), componentes de sugestão em `_fotos/` ou ao lado (sugerido), testes a
 **Fecha**: US3-AC1–8 (tela).
 **Revisão TL**: —.
 
-- [ ] T136 **Teste primeiro** — componentes do passo Dados: ao entrar **pela 1ª vez com aquele
-  conjunto**, chama `sugerirProduto` **uma única vez** e o formulário abre editável com
+- [X] T136 **Teste primeiro** — componentes do passo Dados: ao tocar "Continuar" **pela 1ª vez no
+  cadastro**, chama `sugerirProduto` **uma única vez** (trocar as fotos depois não pede outra) e
+  o formulário abre editável com
   "Preenchendo a partir das fotos…" (US3-AC1); ao chegar, preenche **só campos ainda vazios**
   com o marcador "Sugestão — confira" que **some quando a pessoa edita o campo** (US3-AC2,
   AC3); preço, "a partir de" e status nunca sugeridos; categoria só se o id existir nas opções,
@@ -1056,9 +1057,9 @@ cadastro), componentes de sugestão em `_fotos/` ou ao lado (sugerido), testes a
   sugestão de novo" (US3-AC6); `ia_pausada` ⇒ "As sugestões estão pausadas por agora. Preencha
   você mesma." sem botão de repetir (US3-AC7); sair sem salvar não cria produto (US3-AC8);
   campos editáveis o tempo todo (FR-027) — **test-writer**
-- [ ] T137 `ui-dev` implementa a UI da sugestão no passo Dados consumindo `sugerirProduto` e as
+- [X] T137 `ui-dev` implementa a UI da sugestão no passo Dados consumindo `sugerirProduto` e as
   mensagens de I§6; sem tocar `src/lib/` — **ui-dev**
-- [ ] T138 Rodar `npm run check` e colar o output real — **principal**
+- [X] T138 Rodar `npm run check` e colar o output real — **principal**
 - [ ] T139 **Humano executa — roteiro pela tela no `preview`** (Q§4 item 5, com IA): "Continuar"
   ⇒ "Preenchendo a partir das fotos…" ⇒ campos sugeridos com "Sugestão — confira" (chave dev);
   completar o preço e "Salvar" ⇒ detalhe com as fotos na ordem. Entregar o resultado. Fecha a
@@ -1069,7 +1070,7 @@ cadastro), componentes de sugestão em `_fotos/` ou ao lado (sugerido), testes a
   ```text
   feat(painel): sugestão da IA no cadastro de produto
 
-  Passo Dados pede a sugestão uma vez por conjunto de fotos, preenche só
+  Passo Dados pede a sugestão uma vez por cadastro, preenche só
   campos vazios com o marcador "Sugestão — confira" e mantém o cadastro
   manual quando a IA falha ou está pausada.
   ```

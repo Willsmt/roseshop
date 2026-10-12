@@ -35,4 +35,20 @@ describe("AreaTexto (contrato §5, constitution V)", () => {
 		render(<AreaTexto name="d" rotulo="D" defaultValue="" />);
 		expect(screen.getByLabelText("D")).toHaveClass("min-h-12", "text-base", "w-full");
 	});
+
+	it("dica: renderizada abaixo do controle e ligada por aria-describedby", () => {
+		render(<AreaTexto name="d" rotulo="Descrição" defaultValue="" dica="Sugestão — confira" />);
+		const dica = screen.getByText("Sugestão — confira");
+		expect(dica.id).not.toBe("");
+		expect(screen.getByLabelText("Descrição").getAttribute("aria-describedby")).toBe(dica.id);
+		expect(dica).toHaveClass("text-base");
+	});
+
+	it("erro + dica: os dois ids no aria-describedby", () => {
+		render(<AreaTexto name="d" rotulo="Descrição" defaultValue="" erro="Muito longa." dica="Confira" />);
+		const ids = (screen.getByLabelText("Descrição").getAttribute("aria-describedby") ?? "").split(/\s+/);
+		expect(ids).toContain(screen.getByText("Muito longa.").id);
+		expect(ids).toContain(screen.getByText("Confira").id);
+		expect(ids).toHaveLength(2);
+	});
 });

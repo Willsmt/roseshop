@@ -156,6 +156,17 @@ schema vira migration nova (`0003`…), nunca edição da `0002`.
 3. **CPU**: painel Workers → `roseshop-dev` → Métricas: tempo de CPU das requisições de
    **confirmação** com foto de 1 MB e de **`sugerirProduto`** com 3 fotos de 1 MB, abaixo do
    limite do free tier.
+   **Execução (2026-10-12, SF14, T139, relato do humano)**: Xiaomi Poco X7 Pro, Chrome Android,
+   IA real; cadastro com 3 fotos, sugestão com "Sugestão — confira", produto salvo. `npx wrangler
+   tail --env dev --format json`, requisições a `/painel/produtos/novo`: a de `sugerirProduto`
+   com `wallTime` 4283 ms e `cpuTime` **21 ms**; as demais com 24, 20, 11, 9, 8, 7, 6 e 3 ms de
+   CPU; todas com `outcome` `"ok"`. O tamanho das fotos tratadas não foi registrado.
+   **Risco aceito (decisão do humano, opção a)**: o limite documentado do Workers Free é 10 ms de
+   CPU por requisição HTTP e por Cron Trigger (Erro 1102 ao exceder); a Cloudflare não o aplicou
+   de forma estrita (nenhuma falha). O excesso é do app inteiro, não só da IA. **Sinal de
+   alerta**: Erro 1102 nos logs do Worker (dev ou produção). **Contingência**: migrar para o
+   Workers Paid, com emenda da constitution VII, se aparecer um 1102 ou se a T118b mostrar a
+   limpeza estourando (ADR-010, Consequências).
 4. **Aparelhos reais (SF10, R4)**, com `FOTOS_VERIFICACAO=registro` no `env.dev`:
    - **Só Chrome Android** (decisão de 2026-10-11): 1 foto tirada na hora, 1 da galeria com
      localização ativa e, se o aparelho tiver, 1 HEIF da galeria (o Chrome abre ⇒ cenário 1 da

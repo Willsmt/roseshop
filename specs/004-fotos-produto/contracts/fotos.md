@@ -416,10 +416,17 @@ header ausente ou errado, ou outro método ⇒ **404 sem corpo**, igual em todos
 
 **Worker** `cloudflare/worker.ts` (TL-6: sem `@ts-expect-error`; o módulo é declarado em
 `cloudflare/open-next-worker.d.ts` com o tipo `ExportedHandler<CloudflareEnv>`, e `.open-next`
-entra no `exclude` do `tsconfig`, para o `typecheck` dar o mesmo resultado com ou sem build local):
+entra no `exclude` do `tsconfig`, para o `typecheck` dar o mesmo resultado com ou sem build local).
+O import usa o nome **não relativo** `open-next-worker`, ligado ao arquivo real por
+`"alias": { "open-next-worker": "./.open-next/worker.js" }` no nível de cima do `wrangler.jsonc`
+(o wrangler só lê `alias` no nível de cima e o aplica a todos os ambientes). Emenda de
+2026-10-12 (SF12, aprovada pelo humano): `declare module "../.open-next/worker.js"` não resolve
+import relativo (TS2307), e `rootDirs` muda o resultado quando `.open-next/` existe. O tipo é
+`ExportedHandler<CloudflareEnv>` com `fetch(request: Request, env, ctx)`: o `fetch` de
+`ExportedHandler` exige `IncomingRequest`, e o `Request` montado pelo `scheduled` daria TS2345.
 
 ```ts
-import { default as handler } from "../.open-next/worker.js";
+import handler from "open-next-worker";
 export default {
   fetch: handler.fetch,
   async scheduled(_evento, env, ctx) {

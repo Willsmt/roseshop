@@ -9,7 +9,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "cloudflare/**/*.test.ts"],
     exclude: [...configDefaults.exclude, "src/**/*.int.test.{ts,tsx}"],
   },
 });

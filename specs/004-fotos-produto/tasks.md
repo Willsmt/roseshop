@@ -881,32 +881,32 @@ Spec: US6-AC1/AC3–6, SC-008.
 **Fecha**: US6-AC1/AC3–6, SC-008.
 **Revisão TL**: ✅.
 
-- [ ] T109 [P] **Teste primeiro** — `src/lib/db/fotos.limpeza.int.test.ts` (sugerido):
+- [X] T109 [P] **Teste primeiro** — `src/lib/db/fotos.limpeza.int.test.ts` (sugerido):
   `expirarEnvios` (lock 4_001) apaga só `criado_em <= now() - 24 h` e devolve as chaves;
   `chavesConhecidas` devolve a união de `produto_fotos` e `fotos_envio` em **um único
   statement** (TL-12; teste que falha se houver duas consultas); limpeza concorrente com adoção
   não apaga foto de produto existente nem envio < 24 h — **test-writer**
-- [ ] T110 [P] **Teste primeiro** — `src/lib/fotos/limpeza.int.test.ts` (sugerido), bucket
+- [X] T110 [P] **Teste primeiro** — `src/lib/fotos/limpeza.int.test.ts` (sugerido), bucket
   falso: `executarLimpeza(agora)` apaga objetos de envios expirados (lotes de 1000; inexistente
   não é erro); lista `fotos/` e apaga órfãos **só se** `uploaded < agora − 25 h` **e** ausentes
   das duas tabelas (lidas **depois** de listar); mantém objetos recentes (US6-AC4), de produtos
   existentes (US6-AC6), de envios < 24 h; falha num `delete` só é registrada; devolve
   `{ enviosExpirados, orfaosApagados, falhas }` (SC-008, US6-AC3/AC5) — **test-writer**
-- [ ] T111 [P] **Teste primeiro** — rota `src/app/api/interno/limpeza/route.test.ts` (sugerido):
+- [X] T111 [P] **Teste primeiro** — rota `src/app/api/interno/limpeza/route.test.ts` (sugerido):
   só `POST`; `authorization: Bearer <CRON_SECRET>` comparado por SHA-256 e laço de tempo fixo
   sobre os 32 bytes (TL-16); `CRON_SECRET` ausente, header ausente/errado ou outro método ⇒
   **404 sem corpo**, igual em todos os casos; sucesso ⇒ 200 com as contagens. Testes do
   `cloudflare/worker.ts`: `scheduled` chama o handler em processo com `POST` e Bearer e **lança**
   em status ≠ 200 — **test-writer**
-- [ ] T112 [P] **Teste primeiro** — `typecheck` igual com e sem `.open-next/` (TL-6): teste ou
+- [X] T112 [P] **Teste primeiro** — `typecheck` igual com e sem `.open-next/` (TL-6): teste ou
   verificação que roda `npm run typecheck` com e sem o diretório e compara o resultado (sem
   `@ts-expect-error`) — **test-writer**
-- [ ] T113 **[TL✅]** `src/lib/db/fotos.ts`: `expirarEnvios(db)` (batch com lock 4_001 +
+- [X] T113 **[TL✅]** `src/lib/db/fotos.ts`: `expirarEnvios(db)` (batch com lock 4_001 +
   `DELETE … RETURNING chave`) e `chavesConhecidas(db)` (statement único) — **principal**
-- [ ] T114 **[TL✅]** `src/lib/fotos/limpeza.ts` (`server-only`) e a rota
+- [X] T114 **[TL✅]** `src/lib/fotos/limpeza.ts` (`server-only`) e a rota
   `src/app/api/interno/limpeza/route.ts` conforme F§6; registrar `{ evento, contagens }` no log
   — **principal**
-- [ ] T115 **[TL✅]** `cloudflare/worker.ts` (fetch + `scheduled` que aguarda a resposta e lança se
+- [X] T115 **[TL✅]** `cloudflare/worker.ts` (fetch + `scheduled` que aguarda a resposta e lança se
   ≠ 200, sem `@ts-expect-error`), `cloudflare/open-next-worker.d.ts` com
   `ExportedHandler<CloudflareEnv>`, `tsconfig.json` com `exclude` de `.open-next`; `wrangler.jsonc`
   com `"main": "cloudflare/worker.ts"` e `"triggers": { "crons": ["0 6 * * *"] }` no nível de
@@ -915,7 +915,7 @@ Spec: US6-AC1/AC3–6, SC-008.
 - [ ] T116 **Humano executa — `CRON_SECRET` do dev**: `npx wrangler secret put CRON_SECRET --env
   dev` (valor de `openssl rand -base64 32`); `CRON_SECRET` local no `.dev.vars`. Produção na
   SF15 — **humano**
-- [ ] T117 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
+- [X] T117 Rodar `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int`;
   colar o output real — **principal**
 - [ ] T118 **Humano executa — prova local e no dev** (Q§4.8 e Q§5.2): local,
   `npx opennextjs-cloudflare build && npx wrangler dev --test-scheduled` e
@@ -924,7 +924,16 @@ Spec: US6-AC1/AC3–6, SC-008.
   `*/5 * * * *` no `env.dev`, `npx wrangler tail --env dev` mostra o `POST /api/interno/limpeza`
   e as contagens; **voltar o cron para `0 6 * * *`** e conferir no diff. Entregar os outputs —
   **humano**
-- [ ] T119 Revisão do diff pelo tech-lead (opus): rota (404 uniforme, comparação em tempo
+  - [X] T118a **Parte local** (fecha a T118 nesta SF): build, `wrangler dev --test-scheduled`,
+    `curl` do scheduled (log com as contagens e `{"evento":"limpeza","status":200}`) e `POST` sem
+    header ⇒ 404. Output real colado aqui — **humano**
+  - [ ] T118b **Parte do dev — PENDENTE** (decisão do humano, 2026-10-12, opção B: sem cron
+    temporário). O deploy do `roseshop-dev` vem do CI do PR com o commit da SF12 e o cron
+    `0 6 * * *` final. Na primeira execução real (06:00 UTC = 03:00 em Brasília) depois do
+    deploy, o humano confere em roseshop-dev → Logs a execução do cron sem erro, o
+    `{"evento":"limpeza","status":200}` e as contagens, e entrega o resultado. Falha ou ausência
+    da execução volta ao tech-lead antes da SF15 — **humano**
+- [X] T119 Revisão do diff pelo tech-lead (opus): rota (404 uniforme, comparação em tempo
   fixo), worker, `tsconfig`, `wrangler.jsonc` (cron restaurado), lock e snapshot da limpeza —
   **tech-lead**
 - [ ] T120 Commit (humano), mensagem:

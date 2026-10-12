@@ -9,7 +9,7 @@
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
 > `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); a sugestão por IA
-> existe só no servidor (SF13), com `OPENAI_API_KEY`.
+> existe no servidor (SF13) e na tela do cadastro (SF14), com `OPENAI_API_KEY`.
 
 ## Visão leiga
 
@@ -735,8 +735,33 @@ validando os checks e o deploy no dev.
 
 Dependabot para GitHub Actions (atualizar os SHAs fixados). Não implementado.
 
+## Limite de CPU do plano gratuito do Workers
+
+**Visão leiga.** O plano gratuito da Cloudflare documenta um teto de 10 ms de CPU por requisição
+(e por execução do cron). O app passa disso, e até agora a Cloudflare não barrou nada. O
+mantenedor aceitou o risco; este é o sinal de alerta e o que fazer se ele aparecer.
+
+**Técnico.** Medição de 2026-10-12 (SF14, T139), `wrangler tail --env dev`, Chrome Android, IA
+real, cadastro com 3 fotos: `sugerirProduto` com **21 ms** de CPU (`wallTime` 4283 ms, quase
+tudo espera pela OpenAI); as outras requisições de `/painel/produtos/novo` entre 3 e 24 ms;
+todas com `outcome` `ok`. O excesso é do app inteiro, não só da IA.
+
+| Item | Valor |
+|---|---|
+| Limite documentado (Workers Free) | 10 ms de CPU por requisição HTTP e por Cron Trigger |
+| Sinal de alerta | Erro 1102 nos logs do Worker (dev ou produção) |
+| Contingência | Migrar para o Workers Paid, com emenda da constitution VII |
+| Gatilho da contingência | Aparecer um 1102, ou a prova do cron (T118b) mostrar a limpeza estourando |
+
+Fontes: [ADR-010](../specs/adr/010-ia-openai.md) (Consequências) e
+[quickstart §5 item 3](../specs/004-fotos-produto/quickstart.md). O tamanho das fotos tratadas
+não foi registrado na medição.
+
 ## Troubleshooting
 
+- **Erro 1102 (Worker excedeu o limite de recursos) nos logs**: é o sinal de alerta do risco de
+  CPU aceito no plano gratuito; ver "Limite de CPU do plano gratuito do Workers" e voltar ao
+  tech-lead antes de qualquer outra ação.
 - **`sugerirProduto` sempre devolve `ia_indisponivel`**: a action esconde a causa de
   propósito. Veja o log `ia.sugestao` (Cloudflare → Logs, ou o terminal do `preview`): o campo
   `falha` diz `sem_chave` (falta `OPENAI_API_KEY` no ambiente), `http` com `status` 401/403/404

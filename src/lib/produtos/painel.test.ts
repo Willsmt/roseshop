@@ -53,9 +53,21 @@ function produto(over: Partial<ProdutoDb> = {}): ProdutoDb {
   };
 }
 
-function itensComIds(ids: number[]): ProdutoDb[] {
-  return ids.map((id) => produto({ id, nome: `Produto ${id}` }));
+// obterPorId (SF11/T104a): ProdutoDb + fotosVersao + fotos (chave do objeto, posição).
+function detalhe(
+  over: Partial<ProdutoDb> & { fotosVersao?: number; fotos?: { posicao: number; chave: string }[] } = {},
+) {
+  const { fotosVersao = 1, fotos = [], ...resto } = over;
+  return { ...produto(resto), fotosVersao, fotos };
 }
+
+function itensComIds(ids: number[]) {
+  return ids.map((id) => ({ ...produto({ id, nome: `Produto ${id}` }), capa: null }));
+}
+
+const UUID_A = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+const UUID_B = "11111111-2222-4333-8444-555555555555";
+const UUID_C = "aaaaaaaa-bbbb-4ccc-9ddd-eeeeeeeeeeee";
 
 function resposta(ids: number[], haMais = false) {
   m.listar.mockResolvedValue({ itens: itensComIds(ids), haMais });
@@ -205,8 +217,8 @@ describe("listarProdutosDoPainel: ItemLista (US3-AC1)", () => {
   it("mapeia id, código formatado, nome, categoria, esgotado, emDestaque e preço formatado", async () => {
     m.listar.mockResolvedValue({
       itens: [
-        produto({ id: 7, precoCentavos: 1290, destaqueVaga: 2 }),
-        produto({ id: 6, nome: "Sem preço", precoCentavos: null, esgotado: true }),
+        { ...produto({ id: 7, precoCentavos: 1290, destaqueVaga: 2 }), capa: null },
+        { ...produto({ id: 6, nome: "Sem preço", precoCentavos: null, esgotado: true }), capa: null },
       ],
       haMais: false,
     });
@@ -232,7 +244,7 @@ describe("listarProdutosDoPainel: ItemLista (US3-AC1)", () => {
 
   it('preço "a partir de" mostra o valor formatado', async () => {
     m.listar.mockResolvedValue({
-      itens: [produto({ precoCentavos: 129000, aPartirDe: true })],
+      itens: [{ ...produto({ precoCentavos: 129000, aPartirDe: true }), capa: null }],
       haMais: false,
     });
     const { itens } = await listarProdutosDoPainel({});
@@ -386,7 +398,7 @@ describe("obterProdutoDoPainel: id (US3, US4)", () => {
   });
 
   it("id válido consulta obterPorId(db, id numérico)", async () => {
-    m.obterPorId.mockResolvedValue(produto({ id: 7 }));
+    m.obterPorId.mockResolvedValue(detalhe({ id: 7 }));
     await obterProdutoDoPainel("7", undefined);
     expect(m.obterPorId).toHaveBeenCalledWith(fakeDb, 7);
   });
@@ -401,7 +413,7 @@ describe("obterProdutoDoPainel: DetalheProduto", () => {
       aPartirDe: false,
       versao: 4,
     });
-    m.obterPorId.mockResolvedValue(base);
+    m.obterPorId.mockResolvedValue(detalhe(base));
     const d = await obterProdutoDoPainel("7", undefined);
     expect(d).toMatchObject({
       id: 7,
@@ -420,17 +432,17 @@ describe("obterProdutoDoPainel: DetalheProduto", () => {
   });
 
   it("preço ausente ⇒ preco null", async () => {
-    m.obterPorId.mockResolvedValue(produto({ precoCentavos: null }));
+    m.obterPorId.mockResolvedValue(detalhe({ precoCentavos: null }));
     expect((await obterProdutoDoPainel("7", undefined))!.preco).toBeNull();
   });
 
   it("fotos é [] (marcador de sem foto)", async () => {
-    m.obterPorId.mockResolvedValue(produto());
+    m.obterPorId.mockResolvedValue(detalhe());
     expect((await obterProdutoDoPainel("7", undefined))!.fotos).toEqual([]);
   });
 
   it("criadoPor e atualizadoPor presentes (US4-AC6)", async () => {
-    m.obterPorId.mockResolvedValue(produto({ criadoPor: "ana@teste.local", atualizadoPor: "bia@teste.local" }));
+    m.obterPorId.mockResolvedValue(detalhe({ criadoPor: "ana@teste.local", atualizadoPor: "bia@teste.local" }));
     const d = await obterProdutoDoPainel("7", undefined);
     expect(d).toMatchObject({ criadoPor: "ana@teste.local", atualizadoPor: "bia@teste.local" });
   });
@@ -440,14 +452,14 @@ describe("obterProdutoDoPainel: DetalheProduto", () => {
     ["esgotado", { esgotado: true, destaqueVaga: null }, false],
     ["já em destaque", { esgotado: false, destaqueVaga: 3 }, false],
   ] as const)("podeDestacar: %s ⇒ %s", async (_rotulo, estado, esperado) => {
-    m.obterPorId.mockResolvedValue(produto({ ...estado }));
+    m.obterPorId.mockResolvedValue(detalhe({ ...estado }));
     expect((await obterProdutoDoPainel("7", undefined))!.podeDestacar).toBe(esperado);
   });
 });
 
 describe("obterProdutoDoPainel: voltarHref revalidado (sem redirecionamento aberto)", () => {
   beforeEach(() => {
-    m.obterPorId.mockResolvedValue(produto());
+    m.obterPorId.mockResolvedValue(detalhe());
   });
 
   async function voltarHref(voltar: unknown): Promise<string> {
@@ -508,5 +520,123 @@ describe("obterProdutoDoPainel: voltarHref revalidado (sem redirecionamento aber
     expect(await voltarHref(["categoria=3"])).toBe(LISTA);
     expect(await voltarHref({ categoria: "3" })).toBe(LISTA);
     expect(await voltarHref(3)).toBe(LISTA);
+  });
+});
+
+// ---- SF11 / T104a: capa na lista e fotos no detalhe (FR-039, FR-040, D17) ----
+
+describe("listarProdutosDoPainel: capaUrl (FR-039, D17)", () => {
+  it("capa com chave válida ⇒ capaUrl = /painel/fotos/<arquivo> exato", async () => {
+    m.listar.mockResolvedValue({
+      itens: [{ ...produto({ id: 7 }), capa: `fotos/${UUID_A}.webp` }],
+      haMais: false,
+    });
+    const { itens } = await listarProdutosDoPainel({});
+    expect(itens[0].capaUrl).toBe(`/painel/fotos/${UUID_A}.webp`);
+  });
+
+  it("capa jpg também vira url exata", async () => {
+    m.listar.mockResolvedValue({
+      itens: [{ ...produto({ id: 7 }), capa: `fotos/${UUID_B}.jpg` }],
+      haMais: false,
+    });
+    const { itens } = await listarProdutosDoPainel({});
+    expect(itens[0].capaUrl).toBe(`/painel/fotos/${UUID_B}.jpg`);
+  });
+
+  it("capa null (produto legado sem foto) ⇒ capaUrl null", async () => {
+    m.listar.mockResolvedValue({ itens: [{ ...produto({ id: 7 }), capa: null }], haMais: false });
+    const { itens } = await listarProdutosDoPainel({});
+    expect(itens[0].capaUrl).toBeNull();
+  });
+
+  it.each([
+    ["sem prefixo fotos/", `${UUID_A}.webp`],
+    ["uuid inválido", "fotos/nao-e-uuid.webp"],
+    ["extensão fora da lista", `fotos/${UUID_A}.png`],
+    ["uuid não v4", "fotos/0a1b2c3d-4e5f-1a6b-8c7d-9e0f1a2b3c4d.webp"],
+    ["prefixo duplicado", `fotos/fotos/${UUID_A}.webp`],
+    ["string vazia", ""],
+  ])("chave fora do formato (%s) ⇒ capaUrl null, sem lançar", async (_r, capa) => {
+    m.listar.mockResolvedValue({ itens: [{ ...produto({ id: 7 }), capa }], haMais: false });
+    const { itens } = await listarProdutosDoPainel({});
+    expect(itens[0].capaUrl).toBeNull();
+  });
+
+  it("mistura: cada item recebe a sua capa", async () => {
+    m.listar.mockResolvedValue({
+      itens: [
+        { ...produto({ id: 2 }), capa: `fotos/${UUID_A}.webp` },
+        { ...produto({ id: 1 }), capa: null },
+      ],
+      haMais: false,
+    });
+    const { itens } = await listarProdutosDoPainel({});
+    expect(itens.map((i) => i.capaUrl)).toEqual([`/painel/fotos/${UUID_A}.webp`, null]);
+  });
+});
+
+describe("obterProdutoDoPainel: fotos e fotosVersao (FR-040, US4)", () => {
+  it("fotosVersao é repassada", async () => {
+    m.obterPorId.mockResolvedValue(detalhe({ fotosVersao: 9 }));
+    expect((await obterProdutoDoPainel("7", undefined))!.fotosVersao).toBe(9);
+  });
+
+  it("fotos em ordem crescente de posição, mesmo com a entrada fora de ordem", async () => {
+    m.obterPorId.mockResolvedValue(
+      detalhe({
+        fotos: [
+          { posicao: 3, chave: `fotos/${UUID_C}.jpg` },
+          { posicao: 1, chave: `fotos/${UUID_A}.webp` },
+          { posicao: 2, chave: `fotos/${UUID_B}.webp` },
+        ],
+      }),
+    );
+    const d = await obterProdutoDoPainel("7", undefined);
+    expect(d!.fotos).toEqual([
+      { posicao: 1, arquivo: `${UUID_A}.webp`, url: `/painel/fotos/${UUID_A}.webp` },
+      { posicao: 2, arquivo: `${UUID_B}.webp`, url: `/painel/fotos/${UUID_B}.webp` },
+      { posicao: 3, arquivo: `${UUID_C}.jpg`, url: `/painel/fotos/${UUID_C}.jpg` },
+    ]);
+  });
+
+  it("chave fora do formato é omitida, sem lançar; as válidas ficam", async () => {
+    m.obterPorId.mockResolvedValue(
+      detalhe({
+        fotos: [
+          { posicao: 1, chave: "fotos/lixo.webp" },
+          { posicao: 2, chave: `fotos/${UUID_B}.webp` },
+        ],
+      }),
+    );
+    const d = await obterProdutoDoPainel("7", undefined);
+    expect(d!.fotos).toEqual([
+      { posicao: 2, arquivo: `${UUID_B}.webp`, url: `/painel/fotos/${UUID_B}.webp` },
+    ]);
+  });
+
+  it("nenhuma url (capa ou foto) começa com http, contém r2 ou repete fotos/", async () => {
+    m.listar.mockResolvedValue({
+      itens: [{ ...produto({ id: 7 }), capa: `fotos/${UUID_A}.webp` }],
+      haMais: false,
+    });
+    m.obterPorId.mockResolvedValue(
+      detalhe({
+        fotos: [
+          { posicao: 1, chave: `fotos/${UUID_A}.webp` },
+          { posicao: 2, chave: `fotos/${UUID_B}.jpg` },
+        ],
+      }),
+    );
+    const { itens } = await listarProdutosDoPainel({});
+    const d = await obterProdutoDoPainel("7", undefined);
+    const urls = [itens[0].capaUrl!, ...d!.fotos.map((f) => f.url)];
+    expect(urls).toHaveLength(3);
+    for (const u of urls) {
+      expect(u.startsWith("/painel/fotos/")).toBe(true);
+      expect(u.startsWith("http")).toBe(false);
+      expect(u.toLowerCase()).not.toContain("r2");
+      expect(u).not.toContain("fotos/fotos/");
+    }
   });
 });

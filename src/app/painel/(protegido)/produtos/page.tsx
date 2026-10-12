@@ -81,9 +81,21 @@ export default async function ProdutosPage({
 					{itens.map((i) => (
 						<li key={i.id}>
 							<Link href={i.href} className="flex gap-4 rounded-lg border border-neutral-300 p-4">
-								<span className="flex size-16 shrink-0 items-center justify-center rounded border border-dashed border-neutral-400 text-center text-base">
-									sem foto
-								</span>
+								{i.capaUrl ? (
+									// eslint-disable-next-line @next/next/no-img-element -- rota com sessão, sem otimização
+									<img
+										src={i.capaUrl}
+										alt=""
+										loading="lazy"
+										width={64}
+										height={64}
+										className="size-16 shrink-0 rounded object-cover"
+									/>
+								) : (
+									<span className="flex size-16 shrink-0 items-center justify-center rounded border border-dashed border-neutral-400 text-center text-base">
+										sem foto
+									</span>
+								)}
 								<span className="flex flex-col gap-1">
 									<span className="text-base font-semibold">{i.codigo}</span>
 									<span className="text-lg font-bold">{i.nome}</span>

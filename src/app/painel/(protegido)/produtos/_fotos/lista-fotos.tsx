@@ -13,6 +13,12 @@ type Props = {
 	onMover: (de: number, para: number) => void;
 	onTentarDeNovo: (chave: string) => void;
 	confirmarRemocao?: boolean;
+	// SF11: presente ⇒ cada item ganha "Trocar foto". Ausente (cadastro) ⇒ nada muda.
+	onTrocar?: (chave: string) => void;
+	// SF11: false ⇒ sem o botão "Remover" (produto com 1 foto só).
+	podeRemover?: boolean;
+	// SF11: true ⇒ todos os botões do item e o arrasto ficam travados.
+	desabilitado?: boolean;
 };
 
 // `total` = quantas fotos havia ao começar: se mudar no meio, o arrasto é desfeito.
@@ -44,7 +50,7 @@ function Lixeira() {
 	);
 }
 
-export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirmarRemocao = false }: Props) {
+export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirmarRemocao = false, onTrocar, podeRemover = true, desabilitado = false }: Props) {
 	const lista = useRef<HTMLOListElement>(null);
 	const [arrastoBruto, setArrasto] = useState<Arrasto | null>(null);
 	// Alça do arrasto em curso: serve para saber se ela ainda tem a captura do ponteiro.
@@ -65,6 +71,7 @@ export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirma
 	}
 
 	function aoApertar(evento: React.PointerEvent<HTMLDivElement>, indice: number) {
+		if (desabilitado) return;
 		if (arrasto && emCurso(arrasto, evento.pointerId)) return; // 2º dedo/ponteiro não toma o lugar
 		if (!evento.isPrimary || evento.button !== 0) return;
 		if (fotos.length < 2) return;
@@ -141,7 +148,7 @@ export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirma
 							onLostPointerCapture={aoDesistir}
 						>
 							{foto.previa ? (
-								// eslint-disable-next-line @next/next/no-img-element -- blob URL local, sem otimização
+								// eslint-disable-next-line @next/next/no-img-element -- blob URL local ou /painel/fotos/..., sem otimização
 								<img
 									src={foto.previa}
 									alt={`Foto ${numero}`}
@@ -171,29 +178,36 @@ export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirma
 								) : null}
 							</div>
 							{estado.tipo === "nao_enviada" && estado.podeTentar ? (
-								<Button type="button" variant="primary" className={BOTAO_ITEM} onClick={() => onTentarDeNovo(foto.chave)}>
+								<Button type="button" disabled={desabilitado} variant="primary" className={BOTAO_ITEM} onClick={() => onTentarDeNovo(foto.chave)}>
 									Tentar de novo
 								</Button>
 							) : null}
 							{i > 0 ? (
-								<Button type="button" variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, 0)}>
+								<Button type="button" disabled={desabilitado} variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, 0)}>
 									Usar como capa
 								</Button>
 							) : null}
 							{i > 0 ? (
-								<Button type="button" variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, i - 1)}>
+								<Button type="button" disabled={desabilitado} variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, i - 1)}>
 									Mover para cima
 								</Button>
 							) : null}
 							{!ultimo ? (
-								<Button type="button" variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, i + 1)}>
+								<Button type="button" disabled={desabilitado} variant="secondary" className={BOTAO_ITEM} onClick={() => onMover(i, i + 1)}>
 									Mover para baixo
 								</Button>
 							) : null}
-							<Button type="button" variant="secondary" className={BOTAO_ITEM} onClick={() => remover(foto.chave)}>
-								<Lixeira />
-								Remover
-							</Button>
+							{onTrocar ? (
+								<Button type="button" disabled={desabilitado} variant="secondary" className={BOTAO_ITEM} onClick={() => onTrocar(foto.chave)}>
+									Trocar foto
+								</Button>
+							) : null}
+							{podeRemover ? (
+								<Button type="button" disabled={desabilitado} variant="secondary" className={BOTAO_ITEM} onClick={() => remover(foto.chave)}>
+									<Lixeira />
+									Remover
+								</Button>
+							) : null}
 						</div>
 					</li>
 				);

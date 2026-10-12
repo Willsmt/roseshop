@@ -41,5 +41,11 @@ export const SUCESSO_FOTO = {
 export const CONFIRMAR_REMOCAO_FOTO = "Remover esta foto do produto? Ela será apagada.";
 export const AVISO_REMOCAO_PRODUTO = "As fotos do produto também serão apagadas.";
 
+// Tela Fotos (SF11, textos aprovados pelo humano): pedido da troca, ação gravando e
+// `muitos_pendentes` sem o "sem salvar" do cadastro (nessa tela cada ação já grava).
+export const PEDIDO_TROCA = (n: number) => `Escolha a foto nova para o lugar da foto ${n}.`;
+export const SALVANDO = "Salvando…";
+export const MUITOS_PENDENTES_TELA_FOTOS = "Você enviou muitas fotos que não foram usadas. Tente de novo amanhã.";
+
 // Cadastro (SF9, D1): "Continuar" fica indisponível com foto *Não enviada*; este texto explica.
 export const CONTINUAR_COM_NAO_ENVIADA = "Para continuar, tente de novo ou remova as fotos não enviadas.";

@@ -4,6 +4,9 @@ import {
   AVISO_REMOCAO_PRODUTO,
   CONFIRMAR_REMOCAO_FOTO,
   CONTINUAR_COM_NAO_ENVIADA,
+  MUITOS_PENDENTES_TELA_FOTOS,
+  PEDIDO_TROCA,
+  SALVANDO,
   SUCESSO_FOTO,
   mensagemFoto,
 } from "./mensagens";
@@ -64,5 +67,17 @@ describe("constantes", () => {
   });
   it("CONTINUAR_COM_NAO_ENVIADA (SF9, D1/N1: explica o \"Continuar\" indisponível)", () => {
     expect(CONTINUAR_COM_NAO_ENVIADA).toBe("Para continuar, tente de novo ou remova as fotos não enviadas.");
+  });
+  it("PEDIDO_TROCA (SF11 T105a, R2)", () => {
+    expect(PEDIDO_TROCA(2)).toBe("Escolha a foto nova para o lugar da foto 2.");
+    expect(PEDIDO_TROCA(3)).toBe("Escolha a foto nova para o lugar da foto 3.");
+  });
+  it("SALVANDO usa reticências Unicode U+2026 (SF11 T105a, R3)", () => {
+    expect(SALVANDO).toBe("Salvando\u2026");
+  });
+  it("MUITOS_PENDENTES_TELA_FOTOS (SF11 T105a, pendentes)", () => {
+    expect(MUITOS_PENDENTES_TELA_FOTOS).toBe(
+      "Você enviou muitas fotos que não foram usadas. Tente de novo amanhã.",
+    );
   });
 });

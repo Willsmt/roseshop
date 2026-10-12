@@ -30,6 +30,7 @@ const item = {
   emDestaque: false,
   preco: "R$ 12,90",
   href: "/painel/produtos/42",
+  capaUrl: null as string | null,
 };
 const base = { itens: [item], verMais: null, voltarAoComeco: null, aviso: null };
 const vazioSp = { searchParams: Promise.resolve({}) };
@@ -127,5 +128,37 @@ describe("/painel/produtos — lista (US3)", () => {
     listarMock.mockResolvedValue({ ...base, aviso: { tipo: "erro", texto: "Este produto não existe mais." } });
     render(await ProdutosPage(vazioSp));
     expect(screen.getByRole("alert")).toHaveTextContent("Este produto não existe mais.");
+  });
+
+  // SF11 / T104 (FR-039, D17): miniatura da capa na lista.
+  it("item com capaUrl ⇒ img com src = capaUrl, loading lazy; sem 'sem foto' nele", async () => {
+    const capaUrl = "/painel/fotos/0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.webp";
+    listarMock.mockResolvedValue({ ...base, itens: [{ ...item, capaUrl }] });
+    const { container } = render(await ProdutosPage(vazioSp));
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img).toHaveAttribute("src", capaUrl);
+    expect(img).toHaveAttribute("loading", "lazy");
+    expect(within(screen.getByRole("list")).queryByText("sem foto")).not.toBeInTheDocument();
+  });
+
+  it("item com capaUrl null ⇒ 'sem foto' e nenhuma img", async () => {
+    const { container } = render(await ProdutosPage(vazioSp));
+    expect(within(screen.getByRole("list")).getByText("sem foto")).toBeInTheDocument();
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("lista mista: só o item sem capa mostra 'sem foto'", async () => {
+    const capaUrl = "/painel/fotos/11111111-2222-4333-8444-555555555555.jpg";
+    listarMock.mockResolvedValue({
+      ...base,
+      itens: [
+        { ...item, id: 1, href: "/painel/produtos/1", nome: "Com capa", capaUrl },
+        { ...item, id: 2, href: "/painel/produtos/2", nome: "Sem capa", capaUrl: null },
+      ],
+    });
+    const { container } = render(await ProdutosPage(vazioSp));
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+    expect(within(screen.getByRole("list")).getAllByText("sem foto")).toHaveLength(1);
   });
 });

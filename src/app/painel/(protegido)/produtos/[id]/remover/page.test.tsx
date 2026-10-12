@@ -52,6 +52,11 @@ describe("/painel/produtos/[id]/remover (US6)", () => {
     ).toBeInTheDocument();
   });
 
+  it("mostra o aviso de que as fotos também serão apagadas (US6-AC2, FR-035)", async () => {
+    render(await RemoverProdutoPage(props));
+    expect(screen.getByText("As fotos do produto também serão apagadas.")).toBeInTheDocument();
+  });
+
   it("inexistente: 'Produto não encontrado', volta à lista, sem botão Remover", async () => {
     obterMock.mockResolvedValue(null);
     render(await RemoverProdutoPage(props));

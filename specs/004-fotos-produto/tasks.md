@@ -827,22 +827,33 @@ linha SF11. Spec: US4-AC1–7, US5-AC1, US6-AC2, FR-035, FR-039, FR-040.
 **Fecha**: US4-AC1–7, US5-AC1 (tela atualiza com `atual`), US6-AC2, FR-039/040.
 **Revisão TL**: —.
 
-- [ ] T103 [P] **Teste primeiro** — tela `[id]/fotos`: fotos em ordem com "Capa"; adicionar
+- [X] T103 [P] **Teste primeiro** — tela `[id]/fotos`: fotos em ordem com "Capa"; adicionar
   (mesmos passos de recorte e envio), arrastar/mover, **"Remover" com confirmação** ("Remover
   esta foto do produto? Ela será apagada."), "Trocar foto"; produto com 1 foto: **sem "Remover"**,
   com "Trocar foto" e "O produto precisa de pelo menos 1 foto." (US4-AC4); cada ação chama a
   action e **substitui o estado local pelo `Conjunto` devolvido, no `ok` e nas falhas com
   `atual`** (US4-AC7, US5-AC1); aviso curto com o primitivo `aviso`; sem botão "Salvar" —
   **test-writer**
-- [ ] T104 [P] **Teste primeiro** — detalhe `[id]`: fotos em ordem, capa primeiro, botão
+- [X] T104 [P] **Teste primeiro** — detalhe `[id]`: fotos em ordem, capa primeiro, botão
   "Fotos" (FR-040); lista `produtos`: miniatura da capa no lugar de "sem foto" com
   `loading="lazy"` (FR-039, D17); `[id]/remover`: texto "As fotos do produto também serão
   apagadas." (US6-AC2); `requireAdminPage("/painel/produtos/<id>/fotos")` e
   `produtos-paginas-guard` verde — **test-writer**
-- [ ] T105 `ui-dev` implementa `[id]/fotos/page.tsx` e o componente da tela (reaproveitando
+- [X] T104a **Teste primeiro (test-writer), depois implementação (principal)** —
+  `src/lib/produtos/painel.ts` expõe o que a SQL da T048 já lê: `ItemLista.capaUrl: string |
+  null` e `DetalheProduto` com `fotosVersao` e `fotos: FotoVista[]` em ordem. A URL é sempre
+  `/painel/fotos/<arquivo>` (rota com sessão, via `arquivoDaChave`), nunca do bucket; o teste
+  confere. Lacuna achada na SF11 (decisão do humano, opção A) — **test-writer · principal**
+- [X] T105 `ui-dev` implementa `[id]/fotos/page.tsx` e o componente da tela (reaproveitando
   `escolher-foto`, `recorte-foto`, `lista-fotos`, `usar-envio` com `trocarFoto`/`adicionarFoto`),
   detalhe com fotos, capa na lista e texto da remoção — **ui-dev**
-- [ ] T106 Rodar `npm run check` e colar o output real — **principal**
+- [X] T105a Ajustes da revisão do tech-lead (R1 corrida da conferência, R2 foco no pedido da troca
+  e no aviso, R3 "Salvando…" + lista indisponível, R5 `nao_existe` sem saída, O1 posição
+  conferida). Textos novos aprovados pelo humano na SF11 (fotos.md §8), em
+  `src/lib/fotos/mensagens.ts`: `PEDIDO_TROCA` ("Escolha a foto nova para o lugar da foto N."),
+  `SALVANDO` ("Salvando…") e `MUITOS_PENDENTES_TELA_FOTOS` ("Você enviou muitas fotos que não
+  foram usadas. Tente de novo amanhã.") — **test-writer · principal (mensagens) · ui-dev**
+- [X] T106 Rodar `npm run check` e colar o output real — **principal**
 - [ ] T107 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 6 e 7): adicionar,
   trocar, mover para a capa, remover (com confirmação); em outra janela mudar as fotos e voltar
   à primeira ⇒ mensagem de "mudadas por outra pessoa" e tela atualizada; lista com miniatura

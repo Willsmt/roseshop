@@ -114,6 +114,12 @@ regras; nunca sugerir preço.
   100% existente ou vazia), p50/p90 de duração (SC-004: p90 ≤ 15 s) e `usage` médio ⇒ custo real
   por cadastro. Fica o **mais barato que passar**; o resultado vai para o ADR-010 e para as
   constantes de `config.ts`.
+- Imprime também o nome e a descrição inteiros de cada pedido e grava `ia-medicao/resultado.md`
+  (fora do git; montado por `src/lib/ai/medicao-relatorio.ts`): tabela ordenada por produto
+  (na ordem do gabarito) e, dentro dele, por modelo e esforço, com categoria esperada,
+  categoria sugerida, nome, descrição completa e a coluna "inventa?" em branco, que o humano
+  preenche na T132 (a descrição afirma algo que a foto não mostra?). O `resultado.md` anterior
+  vira `resultado-<data>.md` antes de gravar o novo; sem nenhum pedido feito, nada é gravado.
 
 ## 6. Mensagens (tela)
 

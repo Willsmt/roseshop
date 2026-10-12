@@ -104,13 +104,58 @@ describe("montarResultadoMd", () => {
     expect(md).toContain("| bolsa-01 (rodada 2) | gpt-5.4-mini");
   });
 
-  it("preserva a ordem recebida, uma linha por item", () => {
-    const md = montarResultadoMd(
-      [ok({}, { produto: "c" }), ok({}, { produto: "a" }), ok({}, { produto: "b" })],
-      o(),
-    );
-    const linhas = md.slice(CABECALHO.length).trimEnd().split("\n");
-    expect(linhas.map((l) => l.split(" | ")[0])).toEqual(["| c", "| a", "| b"]);
+  describe("ordenação por produto", () => {
+    const l = (produto: string, modelo: string, esforco: string, rodada = 1) =>
+      ok({}, { produto, modelo, esforco, rodada });
+    const ordem = (md: string) =>
+      md
+        .slice(CABECALHO.length)
+        .trimEnd()
+        .split("\n")
+        .map((x) => x.split(" | ").slice(0, 3).join("/").replace("| ", ""));
+
+    it("agrupa por produto; dentro do produto mantém a ordem recebida (estável)", () => {
+      const md = montarResultadoMd(
+        [l("A", "luna", "none"), l("B", "luna", "none"), l("A", "luna", "low"), l("B", "luna", "low"), l("A", "mini", "none")],
+        o(),
+      );
+      expect(ordem(md)).toEqual(["A/luna/none", "A/luna/low", "A/mini/none", "B/luna/none", "B/luna/low"]);
+    });
+
+    it("produtos na ordem da primeira ocorrência, não alfabética", () => {
+      const md = montarResultadoMd([l("z", "m", "none"), l("a", "m", "none"), l("z", "m", "low")], o());
+      expect(ordem(md)).toEqual(["z/m/none", "z/m/low", "a/m/none"]);
+    });
+
+    it("produto que só aparece mais tarde entra depois dos que apareceram antes", () => {
+      const md = montarResultadoMd(
+        [l("A", "luna", "none"), l("B", "luna", "none"), l("A", "mini", "none"), l("B", "mini", "none"), l("C", "mini", "none")],
+        o(),
+      );
+      expect(ordem(md)).toEqual(["A/luna/none", "A/mini/none", "B/luna/none", "B/mini/none", "C/mini/none"]);
+    });
+
+    it("com rodadas 2, a rodada 1 vem antes da 2 do mesmo candidato", () => {
+      const md = montarResultadoMd(
+        [l("A", "luna", "none", 1), l("B", "luna", "none", 1), l("A", "luna", "none", 2), l("B", "luna", "none", 2)],
+        o(2),
+      );
+      const linhas = md.slice(CABECALHO.length).trimEnd().split("\n");
+      expect(linhas.map((x) => x.split(" | ")[0])).toEqual([
+        "| A (rodada 1)",
+        "| A (rodada 2)",
+        "| B (rodada 1)",
+        "| B (rodada 2)",
+      ]);
+    });
+
+    it("não muta a lista recebida", () => {
+      const entrada = [l("A", "luna", "none"), l("B", "luna", "none"), l("A", "luna", "low")];
+      const copia = [...entrada];
+      montarResultadoMd(entrada, o());
+      expect(entrada).toEqual(copia);
+      expect(entrada.every((x, i) => x === copia[i])).toBe(true);
+    });
   });
 
   it("termina com exatamente uma quebra de linha", () => {

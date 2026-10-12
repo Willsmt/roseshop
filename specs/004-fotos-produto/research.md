@@ -521,6 +521,24 @@ Decisões (humano, 2026-10-09):
   permitir aplicar, o ADR-010 registra a limitação do provedor e o contador do app como
   controle principal.
 
+#### R5, segunda parte — `gpt-5.4-mini` **aprovado** na prova técnica (T120a, 2026-10-12)
+
+Mesmo script (`node .spike/r5.mjs`), com o acesso ao `gpt-5.4-mini` já liberado. Relato do
+humano, com o output real: os dois modelos com HTTP 200, `status=completed` e saída **CONFORME**
+ao schema nos dois esforços, `categoria_id=1` em todos.
+
+| Modelo | Esforço | Tempo | Tokens | `reasoning_tokens` |
+|---|---|---|---|---|
+| `gpt-6-luna` | `none` | 2857 ms | 578 | 0 |
+| `gpt-6-luna` | `low` | 2433 ms | 576 | 0 |
+| `gpt-5.4-mini` (`model=gpt-5.4-mini-2026-03-17`) | `none` | 1716 ms | 579 | 0 |
+| `gpt-5.4-mini` (`model=gpt-5.4-mini-2026-03-17`) | `low` | 1608 ms | 598 | 16 |
+
+Observação para a T133 (humano): o `gpt-5.4-mini` afirmou um tamanho que a foto não mostra
+("tamanho padrão", "tamanho médio aparente"); o `gpt-6-luna` escreveu "tamanho não informado".
+Por isso a medição (T132) registra, além da categoria, se a descrição inventa informação
+ausente da foto.
+
 #### Resumo do que as provas destravam (T008)
 
 | Item | Resultado | Onde pesa |
@@ -531,7 +549,7 @@ Decisões (humano, 2026-10-09):
 | Cron | `scheduled` → handler em processo, local e online; reserva do D6 descartada (R3) | SF12, ADR-009 |
 | Crons em cada ambiente | `triggers.crons` declarado em todos (inclusive `[]`), pois deploy sem a chave não remove cron (R3) | SF12, ADR-009 |
 | `scheduled` lança erro se ≠ 200 | confirmado necessário: o cron aparece `Ok` com 503 se não lançar (R3) | SF12 |
-| Modelos da SF13 | `gpt-6-luna` aprovado; `gpt-5.4-mini` com acesso pendente (T120a) (R5) | SF13, ADR-010 |
+| Modelos da SF13 | `gpt-6-luna` e `gpt-5.4-mini` aprovados na prova técnica (R5; o mini na T120a, 2026-10-12) | SF13, ADR-010 |
 | Teto de gasto OpenAI | configurado, **não aplicado**; aplicar (T014b) é condição de entrada da SF13 | SF13, ADR-010 |
 | R4 | adiado para a SF10 | SF10 |
 

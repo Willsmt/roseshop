@@ -82,16 +82,6 @@ const NOME_UNICO = "produtos_chave_unique";
 // Única FK que vira `categoria_ausente` no cadastro com fotos, também por nome exato.
 const FK_CATEGORIA = "produtos_categoria_id_categorias_id_fk";
 
-function valores(campos: CamposProduto) {
-  return {
-    nome: campos.nome,
-    categoriaId: campos.categoriaId,
-    descricao: campos.descricao,
-    precoCentavos: campos.precoCentavos,
-    aPartirDe: campos.aPartirDe,
-  };
-}
-
 // A equivalência de nomes é do banco: a mesma função que gera a coluna `chave`.
 async function codigoPorNome(db: Db, nome: string): Promise<number | undefined> {
   const [linha] = await db
@@ -214,7 +204,10 @@ export async function editar(
     const linhas = await db
       .update(produtos)
       .set({
-        ...valores(campos),
+        nome: campos.nome,
+        categoriaId: campos.categoriaId,
+        descricao: campos.descricao,
+        precoCentavos: campos.precoCentavos,
         // Defesa do SQL só na edição (o domínio já entrega `aPartirDe = false` sem preço);
         // no cadastro o CHECK `produtos_a_partir_de_com_preco` recusa e o erro propaga.
         aPartirDe: campos.precoCentavos === null ? false : campos.aPartirDe,

@@ -959,11 +959,14 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
 **Fecha**: US3-AC1–8 (servidor), SC-003, SC-004, SC-009.
 **Revisão TL**: ✅.
 
-- [ ] T120a **Primeira task da SF13 — humano executa**: prova técnica do `gpt-5.4-mini` com o
+- [X] T120a **Primeira task da SF13 — humano executa**: prova técnica do `gpt-5.4-mini` com o
   script do R5 (`.spike/r5.mjs`, imagem + structured output estrito, `store: false`, esforços
   `none` e `low`), depois de resolver o acesso (403 `model_not_found` na SF0; research §3, R5).
   Sem acesso, a medição (T132) roda só com o `gpt-6-luna` ou o humano escolhe outro candidato —
   **humano**
+  **Execução (2026-10-12, relato do humano)**: acesso liberado; os dois modelos com HTTP 200,
+  `completed` e saída conforme ao schema em `none` e `low` (`categoria_id=1` em todos). Números e
+  a observação sobre descrição que inventa tamanho no research §3 (R5, segunda parte) e no ADR-010.
 - [X] T121 **Primeiro de tudo** (antes de criar a pasta): linha `ia-medicao/` no `.gitignore`
   (TL-21) — **principal**
 - [ ] T122 **Humano executa — chave dev**: `npx wrangler secret put OPENAI_API_KEY --env dev`
@@ -1014,7 +1017,9 @@ TL-9, TL-15. Spec: US3-AC1–8 (lado do servidor), SC-003, SC-004, SC-009.
 - [ ] T132 **Humano executa — medição real**: criar `ia-medicao/` (≥ 10 produtos reais, 1 a 3
   fotos já tratadas pelo pipeline do aparelho, sem metadado) com `gabarito.json`
   (`{ produto, categoria }`, categorias do seed); rodar `npm run test:ia` com a chave dev;
-  entregar o output real. Medir também o **CPU da confirmação com foto de 1 MB** no dev
+  entregar o output real. Para cada produto e modelo, registrar, além da categoria, **se a
+  descrição inventa informação ausente da foto** (ex.: tamanho, material ou medida que a foto não
+  mostra; observação da T120a). Medir também o **CPU da confirmação com foto de 1 MB** no dev
   (Q§5.3: painel Workers → `roseshop-dev` → Métricas). **Ressalva aberta**: o CPU de
   `sugerirProduto` com 3 fotos de 1 MB só é medível com a tela da SF14 e passou para a T139
   (decisão do humano, 2026-10-12, opção A) —

@@ -73,6 +73,12 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
     projeto da chave (Project ID conferido pelo humano); provável restrição da organização ou do
     nível da conta. Prova técnica na **T120a**, primeira task da SF13; sem acesso, a medição
     roda só com o `gpt-6-luna` ou o humano escolhe outro candidato.
+  - `gpt-5.4-mini`, **acesso liberado e aprovado na prova técnica** (T120a, 2026-10-12;
+    `model=gpt-5.4-mini-2026-03-17`): HTTP 200, `status=completed`, saída conforme ao schema e
+    `categoria_id=1` nos dois esforços (`none` 1716 ms / 579 tokens, `reasoning_tokens` 0; `low`
+    1608 ms / 598 tokens, `reasoning_tokens` 16). Na mesma rodada, o `gpt-6-luna` deu `none`
+    2857 ms / 578 tokens e `low` 2433 ms / 576 tokens (`reasoning_tokens` 0). O mini afirmou um
+    tamanho que a foto não mostra; o luna escreveu "tamanho não informado" (research §3, R5).
   - A prova rodou em Node. A prova no workerd (incluindo a CPU do base64 com 3 fotos de 1 MB)
     é da SF13 e do quickstart §5.3.
   - CPU no workerd (2026-10-12, SF14, T139, dev com IA real e 3 fotos): `sugerirProduto` com
@@ -100,7 +106,8 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
 - (−) De 2026-10-09 a 2026-10-12, só o contador do app limitava o gasto no dev (III.5 não
   atendida nesse intervalo; a prova R5 rodou nele).
 - (−) Modelo e esforço só fecham na SF13; o ADR é emendado com o resultado da medição.
-- (−) Um candidato pode depender de liberação de acesso na conta (caso do `gpt-5.4-mini`).
+- (−) Um candidato pode depender de liberação de acesso na conta (caso do `gpt-5.4-mini`,
+  liberado em 2026-10-12, T120a).
 - (−) Prompt injection por texto na imagem é mitigado (instruções + schema + validação), não
   eliminado; a confirmação humana é a última barreira.
 - (−) **Risco aceito (2026-10-12, T139, decisão do humano)**: `sugerirProduto` mediu 21 ms de

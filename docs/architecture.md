@@ -4,7 +4,7 @@
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
 > servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7, o
 > pipeline da foto no aparelho (SF8), as telas do cadastro com fotos (SF9) e a tela de
-> fotos do produto existente (SF11) e a limpeza diária de fotos (SF12); sem IA**. Este documento descreve apenas o que existe hoje
+> fotos do produto existente (SF11), a limpeza diária de fotos (SF12) e o servidor da sugestão por IA (SF13, sem tela ainda)**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -57,8 +57,8 @@ Fotos de produto (feature 004, em andamento), dependências de runtime e de buil
 | `react-easy-crop` | `6.2.3` (**exata**) | Recorte 1:1 com gesto de pinça no passo Fotos do cadastro (SF9); componente de cliente, sem binding nem variável de ambiente. |
 | `wrangler` (dev) | `4.147.0` (**exata**, sem `^`) | O endpoint S3 local do R2 é experimental e depende da versão; ver [operacao.md, "wrangler fixado"](./operacao.md#wrangler-fixado-em-41470-devdependency). |
 
-Não há ainda no `package.json`: SDK da OpenAI (a feature 004 prevê `fetch` direto). A IA
-entra nas dependências quando for implementada (ver `specs/`).
+Não há no `package.json` SDK da OpenAI de propósito: a IA usa `fetch` direto à Responses API
+(ADR-010; ver "Módulo de IA").
 
 ### Estrutura de código atual
 
@@ -80,8 +80,9 @@ src/app/
 src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
-src/lib/produtos/     # módulo de domínio de produtos (actions, painel, validacao, preco, codigo, erros, mensagens)
+src/lib/produtos/     # módulo de domínio de produtos (actions, sugestao, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
+src/lib/ai/   # IA (SF13): config, sugestao (fetch à OpenAI), barrel server-only (ver "Módulo de IA")
 src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao, limpeza
 cloudflare/   # worker próprio (worker.ts: fetch do OpenNext + scheduled) e open-next-worker.d.ts
 src/lib/fotos/aparelho/   # pipeline da foto só de navegador (SF8): tipo, recorte 1:1, WebP/JPEG até 1 MiB
@@ -90,12 +91,12 @@ src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
   schema.ts     # schema Drizzle (categorias, produtos, produto_fotos, fotos_envio, ia_uso)
-  categorias.ts, produtos.ts, fotos.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
+  categorias.ts, produtos.ts, fotos.ts, ia-uso.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
   migrations/   # 0000 (função categoria_chave + categorias + seed), 0001 (produtos, produto_fotos), 0002 (fotos_envio, ia_uso, colunas de fotos) e meta/
   *.test.ts / *.int.test.ts   # testes unitário e de integração
 src/test/       # conformance/ (testes de guard e de acesso) e db/ (fixtures de integração, medição de desempenho)
 drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations)
-vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts, vitest.perf.config.mts   # unitário, integração, probe do CI, medição local
+vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts, vitest.perf.config.mts, vitest.ia.config.mts   # unitário, integração, probe do CI, medição local, medição manual da IA
 ```
 
 Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
@@ -253,9 +254,9 @@ graph LR
 - `public/_headers` aplica cache imutável de 1 ano para `/_next/static/*`
   (arquivo lido pelo asset handler do Workers, não pelo Next).
 
-Não há binding de banco (Neon/Hyperdrive) nem segredo de IA em `wrangler.jsonc`
-(o banco é acessado por `DATABASE_URL`, secret/var, via HTTP); eles entram junto
-com as features que os usam (conforme `specs/`).
+Não há binding de banco (Neon/Hyperdrive) nem de IA em `wrangler.jsonc` (o banco é acessado
+por `DATABASE_URL`, secret/var, via HTTP; a IA, por `OPENAI_API_KEY`, secret, lida de
+`process.env`).
 
 ### Ambientes decididos nos ADRs 002 e 006 (implementados)
 
@@ -269,7 +270,7 @@ validada por `/api/health` (`src/app/api/health/route.ts`) e pelo teste de
 integração `src/lib/db/client.int.test.ts` (`npm run test:int`, exige `db:up`).
 O schema tem `categorias` (migration `0000`), `produtos` e `produto_fotos`
 (`0001`), `fotos_envio` e `ia_uso` (`0002`, feature 004 em andamento; só
-`fotos_envio` e `produto_fotos` já têm código que as use, `ia_uso` ainda não; ver
+`fotos_envio`, `produto_fotos` e `ia_uso` já têm código que as use; ver
 [database.md](./database.md)).
 
 | Recurso | Local | Dev online | Produção |
@@ -380,7 +381,7 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 ### Módulo R2 (feature 004, SF2, SF3 e SF6)
 
 > Estado: o módulo já tem chamadores desde a SF6 (actions de `src/lib/fotos/`, remoção
-> de produto e a rota de exibição). UI de fotos existe desde a SF11 e a limpeza diária desde a SF12; **não existe** IA.
+> de produto e a rota de exibição). UI de fotos existe desde a SF11 e a limpeza diária desde a SF12; a IA (SF13) tem seu módulo próprio, abaixo.
 
 **Visão leiga**: a foto do produto não passa pelo servidor do site. A administradora
 pede uma "autorização de envio" (uma URL temporária, válida por 5 minutos), o aparelho
@@ -456,9 +457,34 @@ recebe só os `envioIds`. Nenhum binding ou variável nova. Em `next dev` o `PUT
 sem o endpoint S3 do R2, que só existe no worker: valide no `preview`. Detalhes em
 [F04](./features/F04-fotos.md#telas-do-cadastro-painelprodutosnovo-sf9).
 
+### Módulo de IA (feature 004, SF13)
+
+> Estado: **só servidor, sem tela** (a tela é a SF14). Zona protegida (tech-lead).
+
+Dá à administradora uma sugestão de nome, categoria e descrição a partir das fotos já
+enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras na
+[F04](./features/F04-fotos.md#sugestão-por-ia-sf13).
+
+| Arquivo | Papel |
+|---|---|
+| `src/lib/ai/config.ts` | Constantes: `MODELO` (`gpt-6-luna`) e `ESFORCO` (`none`), **provisórios até a medição da SF13 (T133)**; `TEMPO_LIMITE_MS` 20 000, `MAX_SAIDA` 800, `LIMITE_POR_PESSOA` 30 e `LIMITE_TOTAL` 100 por dia de Brasília. |
+| `src/lib/ai/sugestao.ts` | `pedirSugestao`: `fetch` direto à Responses API (`https://api.openai.com/v1/responses`), `store: false`, saída `json_schema` estrita, imagens em base64 com `detail: "low"`, aborto em 20 s; revalida a forma da resposta (Zod `.strict()`, `categoria_id` só da lista enviada). Log `ia.sugestao` só com modelo, status HTTP, duração, contadores numéricos de `usage` e o motivo da falha; nunca chave, imagem, prompt nem texto devolvido. |
+| `src/lib/ai/index.ts` | Barrel `server-only`: `pedirSugestao`, tipos e os dois limites. |
+
+- **Fronteira**: `api.openai.com` e `OPENAI_API_KEY` só aparecem em `src/lib/ai/`;
+  `src/test/conformance/ia-acesso.test.ts` (AST, nega por padrão) também restringe quem
+  importa `@/lib/ai`, `@/lib/db/ia-uso` e `@/lib/produtos/sugestao`.
+- **Contador**: `consumirSugestao` em `src/lib/db/ia-uso.ts` (um `db.batch` sob
+  `LOCK_IA_USO` = 4002, dia de Brasília; ver [database.md](./database.md#tabela-ia_uso)).
+- **Teto de gasto no provedor**: aplicado no projeto OpenAI dev em 2026-10-12 (T014b, ADR-010).
+- **Medição manual**: `npm run test:ia` (ver [operacao.md](./operacao.md#testes-vitest)).
+- **Dívida**: a CPU de `sugerirProduto` com 3 fotos de 1 MB no `dev` não foi medida; passou
+  para a T139 da SF14 (ressalva aberta). Em `next dev` o Node não mostra o limite de CPU do
+  Worker: validar no `preview`/dev online.
+
 ### Planejado, não implementado
 
-Catálogo público, sacola e integração de IA (OpenAI) são
+Catálogo público e sacola são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

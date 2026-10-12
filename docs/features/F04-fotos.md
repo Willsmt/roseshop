@@ -1,14 +1,14 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF12: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF13: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
 > (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
 > aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
 > Android (SF10, ver "Prova com aparelho real") e a tela de fotos do produto já
 > cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto") e a
-> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). **Ainda não existe**: IA. Spec:
+> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). A **sugestão por IA** existe só no servidor (SF13, sem tela; ver "Sugestão por IA"). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -399,10 +399,61 @@ sequenceDiagram
   `npx opennextjs-cloudflare build && npx wrangler dev --test-scheduled`, e em outro terminal
   `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"`.
 
+### Sugestão por IA (SF13)
+
+**Visão leiga.** No cadastro, depois de colocar as fotos, a administradora poderá pedir uma
+sugestão de nome, categoria e descrição; ela confere e edita, nada é salvo sozinho. Hoje só o
+servidor existe (a tela é a SF14). Se a IA falhar ou estiver pausada, o cadastro manual
+segue normalmente.
+
+**Técnico.** `sugerirProduto({ envioIds })` em `src/lib/produtos/sugestao.ts` (`"use server"`)
+devolve `{ ok: true, sugestao: { nome, categoriaId, descricao } }` (cada campo pode ser `null`)
+ou `{ ok: false, motivo: "ia_indisponivel" | "ia_pausada", mensagem }`.
+
+```mermaid
+sequenceDiagram
+  participant T as Tela (SF14)
+  participant A as sugerirProduto
+  participant DB as Postgres
+  participant R as R2
+  participant O as OpenAI (Responses API)
+  T->>A: envioIds (1 a 3)
+  A->>A: requireAdminAction + Zod
+  A->>DB: enviosValidos (confirmados, da própria pessoa, < 24 h)
+  A->>DB: consumirSugestao (lock 4002, 30/pessoa, 100/dia)
+  alt sem vaga
+    A-->>T: ia_pausada
+  end
+  A->>R: lerObjeto (bytes, base64)
+  A->>O: pedirSugestao (store false, schema estrito, 20 s)
+  O-->>A: JSON
+  A->>A: validarNome, validarDescricao, categoria existe?
+  A-->>T: sugestão (nada gravado)
+```
+
+- **Ordem fixa**: guard, Zod, envios válidos, consumo da vaga **antes** da chamada, categorias
+  (`listarCategorias`), bytes pelo binding, IA, validação campo a campo.
+- **Resposta é entrada não confiável**: `nome` e `descricao` passam por `validarNome` e
+  `validarDescricao` (agora exportados de `src/lib/produtos/validacao.ts`); o que reprova
+  vira `null`; `categoriaId` fora das categorias vira `null`. Tudo `null` ⇒ `ia_indisponivel`.
+- **Qualquer falha** (exceto o guard) vira `ia_indisponivel`, sem expor a causa; ela fica no
+  log `ia.sugestao` (ver [operacao.md](../operacao.md#troubleshooting)).
+- Módulo, constantes e fronteira em [architecture.md](../architecture.md#módulo-de-ia-feature-004-sf13).
+
+**Pegadinhas.** `MODELO` (`gpt-6-luna`) e `ESFORCO` (`none`) são provisórios; a escolha vem da
+medição com fotos reais (`npm run test:ia`, T132) e vira emenda do ADR-010 (T133).
+Pendências da SF13: T120a (prova técnica do `gpt-5.4-mini` por `node .spike/r5.mjs`), T132
+(medição, humano), T133 (escolha de modelo e esforço, aprovada pelo humano) e a CPU de
+`sugerirProduto` com 3 fotos de 1 MB no dev (passou para a T139 da SF14, ressalva aberta).
+
 ### Arquivos
 
 | Arquivo | Papel |
 |---|---|
+| `src/lib/produtos/sugestao.ts` | `sugerirProduto` (SF13); ver "Sugestão por IA". |
+| `src/lib/ai/` | `config.ts`, `sugestao.ts` (`pedirSugestao`) e `index.ts` (barrel); ver "Módulo de IA" em [architecture.md](../architecture.md#módulo-de-ia-feature-004-sf13). |
+| `src/lib/db/ia-uso.ts` | `consumirSugestao` (contador diário sob `LOCK_IA_USO`). |
+| `src/test/conformance/ia-acesso.test.ts` | Fronteira da IA (AST, nega por padrão). |
 | `src/lib/fotos/actions.ts` | `pedirEnvio`, `confirmarEnvio` e as do conjunto: `adicionarFoto`, `trocarFoto`, `removerFoto`, `moverFoto` (via `alterarConjunto`). |
 | `src/lib/fotos/aparelho/` | Pipeline da foto no navegador (SF8): `detectar-tipo.ts`, `suporta-webp.ts`, `recortar.ts`, `codificar.ts`, `preparar-foto.ts` e o teste de fronteira; ver a seção acima. |
 | `src/lib/fotos/conjunto.ts` | `aplicarAcao` (regra pura do conjunto), `MAXIMO_FOTOS`, tipos `AcaoConjunto` e `NovaFoto`. |
@@ -460,6 +511,7 @@ GPS, XMP nem IPTC.
 
 ### Concorrência e travas
 
+`consumirSugestao` também roda sob lock (`LOCK_IA_USO` = 4002), para os limites da IA serem exatos.
 Os writers que tocam fotos são `db.batch` sob `LOCK_FOTOS` (4001), a emenda de
 2026-10-09 do ADR-008: `inserirComFotos`, `remover` e `substituirConjunto`. Emitir,
 confirmar e descartar envio são um statement cada, fora do lock. Todo array vai como

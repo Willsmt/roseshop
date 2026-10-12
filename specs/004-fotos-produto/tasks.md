@@ -791,11 +791,13 @@ do R4 registrado na T007.
   Passos: apagar o `it` que **exige** `"registro"` em `env.dev.vars` (entrou na T094a) e a função
   `semPermitida`; voltar a `contemChave(config)` sem exceção; tirar a chave e o comentário do
   `env.dev` no `wrangler.jsonc`; rodar `npm run cf-typegen` de novo — **principal**
-- [ ] T100 Rodar `npm run check`; colar o output real; o humano confirma no dev (após novo
-  deploy) que a recusa está ligada — **principal**
-- [ ] T101 Revisão do diff pelo tech-lead (opus): lista final, regra do ICC, `wrangler.jsonc`,
+- [x] T100 Rodar `npm run check`; colar o output real; o humano confirma no dev (após novo
+  deploy) que a recusa está ligada — **principal**. Feito em 2026-10-12: com o deploy do `78d9052`
+  no dev, foto do Chrome Android aceita na tela e `wrangler tail --search
+  "fotos.verificacao.registro"` vazio
+- [x] T101 Revisão do diff pelo tech-lead (opus): lista final, regra do ICC, `wrangler.jsonc`,
   conformidade — **tech-lead**
-- [ ] T102 Commits (humano), mensagens, em dois commits:
+- [x] T102 Commits (humano), mensagens, em dois commits (feitos: `45c7c8f` e `78d9052`):
   ```text
   test(r2): perfil ICC real do Chrome Android na verificação
 

@@ -4,7 +4,7 @@
 > e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
 > servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7, o
 > pipeline da foto no aparelho (SF8), as telas do cadastro com fotos (SF9) e a tela de
-> fotos do produto existente (SF11); sem IA nem limpeza diária (SF12)**. Este documento descreve apenas o que existe hoje
+> fotos do produto existente (SF11) e a limpeza diária de fotos (SF12); sem IA**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -69,6 +69,7 @@ src/app/
   globals.css   # estilos globais (Tailwind)
   api/health/route.ts   # GET /api/health (ver "Camada de banco")
   api/auth/[...nextauth]/route.ts   # handlers do Auth.js (GET, POST)
+  api/interno/limpeza/route.ts      # POST da limpeza diária, só com CRON_SECRET (F04, SF12)
   painel/entrar/page.tsx            # tela de entrada (pública)
   painel/(protegido)/               # layout (moldura + "Sair"), page (saudação + links Produtos e Categorias), bfcache-reload
   painel/(protegido)/categorias/    # lista, nova/, [id]/renomear/, [id]/remover/ (F02)
@@ -81,7 +82,8 @@ src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/produtos/     # módulo de domínio de produtos (actions, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
-src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao
+src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao, limpeza
+cloudflare/   # worker próprio (worker.ts: fetch do OpenNext + scheduled) e open-next-worker.d.ts
 src/lib/fotos/aparelho/   # pipeline da foto só de navegador (SF8): tipo, recorte 1:1, WebP/JPEG até 1 MiB
 infra/r2/     # CORS dos buckets, versionado (cors.dev.json, cors.production.json)
 src/lib/db/
@@ -100,7 +102,8 @@ Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
 quatro de `/painel/categorias` (lista, `nova`, `[id]/renomear`, `[id]/remover`)
 as cinco de `/painel/produtos` (lista, `novo`, `[id]`, `[id]/editar`, `[id]/remover`)
 e `GET /painel/fotos/[arquivo]` (exibição de foto, guardada por sessão; ver
-[F04](./features/F04-fotos.md)).
+[F04](./features/F04-fotos.md)), além de `POST /api/interno/limpeza` (interna, chamada só pelo
+cron, protegida por `CRON_SECRET`, 404 para qualquer outro caso).
 **Nenhum middleware** (de propósito; ver a seção seguinte).
 
 ### Autenticação e proteção do painel
@@ -203,10 +206,21 @@ O fluxo de build é o padrão do adaptador `@opennextjs/cloudflare`:
 graph LR
   A["next build"] --> B["opennextjs-cloudflare build"]
   B --> C[".open-next/worker.js + assets"]
-  C --> D["wrangler (preview local ou deploy)"]
+  C --> W["cloudflare/worker.ts (importa o OpenNext por alias)"]
+  W --> D["wrangler (preview local ou deploy)"]
   D --> E["Cloudflare Workers"]
 ```
 
+- **Worker próprio** (SF12): o `main` do `wrangler.jsonc` é `cloudflare/worker.ts`, não mais
+  `.open-next/worker.js`. Ele reexporta o `fetch` do OpenNext e acrescenta o `scheduled` da
+  limpeza diária (ver [F04](./features/F04-fotos.md#limpeza-diária-sf12)). O OpenNext é
+  importado pelo nome `open-next-worker`, ligado a `./.open-next/worker.js` por um `alias`
+  no **nível de cima** do `wrangler.jsonc` (o wrangler só lê `alias` ali) e declarado em
+  `cloudflare/open-next-worker.d.ts`. `.open-next` está no `exclude` do `tsconfig.json`, para o
+  `typecheck` dar o mesmo resultado com e sem build local
+  (`src/test/conformance/worker-typecheck.test.ts`).
+- `triggers.crons` (`["0 6 * * *"]`, 03:00 de Brasília) é declarado nos **três** ambientes:
+  deploy sem a chave não remove um cron já publicado.
 - `next.config.ts` chama `initOpenNextCloudflareForDev()` — isso é o que permite
   usar `getCloudflareContext()` (acesso a bindings) rodando `next dev`, mesmo
   esse não sendo o runtime real de produção.
@@ -349,9 +363,13 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 - **Fotos servidas por `<img>` simples** (SF11): detalhe, lista e tela Fotos apontam para
   `/painel/fotos/<arquivo>` (rota com sessão, `Cache-Control` privado e imutável); não há
   otimização de imagem do Next (`no-img-element` desligado com comentário).
-- **Sem limpeza de objetos órfãos ainda** (cron da feature 004, SF12): recusa de
-  confirmação e remoção de produto apagam objetos do R2 em melhor esforço e dependem
-  dela para o resto.
+- **Objetos órfãos dependem do cron** (SF12): recusa de confirmação e remoção de produto
+  apagam objetos do R2 em melhor esforço; a limpeza diária recolhe o resto. **T118b
+  pendente**: a prova do cron no `roseshop-dev` ainda não foi feita (ver
+  [operacao.md, Troubleshooting](./operacao.md#troubleshooting)).
+- **Durable Objects do OpenNext não reexportados**: `.open-next/worker.js` também exporta
+  classes de DO (fila e cache de tags); hoje não há `durable_objects` no `wrangler.jsonc`.
+  Se o cache com DO for ligado, reexportar as classes em `cloudflare/worker.ts`.
 - **`next-auth` em beta** (`5.0.0-beta.32`, versão exata): atualização manual e
   deliberada.
 - **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o
@@ -362,7 +380,7 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
 ### Módulo R2 (feature 004, SF2, SF3 e SF6)
 
 > Estado: o módulo já tem chamadores desde a SF6 (actions de `src/lib/fotos/`, remoção
-> de produto e a rota de exibição). UI de fotos existe desde a SF11; **não existem** IA nem cron.
+> de produto e a rota de exibição). UI de fotos existe desde a SF11 e a limpeza diária desde a SF12; **não existe** IA.
 
 **Visão leiga**: a foto do produto não passa pelo servidor do site. A administradora
 pede uma "autorização de envio" (uma URL temporária, válida por 5 minutos), o aparelho
@@ -440,7 +458,7 @@ sem o endpoint S3 do R2, que só existe no worker: valide no `preview`. Detalhes
 
 ### Planejado, não implementado
 
-Catálogo público, sacola, limpeza diária de fotos (SF12) e integração de IA (OpenAI) são
+Catálogo público, sacola e integração de IA (OpenAI) são
 descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
 nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

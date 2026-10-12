@@ -1,14 +1,14 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF13: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF14: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
 > (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
 > aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
 > Android (SF10, ver "Prova com aparelho real") e a tela de fotos do produto já
 > cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto") e a
-> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). A **sugestão por IA** existe só no servidor (SF13, sem tela; ver "Sugestão por IA"). Spec:
+> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). A **sugestão por IA** existe no servidor (SF13) e na tela do cadastro (SF14; ver "Sugestão por IA"). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -268,6 +268,8 @@ graph TD
 | Arquivo (em `src/app/painel/(protegido)/produtos/`) | Papel |
 |---|---|
 | `novo/cadastro-produto.tsx` | Orquestra os passos, o recorte e o `useEnvioFotos`. "Continuar" fica desabilitado sem foto enviada ou com alguma foto *enviando* / *não enviada*; com *não enviada*, mostra `CONTINUAR_COM_NAO_ENVIADA` ligado ao botão por `aria-describedby`. Com o recorte aberto, o passo mostra só título, aviso e recorte. |
+| `novo/sugestao.tsx` | Hook `useSugestao` (pede a sugestão e guarda o estado) e `AvisoSugestao` (região viva). Ver "Sugestão por IA". |
+| `novo/textos-sugestao.ts` | `ESPERANDO_SUGESTAO`, `MARCADOR_SUGESTAO` e o tipo `Sugestao`; sem dependências, para o form da edição não carregar a action (FR-034). |
 | `_fotos/escolher-foto.tsx` | No celular (`(pointer: coarse)`): "Tirar foto" (`capture="environment"`) e "Escolher da galeria" separados; no computador: só "Escolher arquivo". Na hidratação vale o layout de computador. Com 3 fotos, botões desabilitados e o texto "Máximo de 3 fotos". |
 | `_fotos/recorte-foto.tsx` | `react-easy-crop`: recorte 1:1, `restrictPosition` (a moldura não sai da imagem), zoom de 1 até `min(lado menor / 400, 4)` (aproximar mais deixaria o recorte abaixo de `LADO_MINIMO`), controle "Aproximar". "Usar esta foto" devolve a área em pixels da imagem original; nada é enviado aqui. |
 | `_fotos/lista-fotos.tsx` | Lista vertical, uma foto por linha, capa = primeira (selo "Capa"). Reordena por **arrasto pela miniatura** (pointer events: captura do ponteiro, destino pelo centro vertical dos outros itens) ou pelos botões "Usar como capa", "Mover para cima", "Mover para baixo"; "Remover" sem confirmação por padrão (`confirmarRemocao` é ligado pela tela Fotos). Props opcionais da SF11: `onTrocar`, `podeRemover`, `desabilitado`. Mostra "Enviando…" e "Não enviada" (com "Tentar de novo" quando permitido). |
@@ -401,10 +403,10 @@ sequenceDiagram
 
 ### Sugestão por IA (SF13)
 
-**Visão leiga.** No cadastro, depois de colocar as fotos, a administradora poderá pedir uma
-sugestão de nome, categoria e descrição; ela confere e edita, nada é salvo sozinho. Hoje só o
-servidor existe (a tela é a SF14). Se a IA falhar ou estiver pausada, o cadastro manual
-segue normalmente.
+**Visão leiga.** No cadastro, ao tocar em "Continuar" no passo Fotos, o passo Dados abre na hora
+e o sistema preenche nome, categoria e descrição a partir das fotos; cada campo preenchido
+ganha o marcador "Sugestão — confira". Ela confere e edita; nada é salvo sozinho. Se a IA
+falhar ou estiver pausada, o cadastro manual segue normalmente.
 
 **Técnico.** `sugerirProduto({ envioIds })` em `src/lib/produtos/sugestao.ts` (`"use server"`)
 devolve `{ ok: true, sugestao: { nome, categoriaId, descricao } }` (cada campo pode ser `null`)
@@ -412,7 +414,7 @@ ou `{ ok: false, motivo: "ia_indisponivel" | "ia_pausada", mensagem }`.
 
 ```mermaid
 sequenceDiagram
-  participant T as Tela (SF14)
+  participant T as Tela (sugestao.tsx)
   participant A as sugerirProduto
   participant DB as Postgres
   participant R as R2
@@ -440,11 +442,38 @@ sequenceDiagram
   log `ia.sugestao` (ver [operacao.md](../operacao.md#troubleshooting)).
 - Módulo, constantes e fronteira em [architecture.md](../architecture.md#módulo-de-ia-feature-004-sf13).
 
+**Tela (SF14).** Arquivos em `src/app/painel/(protegido)/produtos/novo/`:
+
+| Arquivo | Papel |
+|---|---|
+| `sugestao.tsx` | `useSugestao`: estados `ocioso`, `esperando`, `pronta` e `falhou`; `pedirPrimeira` e `tentarDeNovo`. `AvisoSugestao`: texto de espera, mensagem de falha e o botão. |
+| `textos-sugestao.ts` | Textos "Preenchendo a partir das fotos…" e "Sugestão — confira" e o tipo `Sugestao`. Sem imports: o `form-produto.tsx` (também usado na edição) importa só daqui. |
+| `cadastro-produto.tsx` | Chama `pedirPrimeira(envioIds)` no "Continuar" e passa a sugestão `pronta` ao form. |
+| `../form-produto.tsx` | Prop `sugestao`, só no modo cadastro; aplica os valores e controla o marcador. |
+
+- **Uma vez por cadastro**: o pedido sai só no primeiro "Continuar" (estado `ocioso`); trocar
+  as fotos depois não pede outra. Pedidos numerados: resposta de pedido antigo é ignorada.
+- **Preenche só campo vazio**: os campos seguem não controlados; o valor é aplicado no DOM
+  e o campo ganha o marcador (prop `dica`), que some ao editar. Categoria fora da lista de
+  opções fica vazia. Preço, "a partir de" e status nunca são sugeridos.
+- **Com "Salvar" em curso, espera**: a resposta do `Salvar` devolve o form aos valores
+  enviados e apagaria o que fosse aplicado; a sugestão é aplicada quando o envio termina.
+- **Falhas**: `ia_indisponivel` mostra a mensagem e "Tentar sugestão de novo" (o foco vai ao
+  título "Dados do produto", pois o botão some); `ia_pausada` mostra a mensagem sem botão.
+  Qualquer exceção na chamada vira `ia_indisponivel` com texto padrão.
+- **Região viva** `role="status"` fica fora das seções `hidden`, montada desde o início: texto
+  que entra dentro de seção oculta não seria anunciado. Fora do passo Dados, recebe o estado
+  `ocioso`.
+- **`dica`**: prop opcional de `CampoTexto`, `AreaTexto` e `Selecao` (`src/components/ui/`),
+  um `<p>` abaixo do controle ligado por `aria-describedby` junto com o erro.
+
 **Pegadinhas.** `MODELO` (`gpt-6-luna`) e `ESFORCO` (`none`) são provisórios; a escolha vem da
 medição com fotos reais (`npm run test:ia`, T132) e vira emenda do ADR-010 (T133).
 Pendências da SF13: T120a (prova técnica do `gpt-5.4-mini` por `node .spike/r5.mjs`), T132
-(medição, humano), T133 (escolha de modelo e esforço, aprovada pelo humano) e a CPU de
-`sugerirProduto` com 3 fotos de 1 MB no dev (passou para a T139 da SF14, ressalva aberta).
+(medição, humano) e T133 (escolha de modelo e esforço, aprovada pelo humano).
+**CPU acima do Workers Free**: `sugerirProduto` mediu 21 ms de CPU no dev (T139); risco
+aceito, ver [operacao.md](../operacao.md#limite-de-cpu-do-plano-gratuito-do-workers).
+Cada objeto de sugestão é aplicado uma vez: campo que a pessoa esvaziou não é repreenchido.
 
 ### Arquivos
 

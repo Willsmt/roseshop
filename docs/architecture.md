@@ -459,7 +459,7 @@ sem o endpoint S3 do R2, que só existe no worker: valide no `preview`. Detalhes
 
 ### Módulo de IA (feature 004, SF13)
 
-> Estado: **só servidor, sem tela** (a tela é a SF14). Zona protegida (tech-lead).
+> Estado: servidor (SF13) e tela do cadastro (SF14, ver F04). Zona protegida (tech-lead).
 
 Dá à administradora uma sugestão de nome, categoria e descrição a partir das fotos já
 enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras na
@@ -478,9 +478,9 @@ enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras 
   `LOCK_IA_USO` = 4002, dia de Brasília; ver [database.md](./database.md#tabela-ia_uso)).
 - **Teto de gasto no provedor**: aplicado no projeto OpenAI dev em 2026-10-12 (T014b, ADR-010).
 - **Medição manual**: `npm run test:ia` (ver [operacao.md](./operacao.md#testes-vitest)).
-- **Dívida**: a CPU de `sugerirProduto` com 3 fotos de 1 MB no `dev` não foi medida; passou
-  para a T139 da SF14 (ressalva aberta). Em `next dev` o Node não mostra o limite de CPU do
-  Worker: validar no `preview`/dev online.
+- **Risco aceito (CPU)**: `sugerirProduto` mediu 21 ms de CPU no dev, acima dos 10 ms do
+  Workers Free; ver [operacao.md](./operacao.md#limite-de-cpu-do-plano-gratuito-do-workers).
+  Em `next dev` o Node não mostra o limite de CPU do Worker: medir no dev online.
 
 ### Planejado, não implementado
 

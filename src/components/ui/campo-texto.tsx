@@ -7,6 +7,8 @@ type CampoTextoProps = {
 	rotulo: string;
 	defaultValue: string;
 	erro?: React.ReactNode;
+	/** Texto de apoio abaixo do controle (ex.: marcador de sugestão). */
+	dica?: React.ReactNode;
 	inputMode?: React.ComponentProps<"input">["inputMode"];
 	maxLength?: number;
 };
@@ -16,9 +18,12 @@ export const classesControle =
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 " +
 	"aria-[invalid=true]:border-red-700";
 
-export function CampoTexto({ name, rotulo, defaultValue, erro, inputMode, maxLength }: CampoTextoProps) {
+export function CampoTexto({ name, rotulo, defaultValue, erro, dica, inputMode, maxLength }: CampoTextoProps) {
 	const id = useId();
 	const idErro = `${id}-erro`;
+	const idDica = `${id}-dica`;
+	// Erro e dica podem coexistir: os dois ids vão no aria-describedby.
+	const descrito = [erro ? idErro : null, dica ? idDica : null].filter(Boolean).join(" ") || undefined;
 	return (
 		<div className="flex flex-col gap-2">
 			<label htmlFor={id} className="text-base font-semibold">
@@ -32,10 +37,15 @@ export function CampoTexto({ name, rotulo, defaultValue, erro, inputMode, maxLen
 				inputMode={inputMode}
 				maxLength={maxLength}
 				aria-invalid={erro ? "true" : undefined}
-				aria-describedby={erro ? idErro : undefined}
+				aria-describedby={descrito}
 				className={classesControle}
 			/>
 			{erro ? <MensagemCampo id={idErro}>{erro}</MensagemCampo> : null}
+			{dica ? (
+				<p id={idDica} className="text-base text-neutral-700">
+					{dica}
+				</p>
+			) : null}
 		</div>
 	);
 }

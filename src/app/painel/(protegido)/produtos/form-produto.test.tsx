@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
@@ -302,5 +302,189 @@ describe("FormProduto — edição", () => {
   it("sem preço atual ⇒ campo de preço vazio", () => {
     render(<FormProduto {...props} inicial={{ ...inicial, preco: "" }} />);
     expect(campoPreco().value).toBe("");
+  });
+});
+
+// T136 (SF14): prop `sugestao` do modo cadastro (contrato interno da SF14, seção 3).
+describe("FormProduto — sugestão da IA (SF14)", () => {
+  const MARCADOR = "Sugestão \u2014 confira";
+  type S = { nome: string | null; categoriaId: number | null; descricao: string | null };
+  const A: S = { nome: "Meia lisa", categoriaId: 1, descricao: "Meia de algodão" };
+  const nome = () => screen.getByLabelText("Nome do produto") as HTMLInputElement;
+  const categoria = () => screen.getByRole("combobox", { name: "Categoria" }) as unknown as HTMLSelectElement;
+  const descricao = () => screen.getByLabelText("Descrição") as HTMLTextAreaElement;
+
+  it("sem a prop (ou null) nada é preenchido nem marcado", () => {
+    const { rerender } = render(<FormProduto {...cad} />);
+    rerender(<FormProduto {...cad} sugestao={null} />);
+    expect(nome()).toHaveValue("");
+    expect(screen.queryByText(MARCADOR)).toBeNull();
+  });
+
+  it("US3-AC2: sugestão aplica nos campos vazios, com marcador ligado por aria-describedby; preço e 'a partir de' intocados", () => {
+    const { rerender, container } = render(<FormProduto {...cad} sugestao={null} />);
+    rerender(<FormProduto {...cad} sugestao={A} />);
+    expect(nome()).toHaveValue("Meia lisa");
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Meia de algodão");
+    for (const c of [nome(), categoria(), descricao()]) expect(c).toHaveAccessibleDescription(MARCADOR);
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+    expect(campoPreco().value).toBe("");
+    expect(precoEnviado(container)).toBe("");
+    expect(screen.getByLabelText(/a partir de/i)).not.toBeChecked();
+  });
+
+  it("a sugestão já presente na montagem também é aplicada", () => {
+    render(<FormProduto {...cad} sugestao={A} />);
+    expect(nome()).toHaveValue("Meia lisa");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+  });
+
+  it("US3-AC3: só aplica nos vazios; campo preenchido não muda nem ganha marcador (inclusive só espaços conta como vazio)", () => {
+    const { rerender } = render(<FormProduto {...cad} sugestao={null} />);
+    fireEvent.change(nome(), { target: { value: "Minha meia" } });
+    fireEvent.change(descricao(), { target: { value: "   " } });
+    rerender(<FormProduto {...cad} sugestao={A} />);
+    expect(nome()).toHaveValue("Minha meia");
+    expect(nome()).toHaveAccessibleDescription("");
+    expect(descricao()).toHaveValue("Meia de algodão");
+    expect(descricao()).toHaveAccessibleDescription(MARCADOR);
+    expect(categoria()).toHaveValue("1");
+  });
+
+  it("US3-AC3: categoria já escolhida não muda", () => {
+    const { rerender } = render(<FormProduto {...cad} sugestao={null} />);
+    fireEvent.change(categoria(), { target: { value: "2" } });
+    rerender(<FormProduto {...cad} sugestao={A} />);
+    expect(categoria()).toHaveValue("2");
+    expect(categoria()).toHaveAccessibleDescription("");
+  });
+
+  it.each([
+    ["id fora das opções", 99],
+    ["null", null],
+  ])("US3-AC4: categoriaId %s ⇒ select em vazio, sem marcador", (_n, categoriaId) => {
+    render(<FormProduto {...cad} sugestao={{ nome: "Meia lisa", categoriaId, descricao: null }} />);
+    expect(categoria()).toHaveValue("");
+    expect(categoria()).toHaveAccessibleDescription("");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    expect(descricao()).toHaveValue("");
+    expect(descricao()).toHaveAccessibleDescription("");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(1);
+  });
+
+  it("o marcador some ao editar AQUELE campo e não os outros", () => {
+    render(<FormProduto {...cad} sugestao={A} />);
+    fireEvent.change(descricao(), { target: { value: "Outra descrição" } });
+    expect(descricao()).toHaveAccessibleDescription("");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    expect(categoria()).toHaveAccessibleDescription(MARCADOR);
+    fireEvent.change(categoria(), { target: { value: "2" } });
+    expect(categoria()).toHaveAccessibleDescription("");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(1);
+  });
+
+  it("editar o preço não tira o marcador de nenhum campo", () => {
+    render(<FormProduto {...cad} sugestao={A} />);
+    fireEvent.change(campoPreco(), { target: { value: "1290" } });
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+  });
+
+  it("nova identidade de objeto reaplica nos campos vazios; a mesma identidade não", () => {
+    const { rerender } = render(<FormProduto {...cad} sugestao={A} />);
+    fireEvent.change(nome(), { target: { value: "" } }); // a pessoa apagou o nome
+    rerender(<FormProduto {...cad} sugestao={A} />); // mesma identidade
+    expect(nome()).toHaveValue("");
+    const B: S = { nome: "Bolsa nova", categoriaId: 2, descricao: "Outra" };
+    rerender(<FormProduto {...cad} sugestao={B} />);
+    expect(nome()).toHaveValue("Bolsa nova");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    // categoria e descrição já estavam preenchidas (pela sugestão A): não mudam.
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Meia de algodão");
+  });
+
+  it("nova identidade com conteúdo igual também reaplica nos vazios", () => {
+    const { rerender } = render(<FormProduto {...cad} sugestao={A} />);
+    fireEvent.change(nome(), { target: { value: "" } });
+    rerender(<FormProduto {...cad} sugestao={{ ...A }} />);
+    expect(nome()).toHaveValue("Meia lisa");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+  });
+
+  it("o marcador sobrevive à remontagem dos campos após falha do 'Salvar'", async () => {
+    criarMock.mockResolvedValue(
+      falha({
+        motivo: "preco_invalido",
+        mensagem: "Preço inválido.",
+        campo: "preco",
+        valores: { nome: "Meia lisa", categoriaId: "1", descricao: "Meia de algodão", preco: "", aPartirDe: false },
+      }),
+    );
+    render(<FormProduto {...cad} sugestao={A} />);
+    fireEvent.change(descricao(), { target: { value: "Editei" } }); // este marcador já tinha saído
+    enviar();
+    await screen.findByText("Preço inválido.");
+    expect(nome()).toHaveValue("Meia lisa");
+    expect(nome()).toHaveAccessibleDescription(MARCADOR);
+    expect(categoria()).toHaveAccessibleDescription(MARCADOR);
+    expect(descricao()).toHaveAccessibleDescription("");
+  });
+
+  it("falha do 'Salvar' com erro no campo marcado: erro e marcador juntos no aria-describedby", async () => {
+    criarMock.mockResolvedValue(
+      falha({
+        motivo: "nome_repetido",
+        mensagem: "Já existe um produto com esse nome.",
+        campo: "nome",
+        valores: { nome: "Meia lisa", categoriaId: "1", descricao: "Meia de algodão", preco: "", aPartirDe: false },
+      }),
+    );
+    render(<FormProduto {...cad} sugestao={A} />);
+    enviar();
+    const msg = await screen.findByText("Já existe um produto com esse nome.");
+    const ids = (nome().getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    expect(ids).toContain(msg.id);
+    expect(ids).toHaveLength(2);
+    expect(nome()).toHaveAccessibleDescription(expect.stringContaining(MARCADOR));
+  });
+
+  it("corrida: sugestão que chega durante o 'Salvar' em curso só é aplicada quando a action termina, e com marcador", async () => {
+    let resolver!: (v: never) => void;
+    criarMock.mockReturnValue(new Promise<never>((res) => (resolver = res)));
+    const { rerender } = render(<FormProduto {...cad} sugestao={null} />);
+    enviar();
+    await waitFor(() => expect(criarMock).toHaveBeenCalledTimes(1));
+    rerender(<FormProduto {...cad} sugestao={A} />); // chega durante a espera
+    expect(nome()).toHaveValue("");
+    expect(screen.queryByText(MARCADOR)).toBeNull();
+    await act(async () => resolver(falha({ motivo: "nome_tamanho", mensagem: "Nome curto.", campo: "nome", valores: { nome: "", categoriaId: "", descricao: "", preco: "", aPartirDe: false } })));
+    await waitFor(() => expect(nome()).toHaveValue("Meia lisa"));
+    expect(nome()).toHaveAccessibleDescription(expect.stringContaining(MARCADOR));
+    expect(categoria()).toHaveValue("1");
+    expect(descricao()).toHaveValue("Meia de algodão");
+    expect(screen.getAllByText(MARCADOR)).toHaveLength(3);
+  });
+
+  it("corrida: com 'Salvar' pendente que vai dar certo, a sugestão não é aplicada antes do fim", async () => {
+    let resolver!: (v: never) => void;
+    criarMock.mockReturnValue(new Promise<never>((res) => (resolver = res)));
+    const { rerender } = render(<FormProduto {...cad} sugestao={null} />);
+    enviar();
+    await waitFor(() => expect(criarMock).toHaveBeenCalledTimes(1));
+    rerender(<FormProduto {...cad} sugestao={A} />);
+    expect(nome()).toHaveValue("");
+    expect(descricao()).toHaveValue("");
+    expect(screen.queryByText(MARCADOR)).toBeNull();
+    await act(async () => resolver({ ok: true, id: 8 } as never));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/painel/produtos/8"));
+  });
+
+  it("FR-034: modo edição não mostra marcador", () => {
+    const inicial = { nome: "Meia", categoriaId: "1", descricao: "", preco: "12,90", aPartirDe: false };
+    render(<FormProduto modo="edicao" categorias={categorias} id={5} versao={3} inicial={inicial} />);
+    expect(screen.queryByText(MARCADOR)).toBeNull();
+    expect(nome()).toHaveAccessibleDescription("");
   });
 });

@@ -50,4 +50,20 @@ describe("Selecao (contrato §5, constitution V)", () => {
 		render(<Selecao name="c" rotulo="Categoria" opcoes={opcoes} defaultValue="" />);
 		expect(screen.getByLabelText("Categoria")).toHaveClass("min-h-12", "text-base", "w-full");
 	});
+
+	it("dica: renderizada abaixo do controle e ligada por aria-describedby", () => {
+		render(<Selecao name="c" rotulo="Categoria" opcoes={opcoes} defaultValue="" dica="Sugestão — confira" />);
+		const dica = screen.getByText("Sugestão — confira");
+		expect(dica.id).not.toBe("");
+		expect(screen.getByLabelText("Categoria").getAttribute("aria-describedby")).toBe(dica.id);
+		expect(dica).toHaveClass("text-base");
+	});
+
+	it("erro + dica: os dois ids no aria-describedby", () => {
+		render(<Selecao name="c" rotulo="Categoria" opcoes={opcoes} defaultValue="" erro="Escolha." dica="Confira" />);
+		const ids = (screen.getByLabelText("Categoria").getAttribute("aria-describedby") ?? "").split(/\s+/);
+		expect(ids).toContain(screen.getByText("Escolha.").id);
+		expect(ids).toContain(screen.getByText("Confira").id);
+		expect(ids).toHaveLength(2);
+	});
 });

@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({ AREA: { x: 0, y: 0, lado: 800 }, push: vi.fn() }))
 vi.mock("@/lib/fotos/actions", () => ({ pedirEnvio: vi.fn(), confirmarEnvio: vi.fn() }));
 vi.mock("@/lib/fotos/aparelho/preparar-foto", () => ({ prepararFoto: vi.fn(), abrirImagem: vi.fn() }));
 vi.mock("@/lib/produtos/actions", () => ({ criarProduto: vi.fn(), editarProduto: vi.fn() }));
+vi.mock("@/lib/produtos/sugestao", () => ({ sugerirProduto: vi.fn() }));
 vi.mock("../_fotos/recorte-foto", () => ({
   RecorteFoto: (p: { arquivo: File; onUsar: (a: typeof h.AREA) => void; onCancelar: () => void }) => (
     <div data-testid="recorte">

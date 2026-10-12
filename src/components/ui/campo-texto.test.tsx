@@ -55,4 +55,32 @@ describe("CampoTexto (contrato §5, constitution V)", () => {
 		);
 		expect(screen.getByLabelText("A").id).not.toBe(screen.getByLabelText("B").id);
 	});
+
+	it("dica: renderizada abaixo do controle e ligada por aria-describedby", () => {
+		render(<CampoTexto name="nome" rotulo="Nome" defaultValue="" dica="Sugestão — confira" />);
+		const input = screen.getByLabelText("Nome");
+		const dica = screen.getByText("Sugestão — confira");
+		expect(dica.id).not.toBe("");
+		expect(input.getAttribute("aria-describedby")).toBe(dica.id);
+		expect(dica).toHaveClass("text-base");
+		expect(input).not.toHaveAttribute("aria-invalid");
+	});
+
+	it("erro + dica: os dois ids no aria-describedby", () => {
+		render(<CampoTexto name="nome" rotulo="Nome" defaultValue="" erro="Escreva o nome." dica="Confira" />);
+		const ids = (screen.getByLabelText("Nome").getAttribute("aria-describedby") ?? "").split(/\s+/);
+		expect(ids).toContain(screen.getByText("Escreva o nome.").id);
+		expect(ids).toContain(screen.getByText("Confira").id);
+		expect(ids).toHaveLength(2);
+	});
+
+	it("dois campos com dica não repetem ids", () => {
+		render(
+			<>
+				<CampoTexto name="a" rotulo="A" defaultValue="" dica="d1" />
+				<CampoTexto name="b" rotulo="B" defaultValue="" dica="d2" />
+			</>,
+		);
+		expect(screen.getByText("d1").id).not.toBe(screen.getByText("d2").id);
+	});
 });

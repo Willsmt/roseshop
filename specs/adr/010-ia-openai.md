@@ -75,6 +75,9 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
     roda só com o `gpt-6-luna` ou o humano escolhe outro candidato.
   - A prova rodou em Node. A prova no workerd (incluindo a CPU do base64 com 3 fotos de 1 MB)
     é da SF13 e do quickstart §5.3.
+  - CPU no workerd (2026-10-12, SF14, T139, dev com IA real e 3 fotos): `sugerirProduto` com
+    `cpuTime` 21 ms (`wallTime` 4283 ms); as demais requisições do cadastro entre 3 e 24 ms.
+    Registro no quickstart §5.3.
 
 ## Alternativas descartadas
 
@@ -100,3 +103,10 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
 - (−) Um candidato pode depender de liberação de acesso na conta (caso do `gpt-5.4-mini`).
 - (−) Prompt injection por texto na imagem é mitigado (instruções + schema + validação), não
   eliminado; a confirmação humana é a última barreira.
+- (−) **Risco aceito (2026-10-12, T139, decisão do humano)**: `sugerirProduto` mediu 21 ms de
+  CPU, acima dos 10 ms por requisição HTTP e por Cron Trigger documentados no Workers Free (Erro
+  1102 ao exceder); outras requisições do app também passam disso (até 24 ms), então o excesso é
+  do app inteiro, não só da IA. A Cloudflare não aplicou o limite de forma estrita (nenhuma
+  falha). Sinal de alerta: Erro 1102 nos logs. Contingência: migrar para o Workers Paid, com
+  emenda da constitution VII, se aparecer um 1102 ou se a prova do cron (T118b) mostrar a limpeza
+  estourando.

@@ -1060,12 +1060,23 @@ cadastro), componentes de sugestão em `_fotos/` ou ao lado (sugerido), testes a
 - [X] T137 `ui-dev` implementa a UI da sugestão no passo Dados consumindo `sugerirProduto` e as
   mensagens de I§6; sem tocar `src/lib/` — **ui-dev**
 - [X] T138 Rodar `npm run check` e colar o output real — **principal**
-- [ ] T139 **Humano executa — roteiro pela tela no `preview`** (Q§4 item 5, com IA): "Continuar"
+- [X] T139 **Humano executa — roteiro pela tela no `preview`** (Q§4 item 5, com IA): "Continuar"
   ⇒ "Preenchendo a partir das fotos…" ⇒ campos sugeridos com "Sugestão — confira" (chave dev);
   completar o preço e "Salvar" ⇒ detalhe com as fotos na ordem. Entregar o resultado. Fecha a
   **ressalva aberta da T132**: no dev (deploy do PR), pedir a sugestão com 3 fotos de 1 MB e
   registrar o CPU de `sugerirProduto` (Q§5.3: painel Workers → `roseshop-dev` → Métricas),
   abaixo do limite do free tier — **humano**
+  **Execução (2026-10-12, relato do humano)**: roteiro feito no dev (deploy do PR) com IA real,
+  Xiaomi Poco X7 Pro, Chrome Android: 3 fotos, sugestão com "Sugestão — confira", produto salvo.
+  CPU de `sugerirProduto` = 21 ms (`wallTime` 4283 ms; demais requisições de 3 a 24 ms; todas
+  `ok`), acima dos 10 ms documentados do Workers Free, sem falha. Decisão (opção a): risco aceito,
+  registrado no ADR-010 e no quickstart §5.3; sinal de alerta Erro 1102; contingência Workers
+  Paid com emenda da constitution VII se surgir um 1102 ou se a T118b mostrar a limpeza
+  estourando. O tamanho das fotos tratadas não foi registrado.
+  **Execução no `preview` (2026-10-12, relato do humano)**: os 7 itens do roteiro passaram, entre
+  eles "Salvar" ⇒ detalhe com as fotos na ordem e offline ⇒ "Não deu para sugerir agora…" com
+  "Tentar sugestão de novo" funcionando ao voltar a ficar online. O item opcional com leitor de
+  tela não foi relatado.
 - [ ] T140 Commit (humano), mensagem:
   ```text
   feat(painel): sugestão da IA no cadastro de produto

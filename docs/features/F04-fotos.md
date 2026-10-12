@@ -1,13 +1,13 @@
 # F04 — Fotos de produto
 
 > Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF9: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
+> SF10: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
 > e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
 > exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
 > (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
-> aparelho (SF8) e as telas do cadastro com fotos (SF9). **Ainda não existem**: a UI
-> de fotos no detalhe e na edição do produto (SF11), a prova em aparelhos reais
-> (SF10), IA e limpeza diária (cron). Spec:
+> aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
+> Android (SF10, ver "Prova com aparelho real"). **Ainda não existem**: a UI de
+> fotos no detalhe e na edição do produto (SF11), IA e limpeza diária (cron). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
 > [ADR-009](../../specs/adr/009-fotos-r2.md).
@@ -317,6 +317,43 @@ no formulário some quando alguma das fotos expiradas já foi reenviada ou remov
 | `src/app/painel/(protegido)/produtos/novo/` e `_fotos/` | Telas do cadastro (SF9); ver "Telas do cadastro". |
 | `src/lib/r2/` | Módulo R2, ver [architecture.md](../architecture.md#módulo-r2-feature-004-sf2-sf3-e-sf6); `servirObjeto` foi acrescentado na SF6. |
 | `src/test/db/fotos-fixtures.ts` | Infra de teste (não é produção). |
+| `src/test/fixtures/fotos/aparelho/chrome-android-srgb.icc` | Perfil ICC real do Chrome Android (SF10), usado por `src/lib/r2/verificacao/aparelho.test.ts`. |
+
+### Prova com aparelho real (SF10, R4)
+
+Fonte: `specs/004-fotos-produto/research.md` (seção "R4"), `tasks.md` (SF10) e a emenda do
+[ADR-009](../../specs/adr/009-fotos-r2.md) (Decisão 3).
+
+**Chrome Android: aprovado** (Xiaomi Poco X7 Pro, 2026-10-11, dev em modo registro). Foram
+3 fotos (1 tirada na hora, 2 da galeria com localização ligada). O `wrangler tail` mostrou
+3 × `fotos.verificacao.registro` com resultado aceito e blocos `[VP8X, ICCP, VP8]`, nenhuma
+recusa. Os 3 objetos no R2 são WebP 1200×1200 e o `exiftool -a -G1` não mostra IFD0, ExifIFD,
+GPS, XMP nem IPTC.
+
+- **Regra do ICC fechada**: o perfil do Chrome é o sRGB do Google ("sRGB", "Google Inc.
+  2016", 456 bytes, 9 tags), aceito como está. Limite de 8 KB e as 13 tags permitidas
+  mantidos; nenhum bloco novo. `vp8x_reservado` confirmado pelo arquivo real.
+- **Fixture**: as fotos reais **não** entram no repositório (público). Entra só o perfil
+  extraído, `src/test/fixtures/fotos/aparelho/chrome-android-srgb.icc` (`.gitattributes`
+  marca `*.icc binary`), dentro de um WebP montado em `src/lib/r2/verificacao/aparelho.test.ts`.
+  A verificação o aceita com a recusa ligada e recusa os controles (declarado como JPEG; tag
+  fora da lista).
+- **Modo registro**: ligado só durante a SF10 (`62c8b4b`, `FOTOS_VERIFICACAO` em `env.dev`) e
+  desligado em `78d9052`. A conformidade `verificacao-modo.test.ts` voltou a negar a variável em
+  qualquer lugar do `wrangler.jsonc` e do `.dev.vars.example`. O modo segue implementado e
+  coberto por teste unitário. No dev, a foto do Chrome Android foi aceita e o `tail` do log de
+  registro ficou vazio, confirmando a recusa ligada.
+- **Migration `0002`**: aplicada no Neon dev no primeiro run do PR #19 (rascunho); está
+  congelada.
+
+**Riscos aceitos** (refazer a parte iOS da SF10 antes de liberar uma administradora com iPhone):
+
+| Item | Situação |
+|---|---|
+| Safari iOS (sem WebP, logo JPEG; perfil Display P3) | Não provado em aparelho; só os testes unitários da SF8 |
+| HEIF da galeria | Não testada; o cenário 7 da US2 está coberto pelos testes da SF8 |
+| Apertos só de JPEG: APP14 "Adobe", `jfif_posicao`, `sof_precisao`, `sof_componentes` | Mantidos estritos, sem dado real |
+| Apertos de ALPH: `alph_sem_flag`, `alph_com_vp8l` | Mantidos estritos, sem dado real (o Chrome não gerou alpha) |
 
 ### Concorrência e travas
 
@@ -352,9 +389,9 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
   deliberado.
 - **Nada sobrevive a recarregar a página**: as fotos enviadas e não usadas ficam como
   `confirmado` em `fotos_envio` até a limpeza diária (ainda não existe).
-- **Prova em aparelho real pendente (SF10)**: o roteiro da SF9 foi feito no `preview` do
-  Chrome com emulação de celular (360 px). Chrome Android e Safari iOS reais, e o
-  fechamento da lista de permitidos da verificação, são da SF10.
+- **Safari iOS e HEIF não provados em aparelho real**: risco aceito da SF10 (ver
+  "Prova com aparelho real"). Antes de liberar uma administradora com iPhone, refazer a
+  parte iOS da SF10.
 - **Detalhe e edição ainda não mostram fotos** (SF11): a lista do cadastro não tem
   miniatura da capa em outras telas.
 - **Actions do conjunto sem UI**: `adicionarFoto`, `trocarFoto`, `removerFoto` e

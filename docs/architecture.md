@@ -425,7 +425,7 @@ reverifica o arquivo. Detalhes, motivos e pegadinhas em
 
 Diferença `next dev` × navegadores: o suporte a WebP em canvas varia (Safari antigo devolve
 PNG), e por isso `suportaWebp` e a conferência do `blob.type` existem. A prova em aparelho
-real (Chrome Android e Safari iOS) é da SF10. `prepararFoto` deixa rastro de falha em dev e
+real foi feita no Chrome Android (SF10); Safari iOS é risco aceito (ver a F04). `prepararFoto` deixa rastro de falha em dev e
 em produção (`console.warn("fotos.aparelho.nao_enviada", { erro: e.name })`, só o `name`).
 
 ### Telas do cadastro com fotos (feature 004, SF9)

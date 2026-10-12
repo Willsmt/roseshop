@@ -11,10 +11,10 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > administradoras)**: login com Google, allowlist e painel protegido, sem
 > middleware, **feature 002 (categorias)**: primeira tabela do banco e
 > telas de categorias no painel, e **feature 003 (produtos)**: cadastro,
-> lista, busca, status e destaque de produtos no painel, ainda sem fotos. A
+> lista, busca, status e destaque de produtos no painel, com fotos de produto em andamento. A
 > **feature 004 (fotos)** está em andamento: existe o servidor
 > (schema, verificação do arquivo, módulo R2, actions de envio, rota de exibição e
-> cadastro com fotos, actions do conjunto, pipeline da foto no aparelho e telas do cadastro com fotos e a prova com Chrome Android, até a SF10). Catálogo público, sacola, fotos no detalhe e na edição (SF11) e IA
+> cadastro com fotos, actions do conjunto, pipeline da foto no aparelho, telas do cadastro com fotos, a prova com Chrome Android e a tela de fotos do produto, até a SF11). Catálogo público, sacola, limpeza diária de fotos (SF12) e IA
 > ainda não existem; por isso este índice é deliberadamente curto: só existem
 > documentos para o que já tem código real por trás.
 
@@ -48,7 +48,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    concorrência otimista, destaque (teto de 8), busca com cursor, preço e
    pegadinhas.
 8. **[features/F04-fotos.md](./features/F04-fotos.md)** — fotos de produto (em
-   andamento, até a SF10): telas do cadastro (Fotos → Dados), pipeline da foto no aparelho, prova com aparelho real, fluxo de envio e confirmação, actions do conjunto (adicionar,
+   andamento, até a SF11): telas do cadastro (Fotos → Dados), tela Fotos do produto existente, pipeline da foto no aparelho, prova com aparelho real, fluxo de envio e confirmação, actions do conjunto (adicionar,
    trocar, remover, mover), rota de exibição, cadastro com fotos, fronteira de acesso e pegadinhas.
 
 ## O que ainda não existe aqui

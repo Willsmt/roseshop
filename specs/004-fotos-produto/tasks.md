@@ -854,11 +854,11 @@ linha SF11. Spec: US4-AC1–7, US5-AC1, US6-AC2, FR-035, FR-039, FR-040.
   `SALVANDO` ("Salvando…") e `MUITOS_PENDENTES_TELA_FOTOS` ("Você enviou muitas fotos que não
   foram usadas. Tente de novo amanhã.") — **test-writer · principal (mensagens) · ui-dev**
 - [X] T106 Rodar `npm run check` e colar o output real — **principal**
-- [ ] T107 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 6 e 7): adicionar,
+- [X] T107 **Humano executa — roteiro pela tela no `preview`** (Q§4 itens 6 e 7): adicionar,
   trocar, mover para a capa, remover (com confirmação); em outra janela mudar as fotos e voltar
   à primeira ⇒ mensagem de "mudadas por outra pessoa" e tela atualizada; lista com miniatura
   da capa; remoção do produto com o texto das fotos. Entregar o resultado — **humano**
-- [ ] T108 Commit (humano), mensagem:
+- [X] T108 Commit (humano), mensagem:
   ```text
   feat(painel): gerencia as fotos de um produto
 
@@ -1171,3 +1171,8 @@ da observação).
 - `FOTOS_VERIFICACAO=registro` entra no `env.dev` só no início da SF10 (T094a) e sai na T099
   (decisão do analyze, 2026-10-08); da SF6 à SF9 o dev roda com a recusa ligada.
 - Nomes de arquivo marcados "sugerido" não estão no plan.
+- Dívida (achada na SF11, 2026-10-12): o teste "grade completa de entradas, imagens, áreas,
+  suporte a webp e codificadores" de `src/lib/fotos/aparelho/preparar-foto.test.ts` estoura o
+  tempo-limite padrão de 5 s quando outro vitest roda junto (sozinho leva ~1,8 s). Sem
+  concorrência o `check` passa. Tratar em PR próprio (tempo-limite explícito no teste ou grade
+  menor) — **test-writer**.

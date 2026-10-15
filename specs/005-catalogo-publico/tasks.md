@@ -735,7 +735,7 @@ lenta ou falha ao tocar em Carregar mais".
 - [X] T078 **Humano confere no `preview`** (R4, só **[ISR]**): `curl -s -D - -o /dev/null
   http://localhost:8787/` duas vezes com 25 s de intervalo mostra `x-nextjs-cache` (a página
   inicial continua ISR com o `<Suspense>`). Entregar o output real — **humano** — **não se aplica (ramo FALLBACK, T008)**
-- [ ] T079 Commit (humano):
+- [X] T079 Commit (humano):
   ```text
   feat(catalogo): adiciona carregar mais, filtro e retorno à lista
 
@@ -756,9 +756,16 @@ lenta ou falha ao tocar em Carregar mais".
 (Lighthouse), FR-024 (item 11).
 **Revisão TL**: —.
 
-- [ ] T080 Preparar os dados pelo painel no `preview`: ≥ 30 produtos, alguns em destaque, alguns
+- [ ] T080 Preparar os dados no `preview` (por `npm run seed:local`, T080a, ou pelo painel): ≥ 30 produtos, alguns em destaque, alguns
   esgotados, uma categoria só com esgotados, uma vazia, um nome com `&`, `#`, `?`, acento e emoji
   (Q§4) — **humano**
+- [X] T080a `scripts/seed-catalogo-local.ts` (`npm run seed:local`): popula só o Postgres local do
+  Docker e o bucket `roseshop-local` (S3 do `npm run preview`) com 41 produtos em datas distintas,
+  5 destaques, esgotados, a categoria só com esgotados ("Linha encerrada"), a vazia
+  ("Tupperware"), o nome `Meia & Cia #1? Ação 🌹` e fotos JPEG no formato de chave da 004; cria
+  também um envio pendente e um objeto órfão para o item 12. Trava de ambiente em
+  `scripts/seed-catalogo-local/trava.ts` (banco, endpoint e credencial do R2 locais; recusa CI),
+  com teste unitário — **tech-lead**
 - [ ] T081 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
 - [ ] T082 **Humano executa** Q§4 itens 1 a 16, entregando os `curl -sI` dos itens 7, 8, 11, 12 e
   13 e os tempos do item 15. Item 11: **[ISR]** versão anterior num detalhe já visitado (200;

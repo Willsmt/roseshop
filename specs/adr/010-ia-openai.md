@@ -3,6 +3,8 @@
 **Status:** aceito em 2026-10-09 (aprovado pelo humano na T013 da feature 004), com ressalvas:
 os campos **modelo** e **esforço** são provisórios até a medição da SF13. O **teto de gasto no
 provedor** do projeto dev, condição de entrada da SF13, foi aplicado em 2026-10-12 (T014b).
+Em 2026-10-14 (SF15, decisão do humano), produção sobe com o modelo e o esforço **provisórios**;
+a medição (T132) e a escolha final (T133) ficam pendentes, sem bloquear o merge.
 **Data:** 2026-10-09
 **Origem:** `specs/004-fotos-produto/` — plan (seção "ADRs"), research D7 e §3 (prova R5),
 contracts/ia.md §1–§5, quickstart §1.
@@ -84,6 +86,12 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
   - CPU no workerd (2026-10-12, SF14, T139, dev com IA real e 3 fotos): `sugerirProduto` com
     `cpuTime` 21 ms (`wallTime` 4283 ms); as demais requisições do cadastro entre 3 e 24 ms.
     Registro no quickstart §5.3.
+  - **Produção com o provisório (2026-10-14, SF15, decisão do humano)**: o merge da 004 sobe com
+    o `gpt-6-luna` e esforço `none`, aprovados na prova técnica (T120a). A medição com fotos
+    reais (T132) e a escolha de modelo e esforço com os números (T133) ficam como pendência de
+    entrega; o resultado entra em emenda deste ADR, em commit próprio. Até lá, SC-003 e SC-004
+    não estão medidos; o gasto em produção fica limitado pelo contador do app e pelo teto do
+    projeto de produção.
 
 ## Alternativas descartadas
 
@@ -105,7 +113,8 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
   partir de 2026-10-12 (T014b).
 - (−) De 2026-10-09 a 2026-10-12, só o contador do app limitava o gasto no dev (III.5 não
   atendida nesse intervalo; a prova R5 rodou nele).
-- (−) Modelo e esforço só fecham na SF13; o ADR é emendado com o resultado da medição.
+- (−) Modelo e esforço só fecham com a medição; produção roda com o provisório até a T133
+  (2026-10-14), e o ADR é emendado com o resultado.
 - (−) Um candidato pode depender de liberação de acesso na conta (caso do `gpt-5.4-mini`,
   liberado em 2026-10-12, T120a).
 - (−) Prompt injection por texto na imagem é mitigado (instruções + schema + validação), não

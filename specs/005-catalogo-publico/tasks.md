@@ -220,7 +220,7 @@ infra definitiva.
   (bindings e migration nos três ambientes, nenhum resto do `env.spike`, cron da limpeza intacto,
   `expireTime: 35`, workflows e scripts de deploy sem mudança, permissões do token conferidas
   contra o output da T015a) — **tech-lead** — **não se aplica (ramo FALLBACK, T008)**
-- [ ] T019 Commit (humano). Mensagem **[ISR]**:
+- [X] T019 Commit (humano; feito em 4bc0991). Mensagem **[ISR]**:
   ```text
   feat(cache): liga o ISR do catálogo com R2 e fila em DO
 
@@ -255,13 +255,13 @@ research D6, D7, D8; spec FR-002, FR-006, FR-009, FR-011, FR-015.
 banco), US2.1 (fotos ordenadas).
 **Revisão TL**: ✅.
 
-- [ ] T020 [US1] [US4] [US6] Fixtures em `src/test/db/catalogo-fixtures.ts`, nos moldes de
+- [X] T020 [US1] [US4] [US6] Fixtures em `src/test/db/catalogo-fixtures.ts`, nos moldes de
   `produtos-fixtures.ts` e `fotos-fixtures.ts`: produtos com `criado_em` controlado (incluindo
   **dois com o mesmo `criado_em`** e microssegundos diferentes de zero), destaques com vagas fora
   de ordem de cadastro, um esgotado, fotos em posições 1–3, um **envio pendente** e um **envio
   confirmado não adotado** em `fotos_envio`, categorias "Meias", "Guarda-chuvas" (slug com
   hífen), uma vazia e uma só com esgotados. Limpeza no `afterAll` — **test-writer**
-- [ ] T021 [US1] [US2] [US4] [US6] **Teste primeiro** — `src/lib/db/catalogo.int.test.ts`
+- [X] T021 [US1] [US2] [US4] [US6] **Teste primeiro** — `src/lib/db/catalogo.int.test.ts`
   (vermelho até a T022):
   `listarDestaques`: só `destaque_vaga IS NOT NULL`, `ORDER BY destaque_vaga ASC`, capa = foto da
   posição 1 ou `null`;
@@ -272,8 +272,9 @@ banco), US2.1 (fotos ordenadas).
   de pedir o bloco 2 não repete nem pula; produto editado (`atualizado_em` novo) não muda de
   lugar; filtro por `categoriaId`;
   `categoriasComProdutos`: só categorias com `EXISTS` produto (a só com esgotados entra, a vazia
-  não), `slug = replace(chave, ' ', '-')` ("guarda-chuvas"), ordem por `nome COLLATE
-  "pt-BR-x-icu"` se a collation existir no Postgres local (o teste registra qual ordem valeu);
+  não), `slug = replace(chave, ' ', '-')` ("guarda-chuvas"), ordem por `chave COLLATE "C", id`,
+  igual à do painel da 002 (o teste prova "Água" antes de "Bolsas" e a mesma ordem de `listar` de
+  `categorias.ts`);
   `obterPublico`: produto + nome da categoria + fotos por `posicao` num só statement; `null` para
   id inexistente;
   `fotoPublica`: `true` só para chave em `produto_fotos`; `false` para envio pendente, envio
@@ -281,14 +282,14 @@ banco), US2.1 (fotos ordenadas).
   **nenhuma** linha devolvida tem `versao`, `fotos_versao`, `fotos_operacao`, `destaque_vaga`,
   `criado_por`, `atualizado_por`, `atualizado_em`, `enviado_por`, `enviado_em` nem `id` de
   categoria fora de `categoriasComProdutos` (DM§1) — **test-writer**
-- [ ] T022 **[TL✅]** Implementar `src/lib/db/catalogo.ts` com `listarDestaques(db)`,
+- [X] T022 **[TL✅]** Implementar `src/lib/db/catalogo.ts` com `listarDestaques(db)`,
   `listarBloco(db, { categoriaId?, depois?: { us: string; id: number } })`,
   `categoriasComProdutos(db)`, `obterPublico(db, id)`, `fotoPublica(db, chave)` (DM§2). O µs vai
   ao SQL como texto com cast `::bigint` e nunca passa por `Date` nem `number`. Sem mudança em
   `produtos.ts`, `fotos.ts`, `categorias.ts` nem no schema; sem `db.transaction()` — **principal**
-- [ ] T023 `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int` (**em
+- [X] T023 `npm run db:up`, `npm run db:migrate`, `npm run check` e `npm run test:int` (**em
   série**, nenhum outro `test:int` rodando); colar o output real — **júnior**
-- [ ] T024 Revisão do diff pelo tech-lead: SQL parametrizado, ordem estável, cursor sem perda de
+- [X] T024 Revisão do diff pelo tech-lead: SQL parametrizado, ordem estável, cursor sem perda de
   µs, `fotoPublica` sem `fotos_envio`, nenhum campo interno — **tech-lead**
 - [ ] T025 Commit (humano):
   ```text

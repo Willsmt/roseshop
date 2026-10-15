@@ -33,6 +33,13 @@ const proibirSubmoduloR2 = {
   message: 'R2 fora da fronteira (contracts/fotos.md §1). Importe só o barrel "@/lib/r2".',
 };
 
+// Feature 005 (contracts/publico.md §6): só o barrel "@/lib/catalogo" tem `server-only`; um import
+// de submódulo o contornaria. Exceção: `exibicao` é puro e os componentes cliente o usam.
+const proibirSubmoduloCatalogo = {
+  group: ["@/lib/catalogo/*", "**/lib/catalogo/*", "!@/lib/catalogo/exibicao", "!**/lib/catalogo/exibicao"],
+  message: 'Catálogo fora da fronteira (contracts/publico.md §6). Importe só o barrel "@/lib/catalogo".',
+};
+
 const restringir = (...patterns) => ({
   "no-restricted-imports": ["error", { patterns }],
 });
@@ -48,11 +55,12 @@ export default defineConfig([
       proibirActions,
       proibirPainel,
       proibirSubmoduloR2,
+      proibirSubmoduloCatalogo,
     ),
   },
   {
     files: ["src/app/painel/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirSubmoduloR2),
+    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirSubmoduloR2, proibirSubmoduloCatalogo),
   },
   {
     // Dentro do próprio módulo o import costuma ser relativo ("./actions"), que o
@@ -61,17 +69,24 @@ export default defineConfig([
     rules: restringir(
       { ...proibirActions, group: [...proibirActions.group, "./actions", "./actions.*"] },
       proibirSubmoduloR2,
+      proibirSubmoduloCatalogo,
     ),
   },
   {
     files: ["src/lib/db/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir(proibirActions, proibirPainel, proibirSubmoduloR2),
+    rules: restringir(proibirActions, proibirPainel, proibirSubmoduloR2, proibirSubmoduloCatalogo),
   },
   {
     // Dentro do módulo R2 os submódulos se importam entre si (relativos); as demais proibições
     // valem como no resto do src/.
     files: ["src/lib/r2/**/*.{ts,tsx,js,jsx,mjs}"],
-    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel),
+    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel, proibirSubmoduloCatalogo),
+  },
+  {
+    // Dentro do módulo do catálogo os submódulos se importam entre si (relativos); as demais
+    // proibições valem como no resto do src/.
+    files: ["src/lib/catalogo/**/*.{ts,tsx,js,jsx,mjs}"],
+    rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel, proibirSubmoduloR2),
   },
   {
     // Mesma exceção, por arquivo, do teste de conformidade: os testes unitários das

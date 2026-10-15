@@ -159,6 +159,14 @@ describe("catálogo público sem sessão (T041)", () => {
     });
   });
 
+  it("a página inicial pública existe e não importa sessão nem chama getAdminSession (T068)", () => {
+    const arquivo = "src/app/(public)/page.tsx";
+    const abs = path.join(process.cwd(), arquivo);
+    expect(fs.existsSync(abs), `${arquivo} não encontrada`).toBe(true);
+    expect(violacoesDeSessao(arquivo, fs.readFileSync(abs, "utf8"))).toEqual([]);
+    expect(arquivosFonte(RAIZ_APP)).toContain(arquivo);
+  });
+
   it("a rota pública de fotos existe e exporta GET (nega por padrão)", () => {
     const abs = path.join(process.cwd(), ROTA_FOTOS);
     expect(fs.existsSync(abs), `${ROTA_FOTOS} não encontrada`).toBe(true);

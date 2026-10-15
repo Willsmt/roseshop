@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { textos } from "./_catalogo/textos";
 
-// metadataBase (siteUrl) é definido no generateMetadata da página do detalhe, que lê a config.
+// metadataBase (siteUrl) é definido no generateMetadata de cada página (inicial e detalhe), que lê a config.
 export const metadata: Metadata = {
 	title: textos.nomeSite,
 	robots: { index: false, follow: false },

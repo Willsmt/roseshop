@@ -11,4 +11,12 @@ export const textos = {
 	erroTitulo: "Não foi possível carregar agora",
 	erroTexto: "Tente de novo em instantes.",
 	tentarDeNovo: "Tentar de novo",
+	destaques: "Destaques",
+	produtos: "Produtos",
+	semFoto: "Sem foto",
+	filtrarPorCategoria: "Filtrar por categoria",
+	todas: "Todas",
+	mostrandoTodos: "Mostrando todos os produtos",
+	mostrandoDe: "Mostrando produtos de",
+	semProdutos: "Ainda não há produtos.",
 } as const;

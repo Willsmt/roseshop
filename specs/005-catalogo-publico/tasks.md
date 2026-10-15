@@ -614,7 +614,7 @@ e testes; `package.json` (`axe-core`); `src/test/axe.ts` (sugerido).
   `loading="eager"` na capa e `lazy` nas demais, `width`/`height` fixos. "Voltar ao catálogo" como
   link para `/` (a SF9 troca pelo `router.back()` condicional) — **ui-dev**
 - [X] T065 `npm run check`; colar o output real — **júnior**
-- [ ] T066 Commit (humano):
+- [X] T066 Commit (humano):
   ```text
   feat(catalogo): adiciona o detalhe público do produto
 
@@ -637,7 +637,7 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
 
 **Nota (SF6)**: toda rota pública nova precisa entrar no prefixo de noindex do `cloudflare/publico.ts`, com teste.
 
-- [ ] T067 [US1] [US4] **Teste primeiro** — componentes (jsdom): `CartaoProduto` com `<a
+- [X] T067 [US1] [US4] **Teste primeiro** — componentes (jsdom): `CartaoProduto` com `<a
   href="/p/0042">` envolvendo foto (ou o texto "Sem foto"), nome, "#0042", preço e "Esgotado" em
   texto; seção "Destaques" com `aria-labelledby` e ≤ 8 itens, **omitida** sem destaques; filtro
   em `<nav aria-label="Filtrar por categoria">` com "Todas" e as categorias recebidas (link
@@ -646,14 +646,14 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   `loading="eager"`, o resto `lazy` (FR-008); axe sem violações graves. O `Filtro` é
   apresentacional (recebe categorias e a escolhida por props, sem `server-only`), porque a SF9 o
   passa para dentro da `ListaCatalogo` (I2) — **test-writer**
-- [ ] T068 [US1] Migrar `src/app/page.test.tsx` para `src/app/(public)/page.test.tsx`, mantendo a
+- [X] T068 [US1] Migrar `src/app/page.test.tsx` para `src/app/(public)/page.test.tsx`, mantendo a
   regra de que a página pública não oferece "entrar"/"login" (001), e acrescentar: nenhuma ação
   do painel no HTML (US1.1). Ampliar `catalogo-orcamento.test.ts` com o literal `revalidate` de
   `(public)/page.tsx`, como na T061 — **test-writer**
-- [ ] T069 Implementar `cartao-produto.tsx` (sem `server-only`: usado também pela lista cliente),
+- [X] T069 Implementar `cartao-produto.tsx` (sem `server-only`: usado também pela lista cliente),
   `destaques.tsx`, `filtro.tsx` (apresentacional, sem `server-only`: usado pela lista cliente
   na SF9) — **ui-dev**
-- [ ] T070 `src/app/(public)/page.tsx`, apagando `src/app/page.tsx` (boilerplate). **[ISR]**
+- [X] T070 `src/app/(public)/page.tsx`, apagando `src/app/page.tsx` (boilerplate). **[ISR]**
   `revalidate = 15` (literal = `REVALIDATE_S`); **não** lê `searchParams`; `lerVitrine()` entrega
   destaques, categorias e o 1º bloco de "Todas"; o filtro mostra "Todas" escolhido (provisório:
   a SF9 move o filtro para a lista cliente e aplica o filtro efetivo).
@@ -661,7 +661,7 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   `lerVitrine(categoria)`, que já devolve o 1º bloco filtrado e o slug efetivo para o
   `aria-current`. Em ambos, a lista do 1º bloco é renderizada no servidor (a SF9 a torna
   interativa) — **ui-dev**
-- [ ] T071 `npm run check`; colar o output real — **júnior**
+- [X] T071 `npm run check`; colar o output real — **júnior**
 - [ ] T072 Commit (humano):
   ```text
   feat(catalogo): adiciona a página inicial com destaques e filtro

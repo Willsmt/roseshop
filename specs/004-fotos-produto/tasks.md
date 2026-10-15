@@ -935,7 +935,8 @@ Spec: US6-AC1/AC3–6, SC-008.
     da execução volta ao tech-lead antes da SF15 — **humano**
     - Feita em 2026-10-15 (relato do humano): o plano gratuito não guarda os logs do cron, então
       a execução foi capturada por `wrangler tail --env dev` (a noite toda, timeout de 5 h).
-      Cron `0 6 * * *`, `outcome` `ok`, `cpuTime` 225 ms, `wallTime` 2550 ms; logs
+      Cron `0 6 * * *`, `outcome` `ok`, `cpuTime` 225 ms (medido sem carga: 0 envios e 0 órfãos),
+      `wallTime` 2550 ms; logs
       `{"evento":"limpeza","enviosExpirados":0,"orfaosApagados":0,"falhas":0}` e
       `{"evento":"limpeza","status":200}`. Outras requisições capturadas, todas `ok`: `/painel`
       35 ms, `/painel/entrar` 271 ms, `/api/health` 470 e 154 ms de CPU. O cron também passa
@@ -1172,7 +1173,7 @@ da observação).
   - Feita em 2026-10-14, itens 1 a 7 conferidos com output real; registro no quickstart §1
     ("Produção, estado em 2026-10-14"). Prova de ponta a ponta das chaves do R2 entra no
     roteiro do merge (T150): um cadastro com foto em produção.
-- [ ] T149 Commits (humano), mensagens:
+- [X] T149 Commits (humano), mensagens:
   ```text
   docs(specs): aponta a 003 para a 004
 

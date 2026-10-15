@@ -36,5 +36,5 @@ a partir dos seus critérios, antes da implementação. Legenda: **INT** = `npm 
 
 | Prova | Situação |
 |---|---|
-| Cron da limpeza no `roseshop-dev` (T118b) | **Provado** em 2026-10-15 06:00 UTC, capturado por `wrangler tail --env dev` (o plano gratuito não guarda os logs do cron): `outcome` `ok`, `cpuTime` 225 ms, `wallTime` 2550 ms, 0 envios expirados, 0 órfãos, 0 falhas, status 200. |
-| CPU no Workers Free (T139, T118b) | **Risco aceito**: `sugerirProduto` mediu 21 ms de CPU e o cron da limpeza 225 ms (T118b; `/api/health` até 470 ms na mesma captura), acima dos 10 ms, sem falha. Sinal de alerta: Erro 1102 nos logs; contingência: Workers Paid com emenda da constitution VII (ADR-010). |
+| Cron da limpeza no `roseshop-dev` (T118b) | **Provado** em 2026-10-15 06:00 UTC, capturado por `wrangler tail --env dev` (o plano gratuito não guarda os logs do cron): `outcome` `ok`, `cpuTime` 225 ms, `wallTime` 2550 ms, medido sem carga (0 envios e 0 órfãos), 0 falhas, status 200. |
+| CPU no Workers Free (T139, T118b) | **Risco aceito**: `sugerirProduto` mediu 21 ms de CPU e o cron da limpeza 225 ms medido sem carga (T118b; `/api/health` até 470 ms na mesma captura), acima dos 10 ms, sem falha. Sinal de alerta: Erro 1102 nos logs; contingência (só se falhar por limite de CPU: Erro 1102 ou "exceeded CPU"): Workers Paid com emenda da constitution VII (ADR-010). |

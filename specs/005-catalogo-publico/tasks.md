@@ -333,7 +333,7 @@ sem banco.
   `^[\p{Ll}\p{N}]+(-[\p{Ll}\p{N}]+)*$`, até 60) e `prazos.ts` (C§6: constantes do orçamento
   de 60 s, conforme o ramo da T008; sem dependências) — **principal**
 - [X] T029 `npm run check`; colar o output real — **júnior**
-- [ ] T030 Commit (humano):
+- [X] T030 Commit (humano):
   ```text
   feat(catalogo): adiciona regras de preço, link do WhatsApp e cursor
 
@@ -363,7 +363,7 @@ FR-002 (visões públicas fechadas).
 - [ ] T032 **Humano executa**: acrescentar `WHATSAPP_NUMBER` ao `.dev.vars` local; depois o
   principal roda `npm run cf-typegen` e confere `SITE_URL` e `WHATSAPP_NUMBER` no
   `cloudflare-env.d.ts` — **humano** + **principal**
-- [ ] T033 [P] [US3] **Teste primeiro** — `src/lib/catalogo/config.test.ts` e `registro.test.ts`
+- [X] T033 [P] [US3] **Teste primeiro** — `src/lib/catalogo/config.test.ts` e `registro.test.ts`
   (env mockado como nos testes de `src/lib/r2/config`): `WHATSAPP_NUMBER` válido ⇒ string;
   ausente, vazio, sem `+`, com espaço ou curto ⇒ `whatsapp: null` e **um** `console.error` com
   `{ evento: "catalogo.whatsapp_invalido", causa: "config" }` **sem o valor**; `SITE_URL` sem
@@ -373,7 +373,7 @@ FR-002 (visões públicas fechadas).
   registram a falha **uma vez** (D10); `registrarFalha` grava exatamente
   `{ evento, rota, causa, resultado? }` em JSON, e `causa` fora de `banco|r2|config|inesperado` é
   erro de tipo — **test-writer**
-- [ ] T034 [P] [US1] [US2] [US4] **Teste primeiro** — `src/lib/catalogo/leitura.test.ts`
+- [X] T034 [P] [US1] [US2] [US4] **Teste primeiro** — `src/lib/catalogo/leitura.test.ts`
   (`src/lib/db/catalogo.ts` e o contexto mockados):
   `lerVitrine()` monta `{ destaques, categorias, bloco }` com `ProdutoCartao` (DM§1: só `codigo`,
   `href`, `nome`, `preco`, `esgotado`, `capa`); **[ISR]** com `NEXT_PHASE` de build devolve o
@@ -388,14 +388,14 @@ FR-002 (visões públicas fechadas).
   conforme T008) e **relança**; nunca devolve `"nao_encontrado"` por falha (FR-024);
   nenhuma visão devolvida tem chaves fora da lista do DM§1 (comparação de chaves) —
   **test-writer**
-- [ ] T035 Implementar `config.ts`, `registro.ts`, `leitura.ts` (único lugar da 005 que chama
+- [X] T035 Implementar `config.ts`, `registro.ts`, `leitura.ts` (único lugar da 005 que chama
   `dbDoContexto`) e `index.ts` (barrel `server-only` com o que páginas e rotas usam). Tipos
   `ProdutoCartao`, `ProdutoPublico`, `CategoriaFiltro`, `BlocoLista` exportados do barrel —
   **principal**
-- [ ] T036 Regra de lint em `eslint.config.mjs`, no molde da de `@/lib/r2`: proibir
+- [X] T036 Regra de lint em `eslint.config.mjs`, no molde da de `@/lib/r2`: proibir
   `@/lib/catalogo/*` fora de `src/lib/catalogo/`, **exceto** `@/lib/catalogo/exibicao` (puro, usado
   por componentes cliente) — **principal**
-- [ ] T037 `npm run check`; colar o output real — **júnior**
+- [X] T037 `npm run check`; colar o output real — **júnior**
 - [ ] T038 Revisão do diff pelo tech-lead (`wrangler.jsonc`, `.dev.vars.example`, log sem valor,
   marca da causa) — **tech-lead**
 - [ ] T039 Commit (humano):

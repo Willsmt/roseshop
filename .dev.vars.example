@@ -32,3 +32,7 @@ R2_SECRET_ACCESS_KEY=roseshop-local-nao-secreto
 
 # Protege a limpeza diária (SF12). Local: qualquer valor não vazio.
 CRON_SECRET=local
+
+# WhatsApp da loja (catálogo público, SF3). E.164, ex. +5511999999999; local: qualquer número
+# de teste; dev e produção: `wrangler secret put WHATSAPP_NUMBER --env dev|production`.
+WHATSAPP_NUMBER=

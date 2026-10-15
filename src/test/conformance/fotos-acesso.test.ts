@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 // Conformidade das fronteiras de fotos (feature 004, T065; contracts/fotos.md §1).
 // Mesmo padrão e escopo de produtos-acesso: parse pela AST (nunca grep de texto), nega por
 // padrão, varre src/** inteiro, inclusive testes. Regras:
-//   1. `@/lib/r2` só em src/lib/r2/, src/lib/fotos/, src/lib/produtos/, src/app/painel/fotos/,
-//      src/app/api/interno/.
+//   1. `@/lib/r2` só em src/lib/r2/, src/lib/fotos/, src/lib/produtos/,
+//      src/lib/catalogo/leitura.ts, src/app/painel/fotos/, src/app/api/interno/.
 //   2. Submódulos `@/lib/r2/...` só dentro de src/lib/r2/ (fora dele, só o barrel).
 //   3. `@/lib/db/fotos` só em src/lib/fotos/, src/lib/produtos/ e src/lib/db/.
 //   4. src/lib/fotos/aparelho/ sem server-only, db, r2 ou auth.
@@ -29,6 +29,7 @@ const DIRS_R2 = [
   "src/lib/r2/",
   "src/lib/fotos/",
   "src/lib/produtos/",
+  "src/lib/catalogo/leitura.ts",
   "src/app/painel/fotos/",
   "src/app/api/interno/",
 ];

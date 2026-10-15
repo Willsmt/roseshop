@@ -32,7 +32,7 @@
 
 ### Emendas pós-analyze (2026-10-15, aprovadas pelo humano)
 
-- US2.8 e FR-024: com versão guardada, a versão anterior pode continuar sendo servida
+- (Substituída pelas emendas pós-spike abaixo.) US2.8 e FR-024: com versão guardada, a versão anterior pode continuar sendo servida
   enquanto durar a falha e por até 1 minuto depois que o banco volta (mecanismo do ISR,
   research D5); "a página seguinte" virou "em até 1 minuto". Edge case "Banco fora do ar"
   alinhado.
@@ -40,6 +40,15 @@
   que já estava na tela; detalhe e "Carregar mais" seguem o prazo).
 - FR-018/FR-019: sem a URL do site configurada, a mensagem do WhatsApp sai sem o link, com
   registro da falha.
+
+### Emendas pós-spike SF0 (2026-10-15, aprovadas pelo humano no GATE T014)
+
+- Ramo FALLBACK (ADR-011, research §5): páginas públicas renderizadas a cada pedido, sem
+  cache no servidor. A emenda pós-analyze de US2.8 e FR-024 (versão anterior servida, mecanismo
+  do ISR) foi substituída: com o banco fora, a página inicial e o detalhe sempre mostram a
+  mensagem de indisponível temporário (503, sem cache). Edge case "Banco fora do ar" alinhado.
+- FR-020 e SC-005: o prazo de 1 minuto continua; as páginas ficam no navegador por até 60 s
+  (`Cache-Control: public, max-age=60`), o mesmo limite da rota de fotos.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -128,14 +137,12 @@ de "produto não encontrado".
    e dados enviados ao navegador), **Then** não há e-mail de administradora,
    identificador interno, versão, posição de destaque nem nenhum outro campo do
    painel.
-8. **Given** o banco indisponível e uma versão guardada da página, **When** a
-   cliente abre `/p/0042` ou a página inicial, **Then** vê a versão guardada (a
-   anterior à falha), mesmo que tenha mais de 1 minuto, e a falha fica registrada
-   para o mantenedor; **Given** o banco indisponível e nenhuma versão guardada
-   daquela página, **Then** vê a mensagem de que não foi possível carregar agora,
-   com botão de tentar de novo, e a resposta é de indisponível temporário (503) e
-   não de inexistente; nos dois casos, quando o banco volta, em até 1 minuto a
-   página mostra o estado atual (o erro não fica guardado).
+8. **Given** o banco indisponível, **When** a cliente abre `/p/0042` ou a página
+   inicial, **Then** vê a mensagem de que não foi possível carregar agora, com
+   botão de tentar de novo, a resposta é de indisponível temporário (503) e não
+   de inexistente, não fica guardada em cache, e a falha fica registrada para o
+   mantenedor; quando o banco volta, o próximo pedido já mostra o estado atual (o
+   erro não fica guardado).
 
 ---
 
@@ -286,11 +293,10 @@ conferir que só a última é entregue.
   texto puro, nunca interpretado.
 - **Descrição vazia**: a seção de descrição não aparece; nada de "sem descrição".
 - **Preço alto**: separador de milhar no formato brasileiro (R$ 1.234,56).
-- **Banco fora do ar ou lento ao abrir uma página pública**: se a página já tem
-  uma versão guardada, a cliente vê essa versão anterior (que pode ter mais de 1
-  minuto enquanto o banco não volta e por até 1 minuto depois); só sem versão guardada aparece a mensagem de
-  indisponibilidade temporária com "tentar de novo" (FR-024); nunca "Produto não
-  encontrado". As fotos, consultadas no banco a cada pedido, ficam indisponíveis
+- **Banco fora do ar ou lento ao abrir uma página pública**: a cliente vê a
+  mensagem de indisponibilidade temporária com "tentar de novo" (FR-024); nunca
+  "Produto não encontrado". Uma página que o navegador já guardou antes da falha
+  (até 60 s, FR-020) pode continuar aparecendo nesse intervalo. As fotos, consultadas no banco a cada pedido, ficam indisponíveis
   (503) durante a falha; a prévia do link nesse momento pode sair sem dados do
   produto.
 - **Rede lenta ou falha ao tocar em "Carregar mais"**: os produtos já exibidos
@@ -416,7 +422,8 @@ conferir que só a última é entregue.
 
 - **FR-020**: Qualquer alteração feita no painel (cadastro, edição, esgotado,
   destaque, fotos, remoção de produto ou categoria) MUST estar refletida no
-  catálogo público, na página inicial, no detalhe e nas fotos, em até 1 minuto.
+  catálogo público, na página inicial, no detalhe e nas fotos, em até 1 minuto
+  (páginas renderizadas a cada pedido e guardadas no navegador por até 60 s, ADR-011).
   Exceção: ao voltar pelo navegador, a lista pode mostrar o que já estava na tela, como
   o voltar de qualquer site; o detalhe e o próximo "Carregar mais" seguem o prazo.
 
@@ -443,9 +450,7 @@ conferir que só a última é entregue.
 **Indisponibilidade temporária**
 
 - **FR-024**: Se os dados do catálogo não puderem ser lidos (banco fora do ar ou
-  sem resposta), a página inicial e o detalhe MUST exibir a última versão guardada
-  daquela página, quando existir (exceção ao prazo do FR-020 enquanto durar a
-  falha e por até 1 minuto depois que o banco volta). Só quando não houver nenhuma versão guardada, MUST exibir uma página
+  sem resposta), a página inicial e o detalhe MUST exibir uma página
   simples em português dizendo que não foi possível carregar agora, com ação de
   tentar de novo e resposta de indisponível temporário (503). Essa resposta MUST
   NOT ser guardada em cache e MUST NOT ser apresentada como "Produto não
@@ -484,7 +489,7 @@ conferir que só a última é entregue.
   substituídas ou de produto removido não são entregues ao público, e nenhuma
   página ou resposta pública contém e-mail de administradora ou campo interno.
 - **SC-005**: Uma alteração feita no painel aparece no catálogo público em até 1
-  minuto (FR-020) em 100% das verificações.
+  minuto (FR-020; páginas com `max-age=60` no navegador, ADR-011) em 100% das verificações.
 - **SC-006**: Colar o link de um produto no WhatsApp (Android) mostra nome e foto
   de capa na prévia.
 - **SC-007**: As telas públicas passam numa verificação de acessibilidade
@@ -546,13 +551,13 @@ Registradas a pedido do humano; não são decisões da spec.
   mudança em `produtos.ts` nesta feature.
 - **Cache e atualização** (decisão do humano, 2026-10-15, corrigida no plan): o
   Roseshop roda em `*.workers.dev`, onde não há cache de borda nem Cache API (o
-  cache é por zona). Páginas públicas com ISR do OpenNext (revalidação por tempo,
-  cache incremental no R2) mais cache do navegador, somando no máximo 60 s; a rota
+  cache é por zona). Páginas públicas renderizadas a cada pedido (ramo FALLBACK do
+  spike SF0, ADR-011), só com cache do navegador (`max-age=60`); a rota
   de fotos consulta o banco a cada pedido e usa só o cache do navegador (até 60 s).
   Sem revalidação sob demanda nesta feature (as actions do painel não invalidam
   cache). Detalhes e números no plan (research D1–D5).
-- **Renderização**: decidida no plan (ISR com `expire`, spike SF0 e fallback para
-  renderização dinâmica; research D2).
+- **Renderização**: dinâmica (`force-dynamic`), decidida pelo spike SF0: o ISR com
+  `expire` falhou (research §5, ADR-011).
 - **WhatsApp**: `WHATSAPP_NUMBER` por ambiente no wrangler, validado em E.164; link
   `wa.me` com texto codificado para URL.
 - **Privacidade**: nenhuma rota pública expõe autoria (e-mail) nem campos internos;

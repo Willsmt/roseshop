@@ -19,6 +19,9 @@ const EXCECOES_PUBLICAS: readonly string[] = [
   // Limpeza diária: protegidas por CRON_SECRET (404 uniforme), não por sessão (contracts/fotos.md §6).
   "src/app/api/interno/limpeza/route.ts#POST",
   "src/app/api/interno/limpeza/route.ts#GET",
+  // Foto pública do catálogo (005 SF4): sem sessão por desenho; o banco decide a cada pedido e
+  // catalogo-acesso.test.ts prova que a rota não importa auth.
+  "src/app/fotos/[arquivo]/route.ts#GET",
   "src/app/api/interno/limpeza/route.ts#HEAD",
   "src/app/api/interno/limpeza/route.ts#PUT",
   "src/app/api/interno/limpeza/route.ts#PATCH",

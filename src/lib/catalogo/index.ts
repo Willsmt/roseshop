@@ -16,5 +16,12 @@ export {
   type ProdutoPublico,
   type Vitrine,
 } from "./leitura";
-export { type CausaFalha, type Falha, marcarCausaBanco, registrarFalha } from "./registro";
+export {
+  type CausaFalha,
+  type EventoFalha,
+  type Falha,
+  marcarCausaBanco,
+  registrarFalha,
+  type RotaFalha,
+} from "./registro";
 export { validarSlug } from "./slug";

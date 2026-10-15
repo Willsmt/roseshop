@@ -28,7 +28,7 @@ describe("registrarFalha", () => {
 
   it("omite resultado quando não informado e não grava nenhum campo extra", () => {
     const erro = vi.spyOn(console, "error").mockImplementation(() => {});
-    registrarFalha({ evento: "catalogo.fotos_falha", rota: "/fotos/*", causa: "r2" });
+    registrarFalha({ evento: "catalogo.fotos_falha", rota: "/fotos/[arquivo]", causa: "r2" });
     expect(Object.keys(JSON.parse(erro.mock.calls[0][0] as string))).toEqual([
       "evento",
       "rota",
@@ -39,6 +39,16 @@ describe("registrarFalha", () => {
   it("rejeita causa fora de banco|r2|config|inesperado em tempo de tipo", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     // @ts-expect-error causa fora da lista fechada
-    registrarFalha({ evento: "x", rota: "/", causa: "mensagem da excecao" });
+    registrarFalha({ evento: "catalogo.erro_inesperado", rota: "/", causa: "mensagem da excecao" });
+  });
+
+  it("rejeita evento e rota fora dos nomes do contrato §7 em tempo de tipo", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    // @ts-expect-error evento fora da lista fechada
+    registrarFalha({ evento: "catalogo.outro", rota: "/", causa: "banco" });
+    // @ts-expect-error rota fora da lista fechada (URL com query, por exemplo)
+    registrarFalha({ evento: "catalogo.erro_inesperado", rota: "/p/42?x=1", causa: "banco" });
+    // @ts-expect-error resultado fora da lista fechada (texto livre)
+    registrarFalha({ evento: "catalogo.erro_inesperado", rota: "/", causa: "banco", resultado: "http://x" });
   });
 });

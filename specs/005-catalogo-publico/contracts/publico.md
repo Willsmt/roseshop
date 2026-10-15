@@ -12,12 +12,12 @@ marcados assim (tasks, "Ramo ISR × ramo FALLBACK"). Trecho sem marca vale nos d
 
 `publico.ts` exporta funções puras (testadas sem workerd):
 
-- `prepararPedido(url): { tipo: "seguir" } | { tipo: "reescrever", caminho: "/p/0" } | { tipo:
+- `prepararPedido(url, metodo): { tipo: "seguir" } | { tipo: "reescrever", caminho: "/p/0" } | { tipo:
   "redirecionar", destino: string }`
   - só para GET/HEAD em `/p/<x>` (um segmento). `x` fora de `^\d{1,9}$`, `0` ou acima de
     2.147.483.647 ⇒ reescrever para `/p/0`. Fora da forma canônica (`String(n).padStart(4,"0")`)
     ⇒ 308 para `/p/<canônico>`, preservando a query string. Os demais caminhos ⇒ seguir.
-- `ajustarResposta(caminho, resposta): Response`
+- `ajustarResposta(caminho, resposta, causa): Response` (`causa` é a marca de `roseshop.causa`, D11)
   - `/` e `/p/*`: status 200/308/404 ⇒ `Cache-Control: public, max-age=20` **[ISR]** ou
     `public, max-age=60` **[FALLBACK]** (valor de `prazos.ts`, §6).
   - **[ISR]** status 500 ⇒ o worker repete o pedido uma vez (research D5, P9): 200 na repetição ⇒

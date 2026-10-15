@@ -159,6 +159,8 @@ describe("ajustarResposta (T052)", () => {
     );
     expect(r.status).toBe(503);
     expect(r.statusText).not.toBe("Internal Server Error");
+    // Igual ao das rotas de fotos e da lista (sem reason phrase vazia na linha de status).
+    expect(r.statusText).toBe("Service Unavailable");
   });
 
   it("500 em /fotos/* e /api/catalogo/* passa sem virar 503", () => {

@@ -54,8 +54,10 @@ function comCabecalhos(
 ): Response {
   const cabecalhos = new Headers(resposta.headers);
   ajustar(cabecalhos);
-  // O `statusText` só vale para o status original (503 com "Internal Server Error" seria mentira).
-  const statusText = status === resposta.status ? resposta.statusText : "";
+  // O `statusText` só vale para o status original (503 com "Internal Server Error" seria mentira);
+  // o 503 do worker leva o texto padrão, como o das rotas de fotos e da lista.
+  const statusText =
+    status === resposta.status ? resposta.statusText : status === 503 ? "Service Unavailable" : "";
   return new Response(resposta.body, { status, statusText, headers: cabecalhos });
 }
 

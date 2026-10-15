@@ -291,7 +291,7 @@ banco), US2.1 (fotos ordenadas).
   série**, nenhum outro `test:int` rodando); colar o output real — **júnior**
 - [X] T024 Revisão do diff pelo tech-lead: SQL parametrizado, ordem estável, cursor sem perda de
   µs, `fotoPublica` sem `fotos_envio`, nenhum campo interno — **tech-lead**
-- [ ] T025 Commit (humano):
+- [X] T025 Commit (humano):
   ```text
   feat(db): adiciona as consultas públicas do catálogo
 
@@ -313,7 +313,7 @@ sem banco.
 **Fecha**: US1.7, US3.1/3.2 (montagem do link), FR-017 (texto alternativo), cursor válido/inválido.
 **Revisão TL**: —.
 
-- [ ] T026 [P] [US1] [US2] [US3] **Teste primeiro** — `src/lib/catalogo/exibicao.test.ts`:
+- [X] T026 [P] [US1] [US2] [US3] **Teste primeiro** — `src/lib/catalogo/exibicao.test.ts`:
   `precoPublico(null, false)` = "Consulte o valor"; `(1290, false)` = "R$ 12,90"; `(1290, true)` =
   "a partir de R$ 12,90"; `(123456, false)` = "R$ 1.234,56"; `hrefProduto(42)` = "/p/0042",
   `hrefProduto(10000)` = "/p/10000"; `altFoto("Meia", 1, 3)` = "Meia — foto 1 de 3";
@@ -322,17 +322,17 @@ sem banco.
   frase sem o link; `linkWhatsapp("+5511999999999", msg)` começa com
   `https://wa.me/5511999999999?text=` e `decodeURIComponent` do `text` devolve a mensagem exata
   para nomes com `&`, `#`, `?`, acento e emoji — **test-writer**
-- [ ] T027 [P] **Teste primeiro** — `src/lib/catalogo/cursor.test.ts` e `slug.test.ts`:
+- [X] T027 [P] **Teste primeiro** — `src/lib/catalogo/cursor.test.ts` e `slug.test.ts`:
   ida e volta de `codificarCursor("1760000000123456", 42)`; `lerCursor` devolve `null` para
   base64url inválido, conteúdo fora de `^\d{1,17}\.\d{1,10}$`, id 0 e id > 2.147.483.647, e
   mantém o µs como **string**; `validarSlug` aceita "meias", "guarda-chuvas", "meias-3" e recusa
   "", "Meias", "meias--x", "-meias", "meias-", "a/b" e 61 caracteres — **test-writer**
-- [ ] T028 Implementar `exibicao.ts` (reusa `formatarPreco`/`formatarAPartirDe` de
+- [X] T028 Implementar `exibicao.ts` (reusa `formatarPreco`/`formatarAPartirDe` de
   `src/lib/produtos/preco.ts` e `formatarCodigo` de `src/lib/produtos/codigo.ts`, ambos puros),
   `cursor.ts` (Zod; base64url; µs como texto), `slug.ts` (Zod:
   `^[\p{Ll}\p{N}]+(-[\p{Ll}\p{N}]+)*$`, até 60) e `prazos.ts` (C§6: constantes do orçamento
   de 60 s, conforme o ramo da T008; sem dependências) — **principal**
-- [ ] T029 `npm run check`; colar o output real — **júnior**
+- [X] T029 `npm run check`; colar o output real — **júnior**
 - [ ] T030 Commit (humano):
   ```text
   feat(catalogo): adiciona regras de preço, link do WhatsApp e cursor

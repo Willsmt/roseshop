@@ -114,7 +114,7 @@ specs/005-catalogo-publico/
 │   ├── publico.md       # worker, páginas, GET da lista, rota de fotos, módulos, logs
 │   └── telas.md         # esqueleto das telas e acessibilidade
 ├── checklists/
-└── tasks.md             # /speckit-tasks
+└── tasks.md             # /speckit-tasks (SF0 a SF12)
 ```
 
 ### Source Code (repository root)
@@ -173,18 +173,26 @@ Detalhe e alternativas em [research.md §3](./research.md#3-decisões-técnicas)
 | D14 | `axe-core` nos testes de componente; `<img loading>` sem otimizador; `lang="pt-BR"` |
 | D15 | Voltar do detalhe: `sessionStorage` por filtro (itens, cursor, scroll), validade de 30 min |
 
-## Subfeatures (ordem proposta para o `/speckit-tasks`)
+## Subfeatures
+
+Numeração única, igual à do [tasks.md](./tasks.md) (SF0 a SF12). Cada SF fecha com `npm run
+check` verde (e `test:int` em série, quando houver) e um commit do humano.
 
 | SF | Conteúdo | Dono |
 |---|---|---|
-| SF0 | Spike do `expire` (quickstart §2) + bucket de cache e DO no local/dev; registrar resultado; ADR-011 para aprovação | tech-lead + humano |
+| SF0 | Spike do `expire` (quickstart §2) no `preview` e num worker descartável `roseshop-spike` (bucket `roseshop-cache-spike`, apagados ao fim); registrar resultado e ramo; ADR-011 para aprovação (GATE). Só no ramo ISR, depois do GATE: buckets `roseshop-cache-dev`/`-prod` e infra definitiva (`open-next.config.ts`, `next.config.ts`, `wrangler.jsonc` com DO e migration, reexportação no worker) | tech-lead + humano |
 | SF1 | `src/lib/db/catalogo.ts` + integração (keyset, empates, remoção entre blocos, slug, `fotoPublica`) | tech-lead (testes: test-writer) |
-| SF2 | `src/lib/catalogo/` puros (`exibicao`, `cursor`, `slug`) + `config`, `registro`, `leitura` | tech-lead / test-writer |
-| SF3 | Rota de fotos pública + GET da lista + conformidade | tech-lead |
-| SF4 | Worker (`publico.ts`), `open-next.config.ts`, `next.config.ts`, `wrangler.jsonc`, `robots.ts` | tech-lead |
-| SF5 | Telas: página inicial, detalhe, erro, 404, lista cliente com filtro, "Carregar mais" e restauração; axe-core | ui-dev (testes: test-writer) |
-| SF6 | Roteiro no `preview` (quickstart §4) | júnior + humano |
-| SF7 | Dev: WhatsApp, prévia, SC-002, CPU (quickstart §5); produção configurada antes do merge; `docs/operacao.md` (R3) | humano + tech-lead |
+| SF2 | `src/lib/catalogo/` puros: `exibicao`, `cursor`, `slug` | principal (testes: test-writer) |
+| SF3 | `config`, `registro`, `leitura`, barrel e regra de lint; `SITE_URL` no `wrangler.jsonc`; `WHATSAPP_NUMBER` no `.dev.vars.example` | tech-lead (testes: test-writer) |
+| SF4 | Rota pública de fotos + conformidade | tech-lead (testes: test-writer) |
+| SF5 | `GET /api/catalogo/produtos` + conformidade do JSON | principal (testes: test-writer) |
+| SF6 | Worker (`publico.ts`, `worker.ts`) e `robots.ts` | tech-lead (testes: test-writer) |
+| SF7 | Telas do detalhe, erro e 404; layouts; `axe-core` | ui-dev (testes: test-writer) |
+| SF8 | Página inicial: destaques, filtro e 1º bloco | ui-dev (testes: test-writer) |
+| SF9 | Lista cliente: "Carregar mais", filtro no cliente e retorno do detalhe | ui-dev (testes: test-writer) |
+| SF10 | Roteiro no `preview` (quickstart §4) | júnior + humano |
+| SF11 | Dev: WhatsApp, prévia, SC-002, CPU (quickstart §5) | humano + principal |
+| SF12 | Produção configurada antes do merge, README, `docs/` (incluindo `docs/operacao.md` com R3), rastreabilidade, merge | humano + tech-lead + doc-sync |
 
 ## Cobertura
 

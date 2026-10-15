@@ -44,7 +44,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   - A doc do OpenNext exige, para revalidação por tempo, cache incremental (R2 recomendado; KV
     não, por ser eventualmente consistente) e uma fila ("A queue must be setup for projects using
     Time-Based revalidation").
-  - Bucket separado: a limpeza da SF12 lista o prefixo `fotos/` (ok hoje), mas um bucket próprio
+  - Bucket separado: a limpeza da SF12 da 004 lista o prefixo `fotos/` (ok hoje), mas um bucket próprio
     elimina o risco de uma mudança futura na limpeza apagar o cache. O token S3 das URLs
     pré-assinadas (T148) fica restrito ao bucket de fotos e não alcança o cache. O CORS não
     muda.
@@ -73,13 +73,19 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 - **Decision**: `export const revalidate = 20` nas páginas públicas; `expireTime: 40` no
   `next.config.ts`; `Cache-Control: public, max-age=20` no navegador (D5). Pior caso: página com
   até 40 s + navegador com até 20 s = **60 s** (FR-020). **SF0 (spike) é a primeira tarefa**:
-  provar no `preview` (e no dev) que, num isolate novo, um pedido a `/` e a `/p/<código>` com
-  entrada mais velha que 40 s espera a regeneração.
+  provar no `preview` e num worker descartável `roseshop-spike` (`*.workers.dev`, bucket de
+  cache `roseshop-cache-spike`, mesma branch dev do Neon com secret próprio; nunca no
+  `roseshop-dev`) que, num isolate novo, um pedido a `/` e a `/p/<código>` com entrada mais
+  velha que 40 s espera a regeneração. O worker e o bucket do spike são apagados ao fim do SF0.
+  Os buckets definitivos (`roseshop-cache-dev` e `-prod`) e a migration do `DOQueueHandler` só
+  entram no `roseshop-dev` e no `roseshop` no ramo ISR, depois da aprovação do ADR-011.
 - **Fallback (aprovado em P1, sem reabrir o plan)**: se o spike falhar, as páginas públicas viram
   dinâmicas (`export const dynamic = "force-dynamic"`), com `Cache-Control: public, max-age=60` e
   sem cache incremental nem fila. O fallback retira D1, D3 e o build guard (D13), e a página
   inicial passa a ler `searchParams` no servidor (D7 fica simplificado). O resto do plan não
-  muda. O resultado do spike é registrado em `research.md` §5.
+  muda. Como o spike nunca publica a classe `DOQueueHandler` no `roseshop-dev` nem no
+  `roseshop`, o fallback não precisa de migration de remoção. O resultado do spike é registrado
+  em `research.md` §5.
 - **Alternatives considered**: ISR puro de 60 s (rejeitado em P1: sem teto real); renderização
   dinâmica direto (é o fallback; custa banco e CPU a cada primeira visita do navegador).
 
@@ -124,7 +130,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 - `/fotos/*` e `/api/catalogo/*` definem os próprios cabeçalhos no route handler (D6/D7). O worker
   só acrescenta `X-Robots-Tag`.
 - **Rationale**: no App Router, um componente de servidor só gera 404 (`notFound`),
-  redirecionamentos, 401/403. Um erro vira 500. O worker já é nosso (SF12) e é o único ponto que
+  redirecionamentos, 401/403. Um erro vira 500. O worker já é nosso (SF12 da 004) e é o único ponto que
   vê o status final. Todo 500 público vira 503: aceito em P3. Um bug também aparece como
   indisponível, mas fica no log.
 - **ISR e erro**: o Next não grava em cache uma renderização que falhou. Com a entrada entre 20 e
@@ -259,7 +265,8 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   deploy grava essa entrada no R2 (populate cache). Pelo D2, ela é regenerada no primeiro
   pedido depois de 20 s e, passados 40 s, o pedido espera a regeneração. Na prática, ninguém vê a
   página do build. `/p/[codigo]` usa `generateStaticParams` → `[]` e não é pré-renderizada.
-- **Verificação**: faz parte do spike SF0 (abrir `/` logo após o `preview` e após 40 s).
+- **Verificação**: faz parte do spike SF0 (abrir `/` logo após o `preview` e o deploy do
+  `roseshop-spike`, e após 40 s).
 
 ### D14. Acessibilidade e telas
 

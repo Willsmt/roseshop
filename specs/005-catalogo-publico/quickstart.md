@@ -16,26 +16,41 @@ Roteiro de validação. Contratos em [contracts/](./contracts/), modelo em
 
 Para `dev` e depois `production`:
 
-1. Criar o bucket de cache (privado, sem CORS, sem token S3):
+1. Só no ramo ISR e só depois do GATE do ADR-011 (tasks T015): criar o bucket de cache
+   definitivo (privado, sem CORS, sem token S3). Os dois são criados juntos:
    ```bash
    npx wrangler r2 bucket create roseshop-cache-dev
+   npx wrangler r2 bucket create roseshop-cache-prod
    ```
 2. Gravar o número do WhatsApp (dev: número de teste do mantenedor; produção: número da Rose):
    ```bash
    npx wrangler secret put WHATSAPP_NUMBER --env dev
    ```
-3. Conferir: `npx wrangler secret list --env dev` com `WHATSAPP_NUMBER` e
+3. Conferir: `npx wrangler secret list --env dev` com `WHATSAPP_NUMBER` e, no ramo ISR,
    `npx wrangler r2 bucket list` com `roseshop-cache-dev`.
 
-Produção é configurada antes do merge, no mesmo modelo da T148 (inclui
-`roseshop-cache-prod`).
+Produção é configurada antes do merge, no mesmo modelo da T148 da 004.
 
 ## 2. Spike SF0 — prova do prazo de 1 minuto com ISR (bloqueia o resto)
 
-Rodar no `preview` (`npm run preview`, banco local com produtos) e repetir no dev
-(`npm run deploy:dev` + `wrangler tail --env dev`). Cada cenário tem um resultado esperado;
-**qualquer falha aciona o fallback para páginas dinâmicas** (research D2), registrado em
-research.md §5, sem reabrir o plan.
+Rodar no `preview` (`npm run preview`, banco local com produtos) e repetir num worker
+**descartável** `roseshop-spike` (`*.workers.dev`). O spike **nunca** roda no `roseshop-dev` nem
+no `roseshop`. Cada cenário tem um resultado esperado; **qualquer falha aciona o fallback para
+páginas dinâmicas** (research D2), registrado em research.md §5, sem reabrir o plan.
+
+Worker do spike (humano; detalhes nas tasks T001, T002, T006 e T009):
+
+1. Bucket de cache próprio: `npx wrangler r2 bucket create roseshop-cache-spike`.
+2. `env.spike` temporário no `wrangler.jsonc` (nunca commitado): `name: "roseshop-spike"`,
+   `triggers: { crons: [] }` (sem a limpeza da 004), `WORKER_SELF_REFERENCE` → `roseshop-spike`,
+   `NEXT_INC_CACHE_R2_BUCKET` → `roseshop-cache-spike`, DO `NEXT_CACHE_DO_QUEUE` com a migration
+   `new_sqlite_classes`. `env.dev` e `env.production` não mudam.
+3. Deploy e banco: `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy --env
+   spike`; `npx wrangler secret put DATABASE_URL --env spike` com a mesma branch dev do Neon
+   (secret próprio do spike); logs por `npx wrangler tail --env spike`. Os produtos são mudados
+   pelo painel do `roseshop-dev`, que usa a mesma branch.
+4. Ao fim, antes de limpar o tree: `npx wrangler delete --env spike`, esvaziar e apagar o bucket
+   (`npx wrangler r2 bucket delete roseshop-cache-spike`).
 
 | # | Cenário | Passos | Esperado |
 |---|---|---|---|

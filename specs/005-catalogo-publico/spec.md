@@ -117,11 +117,14 @@ de "produto não encontrado".
    e dados enviados ao navegador), **Then** não há e-mail de administradora,
    identificador interno, versão, posição de destaque nem nenhum outro campo do
    painel.
-8. **Given** o banco indisponível, **When** a cliente abre `/p/0042` ou a página
-   inicial, **Then** vê a mensagem de que não foi possível carregar agora, com
-   botão de tentar de novo, a resposta é de indisponível temporário (503) e não
-   de inexistente, e, quando o banco volta, a página seguinte já mostra o produto
-   (o erro não ficou guardado).
+8. **Given** o banco indisponível e uma versão guardada da página, **When** a
+   cliente abre `/p/0042` ou a página inicial, **Then** vê a versão guardada (a
+   anterior à falha), mesmo que tenha mais de 1 minuto, e a falha fica registrada
+   para o mantenedor; **Given** o banco indisponível e nenhuma versão guardada
+   daquela página, **Then** vê a mensagem de que não foi possível carregar agora,
+   com botão de tentar de novo, e a resposta é de indisponível temporário (503) e
+   não de inexistente; nos dois casos, quando o banco volta, a página seguinte já
+   mostra o estado atual (o erro não ficou guardado).
 
 ---
 
@@ -272,9 +275,13 @@ conferir que só a última é entregue.
   texto puro, nunca interpretado.
 - **Descrição vazia**: a seção de descrição não aparece; nada de "sem descrição".
 - **Preço alto**: separador de milhar no formato brasileiro (R$ 1.234,56).
-- **Banco fora do ar ou lento ao abrir uma página pública**: mensagem de
-  indisponibilidade temporária com "tentar de novo" (FR-024), nunca "Produto não
-  encontrado"; a prévia do link nesse momento pode sair sem dados do produto.
+- **Banco fora do ar ou lento ao abrir uma página pública**: se a página já tem
+  uma versão guardada, a cliente vê essa versão anterior (que pode ter mais de 1
+  minuto enquanto o banco não volta); só sem versão guardada aparece a mensagem de
+  indisponibilidade temporária com "tentar de novo" (FR-024); nunca "Produto não
+  encontrado". As fotos, consultadas no banco a cada pedido, ficam indisponíveis
+  (503) durante a falha; a prévia do link nesse momento pode sair sem dados do
+  produto.
 - **Rede lenta ou falha ao tocar em "Carregar mais"**: os produtos já exibidos
   continuam na tela, aparece uma mensagem simples e o botão permite tentar de novo.
 - **Cliente sem WhatsApp instalado**: o link abre a página do WhatsApp na web, que
@@ -298,7 +305,9 @@ conferir que só a última é entregue.
   categoria (nome), descrição, preço, marcação "a partir de", status (disponível
   ou esgotado), condição de destaque e fotos. MUST NOT expor e-mail de
   administradora, identificadores internos, versões, posição de destaque, dados de
-  envio de foto nem nenhum outro campo interno.
+  envio de foto nem nenhum outro campo interno. (Nota do plan, P7: o cursor opaco
+  do "Carregar mais" carrega o instante de cadastro e o código do último item como
+  meio técnico de paginação; não é dado exibido e não conta como exposição.)
 - **FR-003**: Nada exibido no catálogo (nome, descrição, categoria) MUST ser
   interpretado como formatação ou código; descrição mantém as quebras de linha.
 - **FR-004**: Todas as páginas públicas MUST pedir aos buscadores que não as
@@ -417,12 +426,15 @@ conferir que só a última é entregue.
 **Indisponibilidade temporária**
 
 - **FR-024**: Se os dados do catálogo não puderem ser lidos (banco fora do ar ou
-  sem resposta), a página inicial e o detalhe MUST exibir uma página simples em
-  português dizendo que não foi possível carregar agora, com ação de tentar de
-  novo e resposta de indisponível temporário (503). Essa resposta MUST NOT ser
-  guardada em cache, MUST NOT ser apresentada como "Produto não encontrado" (404)
-  e MUST ficar registrada para o mantenedor. A rota de fotos, na mesma situação,
-  MUST responder indisponível temporário sem cache, nunca inexistente.
+  sem resposta), a página inicial e o detalhe MUST exibir a última versão guardada
+  daquela página, quando existir (exceção ao prazo do FR-020 enquanto durar a
+  falha). Só quando não houver nenhuma versão guardada, MUST exibir uma página
+  simples em português dizendo que não foi possível carregar agora, com ação de
+  tentar de novo e resposta de indisponível temporário (503). Essa resposta MUST
+  NOT ser guardada em cache e MUST NOT ser apresentada como "Produto não
+  encontrado" (404). Em todos os casos, a falha MUST ficar registrada para o
+  mantenedor. A rota de fotos, na mesma situação, MUST responder indisponível
+  temporário sem cache, nunca inexistente.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -509,18 +521,21 @@ conferir que só a última é entregue.
 Registradas a pedido do humano; não são decisões da spec.
 
 - **Fotos**: rota no Worker que confere no banco se a chave pertence a um produto e
-  entrega o objeto pelo binding do R2; bucket segue privado; cache com no máximo
-  60 s (ver "Cache e atualização"), mesmo com chaves imutáveis, para a foto
-  removida deixar de ser entregue em até 1 minuto (FR-015/FR-020). O crawler do
-  WhatsApp precisa alcançar essa rota (Open Graph).
+  entrega o objeto pelo binding do R2; bucket segue privado; consulta o banco a
+  cada pedido e só o navegador guarda a resposta, por no máximo 60 s, mesmo com
+  chaves imutáveis, para a foto removida deixar de ser entregue em até 1 minuto
+  (FR-015/FR-020). O crawler do WhatsApp precisa alcançar essa rota (Open Graph).
 - **Destaques**: ordenar por `destaque_vaga` ASC; nenhuma migration e nenhuma
   mudança em `produtos.ts` nesta feature.
-- **Cache e atualização** (decisão do humano, 2026-10-15): cache de borda/HTTP com
-  no máximo 60 s nas páginas públicas e na rota de fotos; sem revalidação sob
-  demanda nesta feature (as actions do painel não invalidam cache).
-- **Renderização**: comparar renderização dinâmica com cache HTTP de até 60 s versus
-  ISR do OpenNext com revalidação por tempo de até 60 s (exige cache incremental em
-  R2/KV), com prós e contras e a CPU do Workers Free (risco aceito da T139, ADR-010).
+- **Cache e atualização** (decisão do humano, 2026-10-15, corrigida no plan): o
+  Roseshop roda em `*.workers.dev`, onde não há cache de borda nem Cache API (o
+  cache é por zona). Páginas públicas com ISR do OpenNext (revalidação por tempo,
+  cache incremental no R2) mais cache do navegador, somando no máximo 60 s; a rota
+  de fotos consulta o banco a cada pedido e usa só o cache do navegador (até 60 s).
+  Sem revalidação sob demanda nesta feature (as actions do painel não invalidam
+  cache). Detalhes e números no plan (research D1–D5).
+- **Renderização**: decidida no plan (ISR com `expire`, spike SF0 e fallback para
+  renderização dinâmica; research D2).
 - **WhatsApp**: `WHATSAPP_NUMBER` por ambiente no wrangler, validado em E.164; link
   `wa.me` com texto codificado para URL.
 - **Privacidade**: nenhuma rota pública expõe autoria (e-mail) nem campos internos;
@@ -531,8 +546,11 @@ Registradas a pedido do humano; não são decisões da spec.
   WhatsApp continua gerando a prévia.
 - **Filtro por categoria no endereço**: id expõe identificador interno (conflito
   com FR-002) e slug do nome quebra ao renomear (a 002 permite renomear); escolher
-  no plan; o fallback para "Todas" já cobre link quebrado.
+  no plan; o fallback para "Todas" já cobre link quebrado. Decidido no plan: slug
+  do nome em tempo de execução, derivado da `chave` única da 002, sem colisão
+  possível (research D7).
 - **"Carregar mais"**: paginação por cursor composto (data de cadastro, código),
   não por offset, para não repetir nem pular com empates de data.
-- **Rota de fotos**: cada pedido sem cache consulta o Neon; o cache de até 60 s
-  também protege contra raspagem esgotando o compute do free tier (SC-008).
+- **Rota de fotos**: cada pedido que chega ao Worker consulta o Neon; o cache do
+  navegador de até 60 s só reduz pedidos repetidos do mesmo aparelho. A raspagem
+  por muitos endereços é risco aceito no plan (research R3).

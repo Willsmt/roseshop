@@ -4,8 +4,8 @@
 > `produto_fotos` (feature 003), `fotos_envio` e `ia_uso` (feature 004, SF1) — e
 > uma função SQL (`categoria_chave`). A migration `0000` cria a função,
 > `categorias` e o seed; a `0001` cria `produtos` e `produto_fotos`; a `0002`
-> cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Só o
-> schema existe; desde as SF4 a SF7 da feature 004, `fotos_envio` e `produto_fotos`
+> cria `fotos_envio` e `ia_uso` e estende `produtos` e `produto_fotos`. Desde
+> as SF4 a SF7 da feature 004, `fotos_envio` e `produto_fotos`
 já são gravadas por código (`src/lib/db/fotos.ts`, `inserirComFotos` em
 `produtos.ts`); `ia_uso` é gravada por `consumirSugestao` (`src/lib/db/ia-uso.ts`, SF13). A sessão de login
 > é JWT e não tem tabelas ([F01](./features/F01-autenticacao.md)). Fonte do
@@ -24,11 +24,10 @@ Cada produto pertence a uma categoria, tem um nome único (mesma regra de
 equivalência das categorias), descrição e preço opcionais, a marca de esgotado e
 uma vaga de destaque (1 a 8, no máximo oito produtos em destaque). O banco
 recusa nome fora de 3 a 80 letras, preço fora da faixa, destaque de produto
-esgotado e uma categoria apagada enquanto tem produtos. A tabela de fotos já
-existe, mas fica vazia até a feature 004. Para essa feature o banco também ganhou
-(sem uso ainda) o registro dos **envios de foto** em andamento, o **contador
-diário de sugestões da IA** por administradora e, em cada produto, uma versão do
-conjunto de fotos.
+esgotado e uma categoria apagada enquanto tem produtos. A tabela de fotos
+guarda as fotos de cada produto (feature 004). O banco também tem o registro dos
+**envios de foto** em andamento, o **contador diário de sugestões da IA** por
+administradora e, em cada produto, uma versão do conjunto de fotos.
 
 ## Aprofundamento técnico
 
@@ -184,7 +183,7 @@ R2); `criado_em`. A `0002` acrescentou:
 Registro de cada envio de foto emitido para a área temporária do R2 (feature 004).
 A linha nasce `emitido` (`emitirEnvio`), vira `confirmado` (`marcarConfirmado`) e some
 ao ser adotada pelo cadastro (`inserirComFotos`), recusada (`descartarEnvio`, só
-`emitido`) ou limpa após 24 h (a **limpeza diária ainda não existe**). Teto de 20 envios
+`emitido`) ou expirada após 24 h pela limpeza diária (`executarLimpeza`, SF12). Teto de 20 envios
 por pessoa em 24 h. Fluxo em [F04](./features/F04-fotos.md). SQL real em
 `src/lib/db/migrations/0002_breezy_mentor.sql`.
 
@@ -230,7 +229,7 @@ O driver é `neon-http`: **não há `db.transaction()`**. Só statements isolado
 statement pelo resultado do anterior). Chaves de lock advisory ficam
 registradas em `src/lib/db/locks.ts` (`LOCK_PROBE_BATCH = 2001`,
 `LOCK_REMOCAO_CATEGORIAS = 2002`, `LOCK_FOTOS = 4001` e `LOCK_IA_USO = 4002`;
-`LOCK_FOTOS` é usado pelos writers de fotos e `LOCK_IA_USO` ainda não); número nunca
+`LOCK_FOTOS` é usado pelos writers de fotos e `LOCK_IA_USO` por `consumirSugestao`); número nunca
 é reutilizado.
 
 ### FK de produtos e a remoção de categorias
@@ -255,8 +254,9 @@ Pegadinhas do schema de produtos:
   foram ajustados).
 - Regra geral: migration aplicada em ambiente online **não é editada**; correção
   só por migration nova (prática registrada no PR da feature 002, com a `0000`).
-  A `0002` ainda não foi aplicada no Neon dev: a regra passa a valer para ela a
-  partir do primeiro run do PR da feature 004 (CI aplica `db:migrate`).
+  A `0002` é aplicada pelo CI (`pull-request.yml` roda `db:migrate` no Neon dev) e vai
+  para produção no merge (`main.yml`); a regra vale para ela desde o primeiro run do PR da
+  feature 004.
 - Premissa de código: todo writer de `produtos` que altera campos, status ou destaque
   incrementa `versao` (`saiuDoDestaque` e a precedência de mensagens dependem disso).
   O writer de fotos (`substituirConjunto`) altera só `fotos_versao`, `fotos_operacao`,

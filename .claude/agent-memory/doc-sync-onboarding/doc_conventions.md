@@ -42,3 +42,8 @@ Sync da SF6 da 004 (2026-10-09): feature em andamento ganha doc próprio parcial
 (`docs/features/F04-fotos.md`, estado em blockquote com o que falta); a observação de UX
 "criar produto pela tela falha até a SF9" fica no F04, em `architecture.md` (dívidas) e em
 `operacao.md` (Troubleshooting). Docs de feature anteriores só linkam para o F04.
+
+Sync de fechamento da 004 (SF15, 2026-10-14): ao fechar uma feature, varrer os docs por
+frases de "ainda não existe"/"SF15"/"pendente" que ficaram de syncs parciais (database.md,
+F04, operacao.md) e trocar pelo estado real. Segredos: documentar o padrão
+`read -rs V; printf %s "$V" | wrangler secret put` em `operacao.md` (seção R2), nunca valores.

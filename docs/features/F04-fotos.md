@@ -1,17 +1,18 @@
 # F04 — Fotos de produto
 
-> Estado: **em andamento** no branch `feature/004-fotos-produto`. Construído até a
-> SF14: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios
-> e do cadastro com fotos (SF4/SF5), as Server Actions de envio, a rota de
-> exibição e a exigência de fotos no cadastro (SF6), as actions do conjunto
-> (adicionar, trocar, remover, mover: SF7), o pipeline de tratamento da foto no
-> aparelho (SF8), as telas do cadastro com fotos (SF9) e a prova com aparelho real no Chrome
-> Android (SF10, ver "Prova com aparelho real") e a tela de fotos do produto já
-> cadastrado, com fotos no detalhe e capa na lista (SF11, ver "Tela Fotos do produto") e a
-> limpeza diária de fotos sem uso (SF12, ver "Limpeza diária"). A **sugestão por IA** existe no servidor (SF13) e na tela do cadastro (SF14; ver "Sugestão por IA"). Spec:
+> Estado: **construída (SF1 a SF14), em fechamento (SF15)** no branch
+> `feature/004-fotos-produto`; **ainda não está em produção** (merge pendente, T150).
+> Cobre: schema (SF1), verificação do arquivo (SF2), módulo R2 (SF3), SQL de envios e do
+> cadastro com fotos (SF4/SF5), actions de envio, rota de exibição e exigência de fotos no
+> cadastro (SF6), actions do conjunto (SF7), pipeline da foto no aparelho (SF8), telas do
+> cadastro (SF9), prova com Chrome Android (SF10, ver "Prova com aparelho real"), tela
+> Fotos do produto (SF11), limpeza diária (SF12, ver "Limpeza diária") e sugestão por IA
+> (servidor SF13, tela SF14; ver "Sugestão por IA"). Spec:
 > [`specs/004-fotos-produto/spec.md`](../../specs/004-fotos-produto/spec.md);
 > contrato em `contracts/fotos.md` e `contracts/telas.md` e decisões no
-> [ADR-009](../../specs/adr/009-fotos-r2.md).
+> [ADR-009](../../specs/adr/009-fotos-r2.md) e no [ADR-010](../../specs/adr/010-ia-openai.md).
+> Configuração de produção feita antes do merge (T148): ver
+> [operacao.md](../operacao.md#r2-segredos-endpoint-e-cors).
 
 ## Visão leiga
 
@@ -138,7 +139,7 @@ Pontos de projeto:
   (só apaga `emitido`) e só então `apagarObjetos([chave])`. Uma confirmação
   concorrente que já marcou `confirmado` não perde o objeto. Falha ao apagar o
   objeto só gera log (`fotos.confirmacao.objeto_nao_apagado`); o órfão sai na
-  limpeza diária (ainda não existe).
+  limpeza diária (SF12).
 - **Modo registro** (`modoVerificacao()`): a verificação relaxa só o metadado e a
   action registra um `console.warn("fotos.verificacao.registro", ...)` com
   `envioId`, resultado, motivo, regra e blocos. **Nunca bytes.**
@@ -201,7 +202,7 @@ sequenceDiagram
 - **R2 depois do batch, em melhor esforço**: trocar e remover apagam o objeto antigo
   só depois de o banco valer; `revalidatePath` também. Falha ao apagar não vira erro:
   só `console.warn("fotos.conjunto.objeto_nao_apagado", { produtoId })`, sem chave. O
-  órfão sai na limpeza diária (ainda não existe).
+  órfão sai na limpeza diária (SF12).
 - **Versão própria**: o conjunto usa `fotosVersao` (concorrência otimista), separada da
   `versao` do produto.
 
@@ -303,7 +304,9 @@ da lista (sem nenhuma foto, **nenhum** campo; nunca `fotos=""`). "Salvar" fica d
 com `envioEmCurso`. Se `criarProduto` devolver `foto_expirada`, o formulário avisa a tela
 uma única vez por resultado (`onFotoExpirada(envioIds)`): as fotos citadas viram *não
 enviada* com "Tentar de novo" e a tela volta ao passo Fotos. A mensagem de `foto_expirada`
-no formulário some quando alguma das fotos expiradas já foi reenviada ou removida.
+no formulário some quando alguma das fotos expiradas já foi reenviada ou removida. O texto
+(`src/lib/fotos/mensagens.ts` e `src/lib/produtos/mensagens.ts`) é "Uma das fotos ficou
+muito tempo sem ser salva. Envie essa foto de novo." (T144; antes dizia "expirou").
 
 ### Tela Fotos do produto (`/painel/produtos/[id]/fotos`, SF11)
 
@@ -395,8 +398,8 @@ sequenceDiagram
 
 - **Por que 25 h**: 1 h além das 24 h de validade do envio, para cobrir diferença de relógio
   entre R2 e Postgres. As tabelas são lidas **depois** de listar o R2.
-- **`CRON_SECRET`**: `.dev.vars` no local; `wrangler secret` no dev (cadastrado); produção
-  fica para a SF15. Ver [operacao.md](../operacao.md#variáveis-de-ambiente).
+- **`CRON_SECRET`**: `.dev.vars` no local; `wrangler secret` no dev e em produção
+  (cadastrados). Ver [operacao.md](../operacao.md#variáveis-de-ambiente).
 - **Prova local** (feita, resposta 200):
   `npx opennextjs-cloudflare build && npx wrangler dev --test-scheduled`, e em outro terminal
   `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+6+*+*+*"`.
@@ -469,8 +472,10 @@ sequenceDiagram
 
 **Pegadinhas.** `MODELO` (`gpt-6-luna`) e `ESFORCO` (`none`) são provisórios; a escolha vem da
 medição com fotos reais (`npm run test:ia`, T132) e vira emenda do ADR-010 (T133).
-Pendências da SF13: T120a (prova técnica do `gpt-5.4-mini` por `node .spike/r5.mjs`), T132
-(medição, humano) e T133 (escolha de modelo e esforço, aprovada pelo humano).
+T120a (prova técnica do `gpt-5.4-mini`) está feita. T132 (medição, humano) e T133 (escolha de
+modelo e esforço, aprovada pelo humano) são pendências de entrega: **produção sobe com o
+`gpt-6-luna` e esforço `none`** (decisão de 2026-10-14, ADR-010 emendado), sem bloquear o
+merge.
 **CPU acima do Workers Free**: `sugerirProduto` mediu 21 ms de CPU no dev (T139); risco
 aceito, ver [operacao.md](../operacao.md#limite-de-cpu-do-plano-gratuito-do-workers).
 Cada objeto de sugestão é aplicado uma vez: campo que a pessoa esvaziou não é repreenchido.
@@ -592,9 +597,15 @@ são chamados pelas actions do conjunto (SF7). Detalhes do schema em
   id é normalizado para minúsculas (o Postgres devolve assim).
 - **Objetos órfãos** (recusa que não apagou o objeto, troca/remoção de foto ou de produto com R2
   fora) são recolhidos pela limpeza diária (SF12), com atraso de até cerca de um dia.
-- **T118b pendente**: o cron ainda não foi provado no `roseshop-dev`. O deploy veio do CI do
-  PR #19; conferir em roseshop-dev → Logs após a primeira execução das 03:00 de Brasília.
-  Falha ou ausência volta ao tech-lead antes da SF15.
+- **T118b pendente**: o cron ainda não foi provado no `roseshop-dev` (deploy do CI do PR #19).
+  No plano gratuito os logs do cron não ficam guardados: a execução de 2026-10-15 06:00 UTC
+  (03:00 de Brasília) é capturada por `wrangler tail --env dev`; o merge (T150) só depois
+  (ver [operacao.md, Troubleshooting](../operacao.md#troubleshooting)).
+- **Produção configurada antes do merge (T148, 2026-10-14)**: chaves do R2, `CRON_SECRET` e
+  CORS do `roseshop-prod`, projeto OpenAI de produção separado. Falta a prova de ponta a ponta
+  das chaves do R2: um cadastro com foto em produção, no roteiro do merge (T150).
+- **"Tirar do destaque"** (texto da 003) foi mantido; ponto a observar na entrega com a
+  administradora (T143).
 - **Cron declarado nos três ambientes**: deploy sem `triggers.crons` não remove o cron já
   publicado; `src/test/conformance/worker-typecheck.test.ts` barra qualquer outro valor. A rota é exceção declarada em `painel-guard.test.ts` (protegida por segredo, não por sessão).
 - **Durable Objects do OpenNext**: não reexportados pelo worker próprio (não há `durable_objects`).

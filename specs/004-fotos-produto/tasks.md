@@ -1104,8 +1104,10 @@ da observação).
 **Fecha**: SC-001–004 e SC-011 (observação/medição), checklist de produção antes do merge.
 **Revisão TL**: —.
 
-- [ ] T141 Rodar `npm run check` e `npm run test:int` e colar os outputs reais completos —
+- [X] T141 Rodar `npm run check` e `npm run test:int` e colar os outputs reais completos —
   **principal**
+  - Feita em 2026-10-14: `check` com 96 arquivos e 2524 testes; `test:int` com 27 arquivos e
+    342 testes (624,75 s), numa execução única.
 - [ ] T142 **Humano executa — quickstart completo no `preview`** (Q§3 e Q§4, itens 1–9) e **no
   dev** (Q§5.1 a Q§5.3 já registrados nas SFs; repetir R1 (N, N±1, segundo `PUT` 412, sem
   `if-none-match` 403), cron e CPU da confirmação e da sugestão no free tier). Entregar os
@@ -1123,11 +1125,11 @@ da observação).
     foto de novo." (`src/lib/fotos/mensagens.ts`, `src/lib/produtos/mensagens.ts`, F§8, spec e
     5 testes; `npm run check` verde). "Tirar do destaque" e "Tire um do destaque" (003) ficam
     como estão (opção A do humano): ponto a observar na entrega final.
-- [ ] T145 [P] Nota na spec da 003 (`specs/003-produtos/spec.md`) apontando FR-013/FR-014 para
+- [X] T145 [P] Nota na spec da 003 (`specs/003-produtos/spec.md`) apontando FR-013/FR-014 para
   a 004 (produto passa a exigir 1 a 3 fotos), sem alterar critérios da 003 — **redator**
-- [ ] T146 [P] Atualizar `README.md` (fotos no R2, sugestão por IA, `npm run test:ia`,
+- [X] T146 [P] Atualizar `README.md` (fotos no R2, sugestão por IA, `npm run test:ia`,
   requisitos de configuração) — **redator**
-- [ ] T147 Acionar o `doc-sync-onboarding` (critérios do CLAUDE.md: schema/migration, rotas e
+- [X] T147 Acionar o `doc-sync-onboarding` (critérios do CLAUDE.md: schema/migration, rotas e
   actions novas, binding/vars, dependências de runtime, zona protegida, módulos novos em `src/`,
   Cron Trigger, hooks/CI): sincronizar `docs/` (incluindo `docs/operacao.md`: segredos, CORS,
   cron, modo registro) e as seções "Comandos"/"Estrutura"/"Estado atual" do `CLAUDE.md`; o agente

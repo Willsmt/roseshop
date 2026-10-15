@@ -11,10 +11,12 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > administradoras)**: login com Google, allowlist e painel protegido, sem
 > middleware, **feature 002 (categorias)**: primeira tabela do banco e
 > telas de categorias no painel, e **feature 003 (produtos)**: cadastro,
-> lista, busca, status e destaque de produtos no painel, com fotos de produto em andamento. A
-> **feature 004 (fotos)** está em andamento: existe o servidor
-> (schema, verificação do arquivo, módulo R2, actions de envio, rota de exibição e
-> cadastro com fotos, actions do conjunto, pipeline da foto no aparelho, telas do cadastro com fotos, a prova com Chrome Android e a tela de fotos do produto e a limpeza diária, até a SF12, e a sugestão por IA, SF13 (servidor) e SF14 (tela no cadastro). Catálogo público e sacola
+> lista, busca, status e destaque de produtos no painel. A
+> **feature 004 (fotos)** está construída (SF1 a SF14) e em fechamento (SF15),
+> ainda **não em produção** (merge pendente): schema, verificação do arquivo, módulo R2,
+> actions de envio e do conjunto, rota de exibição, cadastro com fotos, pipeline da foto no
+> aparelho, telas do cadastro e da tela Fotos, limpeza diária e sugestão por IA (servidor e
+> tela). Catálogo público e sacola
 > ainda não existem; por isso este índice é deliberadamente curto: só existem
 > documentos para o que já tem código real por trás.
 
@@ -31,7 +33,7 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    `lint`, `typecheck`, `test`, `check`, `cf-typegen`), infra de testes
    (Vitest), hooks de git (husky: gitleaks, lint-staged, commitlint, pre-push) e
    instalação do gitleaks no WSL, banco local em Docker (`db:*`), Drizzle/migrations (fluxo `db:up` → `db:migrate` → `test:int`), testes unitários, de integração e de desempenho (`test:perf`; inclui recuperação de execução interrompida e o probe do CI, que cobre também a FK de produtos), auditoria de dependências (ADR-007), CI (GitHub Actions, environments, secrets do GitHub), dependências com ressalvas (`esbuild`, `wrangler` e `aws4fetch` fixados,
-   `allowScripts`), R2 (chaves, endpoint e CORS), limite de CPU do plano gratuito do Workers (risco aceito, Erro 1102), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
+   `allowScripts`), R2 (chaves, endpoint, CORS, gravação de segredos sem expor o valor e revogação do token), limpeza diária (cron, `wrangler tail`), modo registro da verificação (desligado), limite de CPU do plano gratuito do Workers (risco aceito, Erro 1102), administradoras e emergência de acesso (trocar `AUTH_SECRET`), diagnóstico de login, bindings, ambientes e deploy (`deploy:dev`, `deploy:production` com trava de CI), secrets, variáveis de ambiente e troubleshooting.
 4. **[features/F01-autenticacao.md](./features/F01-autenticacao.md)** — login
    das administradoras: rotas, como a proteção funciona sem middleware (guards e
    teste de conformidade), módulos de `src/lib/auth/` e pegadinhas.
@@ -47,11 +49,11 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    painel: rotas e actions, camadas (`src/lib/produtos/`, `src/lib/db/produtos.ts`),
    concorrência otimista, destaque (teto de 8), busca com cursor, preço e
    pegadinhas.
-8. **[features/F04-fotos.md](./features/F04-fotos.md)** — fotos de produto (em
-   andamento, até a SF14): telas do cadastro (Fotos → Dados), tela Fotos do produto existente, pipeline da foto no aparelho, prova com aparelho real, fluxo de envio e confirmação, actions do conjunto (adicionar,
+8. **[features/F04-fotos.md](./features/F04-fotos.md)** — fotos de produto
+   (construída, SF1 a SF14; fechamento SF15 e merge pendentes): telas do cadastro (Fotos → Dados), tela Fotos do produto existente, pipeline da foto no aparelho, prova com aparelho real, fluxo de envio e confirmação, actions do conjunto (adicionar,
    trocar, remover, mover), rota de exibição, limpeza diária (cron e worker próprio), sugestão por IA (servidor e tela do cadastro), cadastro com fotos, fronteira de acesso e pegadinhas.
 
 ## O que ainda não existe aqui
 
-Só há doc de feature para a F01, a F02, a F03 e a F04 (parcial); as demais serão criadas ao serem
+Só há doc de feature para a F01, a F02, a F03 e a F04 (construída, ainda não em produção); as demais serão criadas ao serem
 fechadas (catálogo público, sacola).

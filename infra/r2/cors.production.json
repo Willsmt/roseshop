@@ -2,7 +2,7 @@
 	"rules": [
 		{
 			"allowed": {
-				"origins": ["https://<origem exata do production>"],
+				"origins": ["https://roseshop.willsmt.workers.dev"],
 				"methods": ["PUT"],
 				"headers": ["content-type", "if-none-match"]
 			},

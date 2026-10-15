@@ -41,6 +41,21 @@ Para `dev` e depois `production`, nesta ordem:
 5. OpenAI → projeto do ambiente → **limite de gasto mensal** (sugestão: US$ 5 no dev, US$ 10 em
    produção) e alerta por e-mail.
 
+**Produção, estado em 2026-10-14 (SF15, T148):** token R2 Object Read & Write só no
+`roseshop-prod`, sem expiração; `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `OPENAI_API_KEY`
+(projeto de produção, separado do dev) e `CRON_SECRET` (gerado com `openssl rand -base64 32`)
+gravados no worker `roseshop`; CORS do `roseshop-prod` com a origem
+`https://roseshop.willsmt.workers.dev`, `PUT`, `content-type` e `if-none-match`, 600 s.
+Produção sobe com o modelo **provisório** `gpt-6-luna`, esforço `none` (prova técnica T120a);
+a medição (T132) e a escolha final (T133) ficam pendentes, sem bloquear o merge (ADR-010).
+Checagem item a item (humano): `wrangler secret list --env production` com os 9 segredos (os 4
+acima mais `ADMIN_EMAILS`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` e
+`DATABASE_URL`); `wrangler r2 bucket cors list roseshop-prod` conforme acima; projeto OpenAI
+de produção com teto de gasto **aplicado** e modelos permitidos `gpt-6-luna` e `gpt-5.4-mini`;
+`SELECT count(*) FROM produtos;` no Neon de produção = `0` (Q§2 não se aplica);
+`FOTOS_VERIFICACAO` ausente do `wrangler.jsonc` (conformidade verde). Prova de ponta a ponta
+das chaves do R2: um cadastro com foto em produção no roteiro do merge (T150).
+
 ## 2. Apagar os produtos da 003 sem foto (humano)
 
 Quando: **antes do primeiro push que leva a SF6 (criação exige foto) ao deploy do dev** (o dev

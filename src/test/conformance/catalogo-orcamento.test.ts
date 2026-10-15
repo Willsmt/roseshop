@@ -49,3 +49,16 @@ describe("orçamento de 60 s (prazos.ts)", () => {
     expect(fotos).not.toMatch(/max-age=\d/);
   });
 });
+
+// T061 [FALLBACK]: sem ISR, a página do detalhe é dinâmica e não guarda nada no servidor.
+describe("detalhe sem cache de servidor (T061, FALLBACK)", () => {
+  const fonte = () => readFileSync(join(RAIZ, "src/app/(public)/p/[codigo]/page.tsx"), "utf8");
+
+  it('exporta dynamic = "force-dynamic"', () => {
+    expect(fonte()).toMatch(/export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/);
+  });
+
+  it("não exporta revalidate", () => {
+    expect(fonte()).not.toMatch(/\brevalidate\b/);
+  });
+});

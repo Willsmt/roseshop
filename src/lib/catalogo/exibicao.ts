@@ -31,3 +31,8 @@ export function mensagemWhatsapp(nome: string, id: number, siteUrl: string | nul
 export function linkWhatsapp(whatsapp: string, mensagem: string): string {
   return `https://wa.me/${whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(mensagem)}`;
 }
+
+// Esgotado ou sem número configurado: sem botão do WhatsApp (FR-018). Regra única da lib e da tela.
+export function mostrarWhatsapp(esgotado: boolean, temNumero: boolean): boolean {
+  return !esgotado && temNumero;
+}

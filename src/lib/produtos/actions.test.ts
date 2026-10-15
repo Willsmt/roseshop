@@ -343,7 +343,7 @@ describe("criarProduto: fotos (feature 004, T063; US1-AC7/AC8/AC9)", () => {
     aPartirDe: false,
   };
   const SEM_FOTO = "Coloque pelo menos 1 foto do produto.";
-  const EXPIROU = "Uma das fotos expirou. Envie de novo.";
+  const EXPIROU = "Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo.";
 
   it.each([
     [[FOTO_A]],

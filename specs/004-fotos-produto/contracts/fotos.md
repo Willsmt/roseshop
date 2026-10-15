@@ -487,7 +487,7 @@ tipar `CRON_SECRET`, `R2_S3_ENDPOINT` e os demais).
 | `nao_passou` (2ª seguida, mesma tela) | Essa foto não está passando. Escolha outra ou peça ajuda. | US2-AC10 (estado da tela) |
 | `nao_enviada` | selo "Não enviada" + botão "Tentar de novo" | US2-AC8 |
 | `sem_foto` | Coloque pelo menos 1 foto do produto. | US1-AC8 |
-| `foto_expirada` | Uma das fotos expirou. Envie de novo. | edge case |
+| `foto_expirada` | Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo. | edge case |
 | `alterado` | As fotos deste produto foram mudadas por outra pessoa. Veja como ficaram e faça de novo. | US5-AC1 |
 | `limite` | Este produto já tem 3 fotos. Remova ou troque uma para colocar outra. | FR-025 |
 | `ultima` | O produto precisa de pelo menos 1 foto. | US4-AC4 |

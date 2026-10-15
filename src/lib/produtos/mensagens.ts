@@ -51,7 +51,7 @@ const TEXTOS: Record<Motivo, (d: DadosMensagem) => string> = {
   ja_em_destaque: () => "Este produto já está em destaque.",
   // Feature 004 (contracts/fotos.md §8), iguais aos de src/lib/fotos/mensagens.ts.
   sem_foto: () => "Coloque pelo menos 1 foto do produto.",
-  foto_expirada: () => "Uma das fotos expirou. Envie de novo.",
+  foto_expirada: () => "Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo.",
   falha_geral: () => "Não foi possível concluir agora. Tente de novo em instantes.",
 };
 

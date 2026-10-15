@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  acrescentarSemRepetir,
   altFoto,
   codigoCanonico,
   hrefProduto,
@@ -86,5 +87,13 @@ describe("mostrarWhatsapp (FR-018)", () => {
     [true, false, false],
   ])("esgotado=%s, temNumero=%s ⇒ %s", (esgotado, temNumero, esperado) => {
     expect(mostrarWhatsapp(esgotado, temNumero)).toBe(esperado);
+  });
+});
+
+describe("acrescentarSemRepetir", () => {
+  it("acrescenta os novos na ordem e descarta os que já estão", () => {
+    expect(
+      acrescentarSemRepetir([{ href: "/p/0001" }, { href: "/p/0002" }], [{ href: "/p/0002" }, { href: "/p/0003" }]),
+    ).toEqual([{ href: "/p/0001" }, { href: "/p/0002" }, { href: "/p/0003" }]);
   });
 });

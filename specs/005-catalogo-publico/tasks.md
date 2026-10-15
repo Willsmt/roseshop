@@ -681,7 +681,7 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   10 ms sem Erro 1102 ⇒ risco aceito da T139, seguir; Erro 1102 ou falha por limite de CPU ⇒
   parar a SF9 e levar ao humano (contingência do ADR-010: Workers Paid com emenda da constitution
   VII). A T087 da SF11 repete a medição com fotos reais — **principal**
-- [ ] T072c Commit (humano):
+- [X] T072c Commit (humano):
   ```text
   docs(specs): registra a CPU das páginas no dev
   ```
@@ -699,12 +699,12 @@ lenta ou falha ao tocar em Carregar mais".
 **Fecha**: US1.5, US1.9, US4.1, US4.2, US4.5, US4.6, US4.7, FR-007, FR-023 (filtro).
 **Revisão TL**: —.
 
-- [ ] T073 [US1] **Teste primeiro** — `restauracao.test.ts` (sugerido): grava
+- [X] T073 [US1] **Teste primeiro** — `restauracao.test.ts` (sugerido): grava
   `{ itens, cursor, scrollY, salvoEm }` em `sessionStorage` na chave `catalogo:<slug|todas>`; lê
   só para o mesmo filtro e com menos de 30 min; apaga depois de ler; `limparRestauracoes()` apaga
   todas as chaves `catalogo:*` (F3); `sessionStorage` que lança (modo privado) ⇒ nada quebra e
   não restaura — **test-writer**
-- [ ] T074 [US1] [US4] **Teste primeiro** — `lista-catalogo.test.tsx` (jsdom, `fetch` mockado):
+- [X] T074 [US1] [US4] **Teste primeiro** — `lista-catalogo.test.tsx` (jsdom, `fetch` mockado):
   "Carregar mais" acrescenta o bloco seguinte sem repetir, some quando `proximo` é `null` e move
   o foco para o primeiro item novo; falha do `fetch` mantém os itens, mostra `role="alert"` "Não
   foi possível carregar mais produtos." com "Tentar de novo" que repete o mesmo cursor;
@@ -721,17 +721,17 @@ lenta ou falha ao tocar em Carregar mais".
   de novo" e da restauração, `location.search` continua só com `categoria` (ou vazio) e a lista
   não chama `history.pushState`/`replaceState` nem `router.push`/`replace`; axe sem violações
   graves — **test-writer**
-- [ ] T075 Implementar `restauracao.ts` e `lista-catalogo.tsx`, com a `<nav>` do filtro
+- [X] T075 Implementar `restauracao.ts` e `lista-catalogo.tsx`, com a `<nav>` do filtro
   (`filtro.tsx` da SF8) dentro da lista. **[ISR]** `useSearchParams()` dentro de `<Suspense>` na
   `page.tsx` (fallback = a lista de "Todas" do servidor), para a página continuar ISR (R4).
   **[FALLBACK]** recebe o 1º bloco filtrado e o slug efetivo por props. Gravar a restauração no
   clique de um item, antes da navegação; restauração antes do GET (U2). Sem `history.state` e
   sem parâmetro de bloco na URL (D15) — **ui-dev**
-- [ ] T076 [US1] [US4] "Voltar ao catálogo" do detalhe (T§ "Detalhe"): `router.back()` quando a
+- [X] T076 [US1] [US4] "Voltar ao catálogo" do detalhe (T§ "Detalhe"): `router.back()` quando a
   restauração indica que o detalhe foi aberto pela lista nesta aba; senão, link para `/` que
   chama `limparRestauracoes()` antes de navegar; o "Ver o catálogo" do `not-found.tsx` também
   limpa (F3). Teste de componente das três situações — **ui-dev** (teste: **test-writer**)
-- [ ] T077 `npm run check`; colar o output real — **júnior**
+- [X] T077 `npm run check`; colar o output real — **júnior**
 - [X] T078 **Humano confere no `preview`** (R4, só **[ISR]**): `curl -s -D - -o /dev/null
   http://localhost:8787/` duas vezes com 25 s de intervalo mostra `x-nextjs-cache` (a página
   inicial continua ISR com o `<Suspense>`). Entregar o output real — **humano** — **não se aplica (ramo FALLBACK, T008)**

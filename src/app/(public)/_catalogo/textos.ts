@@ -18,5 +18,8 @@ export const textos = {
 	todas: "Todas",
 	mostrandoTodos: "Mostrando todos os produtos",
 	mostrandoDe: "Mostrando produtos de",
+	carregarMais: "Carregar mais",
+	carregandoMais: "Carregando…",
+	erroCarregarMais: "Não foi possível carregar mais produtos.",
 	semProdutos: "Ainda não há produtos.",
 } as const;

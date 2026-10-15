@@ -369,7 +369,8 @@ describe("catálogo público sem sessão (T041)", () => {
       expect(fs.existsSync(path.join(process.cwd(), PAGINA_DETALHE))).toBe(true);
       for (const props of componentes) {
         const extras = Object.keys(props).filter(
-          (k) => k !== "children" && !CHAVES_PRODUTO_PUBLICO.includes(k),
+          // `voltar` é a opção do LinkCatalogo (SF9), não um dado do produto.
+          (k) => k !== "children" && k !== "voltar" && !CHAVES_PRODUTO_PUBLICO.includes(k),
         );
         expect(extras).toEqual([]);
       }

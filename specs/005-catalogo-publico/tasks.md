@@ -662,7 +662,7 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   `aria-current`. Em ambos, a lista do 1º bloco é renderizada no servidor (a SF9 a torna
   interativa) — **ui-dev**
 - [X] T071 `npm run check`; colar o output real — **júnior**
-- [ ] T072 Commit (humano):
+- [X] T072 Commit (humano):
   ```text
   feat(catalogo): adiciona a página inicial com destaques e filtro
 
@@ -670,14 +670,14 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   bloco da lista e estado vazio. Fotos fora da primeira tela em lazy.
   ```
   — **humano**
-- [ ] T072a **Humano executa** (CPU antecipada, risco da T139/ADR-010; o FALLBACK renderiza a cada
+- [X] T072a **Humano executa** (CPU antecipada, risco da T139/ADR-010; o FALLBACK renderiza a cada
   primeira visita do navegador): `npm run deploy:dev` deste branch (manual, permitido no dev) e
   `npx wrangler tail --env dev --format json` em outro terminal; abrir `/` e `/p/<código>` 5 vezes
   cada (a primeira com o Neon frio, as outras com 61 s de intervalo para escapar do `max-age=60`
   do navegador, ou com `curl`). Entregar o `cpuTime`, o `wallTime` e o `outcome` de cada pedido,
   sem cabeçalhos nem corpo. Sem `WHATSAPP_NUMBER` no dev, a página sai sem o botão e registra a
   falha de configuração; isso não afeta a medição — **humano**
-- [ ] T072b Registrar a medição da T072a em `research.md` §5 ("CPU das páginas no dev"): acima de
+- [X] T072b Registrar a medição da T072a em `research.md` §5 ("CPU das páginas no dev"): acima de
   10 ms sem Erro 1102 ⇒ risco aceito da T139, seguir; Erro 1102 ou falha por limite de CPU ⇒
   parar a SF9 e levar ao humano (contingência do ADR-010: Workers Paid com emenda da constitution
   VII). A T087 da SF11 repete a medição com fotos reais — **principal**
@@ -794,7 +794,7 @@ lenta ou falha ao tocar em Carregar mais".
   **principal** + **humano**
 - [ ] T087 **Humano executa** Q§5.1 a 5.4 num Chrome Android: botão do WhatsApp (US3), prévia do
   link de produto, da página inicial e de `/p/9999` (US5, SC-006), SC-002 com throttling 4G e
-  ≥ 24 produtos com fotos reais, e `cpuTime` de `/`, `/p/<código>`, GET da lista e `/fotos/<arquivo>`
+  ≥ 24 produtos com fotos reais, e `cpuTime` de `/` (repetição da medição da T072a, que usou 1 produto só e ficou otimista; mínimo de 24 produtos, junto do SC-002), `/p/<código>`, GET da lista e `/fotos/<arquivo>`
   pelo `wrangler tail --env dev` (alerta = Erro 1102). Entregar o output real — **humano**
 - [ ] T088 Registrar os resultados (CPU como risco aceito da T139 se passar de 10 ms sem falha;
   SC-002 falho por peso das fotos ⇒ registrar como feature própria, conforme Assumptions) —

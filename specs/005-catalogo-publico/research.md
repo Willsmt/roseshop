@@ -452,3 +452,23 @@ com `revalidate = 15`. Código do spike descartado na T010 (tree de volta ao `HE
 - **R6:** confirmado no cenário a.
 - **R4:** não se aplica no FALLBACK (sem ISR em `/`, o `useSearchParams` sai do plano; D7
   simplificado).
+
+### CPU das páginas no dev (T072a/T072b, 2026-10-15)
+
+Medida no `roseshop-dev` (versão `8bca451d`, ramo FALLBACK, SF8 deployada), por
+`wrangler tail --env dev --format json`: 20 pedidos, todos com `outcome` `ok`, sem `exceededCpu`
+nem Erro 1102.
+
+| Pedido | `cpuTime` | `wallTime` |
+|---|---|---|
+| `/` | 1º: 202 ms (isolate novo + Neon frio); demais: 13–19 ms | 1º: 1356 ms |
+| `/?categoria=meias` | 10–37 ms (pico de 37 ms) | 27–103 ms |
+| `/p/0015` (produto real) | 13, 9, 9, 9, 8 ms | 16–21 ms |
+| `/p/0001` (404) | 11–19 ms | — |
+
+**Ressalva:** o dev tem 1 produto só; a medição de `/` é otimista (poucos itens para renderizar).
+
+**Veredito (regra da T072b): aprovado com risco aceito da T139.** Há pedidos acima de 10 ms, mas
+nenhum falhou por limite de CPU. Sinal de alerta continua sendo o Erro 1102; a contingência é a do
+ADR-010 (Workers Paid com emenda da constitution VII). A SF11 (T087) repete a medição de `/` com
+pelo menos 24 produtos.

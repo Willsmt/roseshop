@@ -39,8 +39,9 @@ configuração é inválida, FR-018/FR-019).
 | `nome` | `categorias.nome` | rótulo |
 
 Só categorias com `EXISTS (produto)`, esgotado ou não (FR-011, US4.3/4.4), em
-`ORDER BY nome COLLATE "pt-BR-x-icu"`, se disponível no Neon e no Postgres local; se não, pela
-`chave`. Isso é confirmado no teste de integração.
+`ORDER BY chave COLLATE "C", id`, a mesma ordem do painel da 002 (`categorias.ts`). A `chave` já é
+normalizada (sem acento, minúscula), então "Água" vem antes de "Bolsas". Collation "C" é
+independente do locale do servidor e não depende de ICU no Neon. Confirmado no teste de integração.
 
 ### BlocoLista (resposta do GET e 1º bloco da página)
 

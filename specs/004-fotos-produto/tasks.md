@@ -1108,10 +1108,21 @@ da observação).
   **principal**
   - Feita em 2026-10-14: `check` com 96 arquivos e 2524 testes; `test:int` com 27 arquivos e
     342 testes (624,75 s), numa execução única.
-- [ ] T142 **Humano executa — quickstart completo no `preview`** (Q§3 e Q§4, itens 1–9) e **no
+- [X] T142 **Humano executa — quickstart completo no `preview`** (Q§3 e Q§4, itens 1–9) e **no
   dev** (Q§5.1 a Q§5.3 já registrados nas SFs; repetir R1 (N, N±1, segundo `PUT` 412, sem
   `if-none-match` 403), cron e CPU da confirmação e da sugestão no free tier). Entregar os
   outputs reais — **humano**
+  - Feita em 2026-10-15 (relato do humano): roteiro do `preview` aprovado no build final —
+    envio da foto, sugestão e "Salvar", remoção apagando o objeto do bucket local, 404 na janela
+    anônima; os demais itens já provados nas SFs de origem (T093, T107, T139, prova local da
+    SF12). Parte do dev: Q§5.1 a Q§5.3 registrados nas SFs; a prova do cron segue na T118b,
+    antes do merge (T150).
+  - R1 no dev **não repetido** (decisão do humano, 2026-10-15): repetir exigiria as credenciais
+    do R2 do dev na máquina local de novo (saíram do `.dev.vars` na T014a e hoje só existem no
+    secret do worker). O comportamento provado pelo R1 é do próprio R2 e não mudou; a
+    assinatura do app foi provada de novo na T039 (local), na SF10 e na T139 (envios reais no
+    dev). A prova que vale no merge é o cadastro com foto em produção (T148/T150), que confirma
+    as chaves de produção.
 - [ ] T143 **Humano executa — observação com a administradora** (Q§6), no dev, pelo celular
   dela: cadastrar um produto a partir de foto tirada na hora (≤ 4 min, sem ajuda — SC-001) e
   trocar a capa de um produto existente (≤ 1 min — SC-002). Registrar tempo, onde hesitou,

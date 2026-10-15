@@ -420,29 +420,29 @@ FR-002 (visões públicas fechadas).
 **Fecha**: US6.1–6.5, FR-015, FR-016, FR-024 (fotos).
 **Revisão TL**: ✅ (superfície de segurança).
 
-- [ ] T040 [US6] **Teste primeiro** — `src/app/fotos/[arquivo]/route.test.ts`: válida e de
+- [X] T040 [US6] **Teste primeiro** — `src/app/fotos/[arquivo]/route.test.ts`: válida e de
   produto ⇒ 200 com `Content-Type` pela extensão, `Cache-Control: public, max-age=60` (de
   `NAVEGADOR_FOTOS_S`, sem `immutable`), `ETag`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src
   'none'`; `If-None-Match` igual ⇒ 304 sem corpo; malformada (`../x`, `x.png`, uuid v7, maiúsculas),
   envio pendente, removida e uuid inventado ⇒ 404 **com corpo vazio e cabeçalhos idênticos entre
   si**; erro do banco ou do R2 ⇒ 503 vazio, `no-store`, log `catalogo.fotos_falha` sem a chave;
   nenhuma chamada ao R2 quando `fotoPublica` é `false` — **test-writer**
-- [ ] T041 [US1] [US6] **Teste primeiro** — `src/test/conformance/catalogo-acesso.test.ts`
+- [X] T041 [US1] [US6] **Teste primeiro** — `src/test/conformance/catalogo-acesso.test.ts`
   (primeira parte): nenhum arquivo de `src/app/fotos/`, `src/app/api/catalogo/` e
   `src/app/(public)/` importa `@/lib/auth` nem chama `getAdminSession` (varredura de imports,
   como em `fotos-rota-guard.test.ts`); o 404 da rota pública é byte a byte igual nos quatro casos
   da T040 — **test-writer**
-- [ ] T041a [US6] **Teste primeiro (K1)** — `src/test/conformance/fotos-bucket-privado.test.ts`
+- [X] T041a [US6] **Teste primeiro (K1)** — `src/test/conformance/fotos-bucket-privado.test.ts`
   (US6.5, FR-016): todo `infra/r2/cors.*.json` só permite `PUT` (nenhuma regra com `GET` ou
   `HEAD`) e nenhuma origem `*`; o `wrangler.jsonc` (lido como JSONC) não declara `routes` nem
   `custom_domain`, e o bucket de fotos de cada ambiente só aparece no binding `PRODUCT_IMAGES`.
   O que não está no repositório (acesso público `r2.dev`, domínio do bucket) fica na conferência
   manual do quickstart §1.5 — **test-writer**
-- [ ] T042 **[TL✅]** Implementar `src/app/fotos/[arquivo]/route.ts`: `lerFoto` (barrel
+- [X] T042 **[TL✅]** Implementar `src/app/fotos/[arquivo]/route.ts`: `lerFoto` (barrel
   `@/lib/catalogo`) → `servirObjeto` (barrel `@/lib/r2`); `chaveDoArquivo` antes do banco;
   `max-age` de `NAVEGADOR_FOTOS_S`; nenhuma mudança em `src/lib/r2/` — **principal**
-- [ ] T043 `npm run check`; colar o output real — **júnior**
-- [ ] T044 Revisão do diff pelo tech-lead (404 indistinguível, banco antes do R2, 503 sem cache) —
+- [X] T043 `npm run check`; colar o output real — **júnior**
+- [X] T044 Revisão do diff pelo tech-lead (404 indistinguível, banco antes do R2, 503 sem cache) —
   **tech-lead**
 - [ ] T045 Commit (humano):
   ```text
@@ -534,7 +534,8 @@ SC-005/US5.4/US6.3 (orçamento travado por teste, K1).
   `prepararPedido` → (308 direto | reescrita | seguir) → `handler.fetch(pedido, env,
   ctxDoPedido)` → `ajustarResposta`; **[ISR]** pedido de revalidação da fila passa direto (só
   registro no 500). O `scheduled` (SF12 da 004) e a reexportação do `DOQueueHandler` **[ISR]**
-  não mudam — **principal**
+  não mudam. Nota: `registrarFalha` passa a aceitar só os nomes de evento e rota do contrato §7
+  (decisão da revisão T038) — **principal**
 - [ ] T055 [P] Implementar `src/app/robots.ts` — **principal**
 - [ ] T056 `npm run check` (o `typecheck` cobre `cloudflare/`: o `tsconfig` inclui `**/*.ts`); colar o output real — **júnior**
 - [ ] T057 Revisão do diff pelo tech-lead (reescrita sem cache novo, 503 `no-store`, painel

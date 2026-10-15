@@ -348,6 +348,11 @@ categoria pelo painel de categorias.
   ter pelo menos 1 foto. Na 003 é permitido salvar produto sem foto, pois nada é
   público ainda.
 
+> **Nota (2026-10-14, feature 004):** FR-013 e FR-014 passam a ser atendidos pela
+> `specs/004-fotos-produto/` — o produto passa a exigir de 1 a 3 fotos (cadastro
+> começando pelas fotos e gerência das fotos de produto existente). Os critérios de
+> aceite da 003 não mudam; valem como registro do que a 003 entregou.
+
 **Status e destaque**
 
 - **FR-015**: O status MUST ser só "Disponível" ou "Esgotado" (sem quantidade em

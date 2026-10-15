@@ -584,7 +584,7 @@ function importaAuth(conteudo: string): boolean {
 }
 
 describe("catálogo público continua aberto (US5-1, US5-3, FR-011)", () => {
-  it.each(["src/app/page.tsx", "src/app/layout.tsx"])(
+  it.each(["src/app/(public)/page.tsx", "src/app/layout.tsx"])(
     "%s não importa nada de auth (US5-1, FR-011)",
     (arquivo) => {
       const conteudo = fs.readFileSync(path.join(process.cwd(), arquivo), "utf8");

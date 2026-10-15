@@ -28,12 +28,16 @@ próprios em `src/app/(public)/_catalogo/`. Os primitivos de `src/components/ui/
 - `CartaoProduto` (server e client usam o mesmo componente, sem `server-only`): `<a href="/p/0042">`
   envolvendo a foto (`<img alt>` ou o marcador "Sem foto" em texto), nome, "#0042", preço e
   "Esgotado" em texto.
-- `ListaCatalogo` (client): recebe o 1º bloco de "Todas" por props; lê `useSearchParams()` dentro de
-  `<Suspense>` (fallback = a lista de "Todas" com o filtro em "Todas"); com filtro, mostra
-  "Carregando produtos…" (`aria-busy`) e busca no GET; ao clicar em "Carregar mais", acrescenta
-  o bloco e move o foco para o primeiro item novo. O aviso `aria-live` anuncia a troca de filtro
-  (US4.7).
-- Restauração ao voltar: research D15.
+- `ListaCatalogo` (client) renderiza também a `<nav>` do filtro (research D7/I2): o
+  `aria-current` vem do filtro efetivo, nunca de um valor fixo do servidor.
+  **[ISR]** recebe o 1º bloco de "Todas" e as categorias por props; lê `useSearchParams()` dentro
+  de `<Suspense>` (fallback = a lista de "Todas" com o filtro em "Todas"); com filtro e sem
+  restauração válida, mostra "Carregando produtos…" (`aria-busy`) e busca no GET; o
+  `aria-current` segue a URL até o GET responder e depois o `categoria` devolvido (`null` ⇒
+  "Todas", US4.6). **[FALLBACK]** recebe o 1º bloco já filtrado e o slug efetivo por props.
+  Em ambos: ao clicar em "Carregar mais", acrescenta o bloco e move o foco para o primeiro item
+  novo, **sem mudar a URL**; o aviso `aria-live` anuncia a troca de filtro (US4.7).
+- Restauração ao voltar: research D15 (vale antes do GET do 1º bloco; URL só com o filtro).
 - Fotos: as primeiras 4 da lista e todas as dos destaques com `loading="eager"`; o resto `lazy`
   (FR-008).
 
@@ -53,7 +57,8 @@ próprios em `src/app/(public)/_catalogo/`. Os primitivos de `src/components/ui/
 ```
 
 - O "Voltar ao catálogo" usa `router.back()` quando a página anterior é do catálogo (preserva
-  filtro e blocos) e `/` nos outros casos (link aberto direto).
+  filtro e blocos) e `/` nos outros casos (link aberto direto); nesse caso, como o "Ver o
+  catálogo" do 404, apaga as restaurações guardadas antes de navegar (research D15, F3).
 - O link do WhatsApp abre na mesma aba (`wa.me` abre o app no Android); sem `target="_blank"`.
 
 ## Erro (503) e não encontrado (404)

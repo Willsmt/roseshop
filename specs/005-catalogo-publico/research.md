@@ -21,7 +21,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 
 | # | Pergunta | Resposta |
 |---|---|---|
-| P1 | Como o ISR cumpre o prazo de 1 minuto (FR-020) se entrega a versão antiga antes de atualizar? | ISR com `expire`: revalidate 20 s, expire 40 s, navegador 20 s (soma 60 s). Primeiro spike prova o `expire` no OpenNext; se falhar, renderização dinâmica com navegador 60 s, sem reabrir o plan (D2). |
+| P1 | Como o ISR cumpre o prazo de 1 minuto (FR-020) se entrega a versão antiga antes de atualizar? | ISR com `expire`: revalidate 20 s, expire 40 s, navegador 20 s (soma 60 s; ajustado para 15/35/20 na A2). Primeiro spike prova o `expire` no OpenNext; se falhar, renderização dinâmica com navegador 60 s, sem reabrir o plan (D2). |
 | P2 | `?categoria=` torna a página dinâmica: como filtrar? | Página inicial em ISR; o filtro é aplicado no cliente, que pede o 1º bloco filtrado a um GET público (D7). |
 | P3 | Como responder 503 se a página só gera 500? | `cloudflare/worker.ts` pós-processa as rotas públicas: 500 → 503 `no-store` + `Retry-After` (D5). |
 | P4 | Qual fila de revalidação? | Durable Object (SQLite, Free) (D3). |
@@ -30,6 +30,22 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 | P7 | O cursor composto expõe a data de cadastro (fora da lista do FR-002)? | Cursor opaco base64url com data (µs) + código; nota no FR-002 dizendo que o cursor é meio técnico, não dado exibido (D8). |
 | P8 | Varredura de `/p/<código>` gasta escrita do R2 e compute do Neon? | Risco aceito + monitoramento; o worker já recusa formatos inválidos antes do Next (D4, R3). |
 | P9 | FR-024 com ISR (revisão do plan, 2026-10-15) | Regeneração falha com versão em cache ⇒ servir a versão anterior; 503 só sem nenhuma versão guardada. Fotos continuam 503 com o banco fora (consulta a cada pedido). O log do 500 → 503 distingue falha de banco de erro inesperado. Spec atualizada: FR-024, edge case "Banco fora do ar", US2.8 (D5, D11). |
+
+### Decisões do humano no analyze (2026-10-15)
+
+| # | Achado | Decisão |
+|---|---|---|
+| A1 | Versão anterior servida com `max-age=20` depois da repetição (I1) | Spec emendada: a versão anterior vale durante a falha e até 1 min depois que o banco volta; só a resposta repetida sai `no-store` (D5) |
+| A2 | Orçamento de 60 s sem folga (B1) | `revalidate` 15 s + `expireTime` 35 s + navegador 20 s = 55 s + tempo de render (D2) |
+| A3 | Restauração de até 30 min × FR-020 (I3) | Exceção explícita no FR-020 para o voltar do navegador (D15) |
+| A4 | Token do CI sem permissão de R2 para popular o cache (C2) | Revista pelo humano: ampliar o token do CI com *Workers R2 Storage: Edit*, provado no spike com token de mesmo escopo antes do GATE (D16) |
+| A5 | `criado_em` no cursor (F1) | Mantida a P7; a conformidade decodifica o cursor (D8) |
+| A6 | `SITE_URL` inválida (F2) | Spec emendada (FR-018/FR-019): mensagem sem link + registro (D12) |
+
+Também aplicados, sem decisão: pedidos de revalidação da fila passam direto pelo worker (D5,
+C1), filtro dentro da lista cliente (D7, I2), registro da config inválida uma vez por isolate no
+FALLBACK (D10), teste do orçamento e do bucket privado (K1), URL sem blocos e ordem
+restauração × GET (D15, U1/U2) e limpeza da restauração pelo "Ver o catálogo" (D15, F3).
 
 ## 3. Decisões técnicas
 
@@ -54,7 +70,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   mistura dado regenerável com dado de negócio e amplia o alcance do token); KV (rejeitado pela
   própria doc); renderização dinâmica pura (fallback do D2).
 
-### D2. Prazo de 1 minuto: `revalidate` 20 s + `expireTime` 40 s + navegador 20 s
+### D2. Prazo de 1 minuto: `revalidate` 15 s + `expireTime` 35 s + navegador 20 s (A2)
 
 - **Problema**: o ISR é *stale-while-revalidate*. Passado o `revalidate`, o próximo pedido recebe
   a versão antiga e dispara a regeneração em segundo plano. Numa página pouco visitada, a primeira
@@ -70,18 +86,26 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   dinâmica `/p/[codigo]` estiver em `dynamicRoutes` com `fallbackExpire`, ou depois de renderizado
   naquele isolate. Num isolate novo do Worker, o `expire` pode faltar ⇒ volta o SWR sem teto.
   Além disso, o `lastModified` vem do `uploaded` do objeto no R2 (`r2-incremental-cache.js`).
-- **Decision**: `export const revalidate = 20` nas páginas públicas; `expireTime: 40` no
-  `next.config.ts`; `Cache-Control: public, max-age=20` no navegador (D5). Pior caso: página com
-  até 40 s + navegador com até 20 s = **60 s** (FR-020). **SF0 (spike) é a primeira tarefa**:
+- **Decision**: `export const revalidate = 15` nas páginas públicas; `expireTime: 35` no
+  `next.config.ts`; `Cache-Control: public, max-age=20` no navegador (D5). **Atenção aos
+  nomes**: 35 s é o `expireTime` (idade máxima da entrada; passado, o pedido **espera** a
+  regeneração), não o `revalidate` (15 s, a partir do qual o pedido recebe a versão em cache e
+  dispara a regeneração em segundo plano). Trocar um pelo outro quebra o orçamento. Pior caso:
+  entrada com até 35 s + navegador com até 20 s = **55 s**, mais o tempo de render (o
+  `lastModified` é o upload no R2, que acontece depois da leitura do banco; com o Neon frio, o
+  render leva segundos). Os 5 s de folga cobrem esse atraso (FR-020, SC-005). O teste de
+  conformidade do orçamento (tasks, SF6) falha se a soma passar de 60 s. **SF0 (spike) é a
+  primeira tarefa**:
   provar no `preview` e num worker descartável `roseshop-spike` (`*.workers.dev`, bucket de
   cache `roseshop-cache-spike`, mesma branch dev do Neon com secret próprio; nunca no
   `roseshop-dev`) que, num isolate novo, um pedido a `/` e a `/p/<código>` com entrada mais
-  velha que 40 s espera a regeneração. O worker e o bucket do spike são apagados ao fim do SF0.
+  velha que 35 s espera a regeneração. O worker e o bucket do spike são apagados ao fim do SF0.
   Os buckets definitivos (`roseshop-cache-dev` e `-prod`) e a migration do `DOQueueHandler` só
   entram no `roseshop-dev` e no `roseshop` no ramo ISR, depois da aprovação do ADR-011.
 - **Fallback (aprovado em P1, sem reabrir o plan)**: se o spike falhar, as páginas públicas viram
   dinâmicas (`export const dynamic = "force-dynamic"`), com `Cache-Control: public, max-age=60` e
-  sem cache incremental nem fila. O fallback retira D1, D3 e o build guard (D13), e a página
+  sem cache incremental nem fila (pior caso: 60 s de navegador + render). O fallback retira
+  D1, D3, D16 e o build guard (D13), e a página
   inicial passa a ler `searchParams` no servidor (D7 fica simplificado). O resto do plan não
   muda. Como o spike nunca publica a classe `DOQueueHandler` no `roseshop-dev` nem no
   `roseshop`, o fallback não precisa de migration de remoção. O resultado do spike é registrado
@@ -133,16 +157,29 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   redirecionamentos, 401/403. Um erro vira 500. O worker já é nosso (SF12 da 004) e é o único ponto que
   vê o status final. Todo 500 público vira 503: aceito em P3. Um bug também aparece como
   indisponível, mas fica no log.
-- **ISR e erro**: o Next não grava em cache uma renderização que falhou. Com a entrada entre 20 e
-  40 s, uma regeneração falha em segundo plano mantém a anterior e a cliente recebe a anterior.
-- **Versão anterior (P9)**: passados os 40 s, o pedido espera a regeneração. Se ela falha, o Next
-  16.3.8 (`response-cache/index.js`, `handleRevalidate`) lança o erro (500) **e regrava a entrada
-  anterior** com `lastModified` novo e `revalidate` entre 3 e 20 s ("to prevent non-stop
-  retrying"). Por isso a repetição do pedido pelo worker acha a entrada válida e devolve a versão
-  anterior com 200. Sem entrada anterior (página nunca gerada), a repetição falha de novo ⇒ 503.
-  Durante a falha, a versão servida pode passar de 60 s (exceção do FR-024 ao FR-020). Quando o
-  banco volta, a próxima regeneração grava o estado atual. A versão anterior sai com `no-store`
-  para o navegador não estender a falha. Custo: uma invocação interna a mais, só quando há 500.
+- **ISR e erro**: o Next não grava em cache uma renderização que falhou. Com a entrada entre 15 e
+  35 s, uma regeneração falha em segundo plano mantém a anterior e a cliente recebe a anterior.
+- **Versão anterior (P9)**: passados os 35 s, o pedido espera a regeneração. Se ela falha, o Next
+  16.3.8 (`response-cache/index.js` ~linha 304) lança o erro (500) **e regrava a entrada
+  anterior** com `lastModified` novo, `revalidate` = o anterior limitado a 3–30 s (15 s) e
+  `expire` = máx(`revalidate` + 3, anterior) (35 s), "to prevent non-stop retrying". Por isso a
+  repetição do pedido pelo worker acha a entrada válida e devolve a versão anterior com 200. Sem
+  entrada anterior (página nunca gerada), a repetição falha de novo ⇒ 503. Custo: uma invocação
+  interna a mais, só quando há 500.
+- **Só a resposta repetida sai `no-store` (A1)**: depois da regravação, os pedidos seguintes
+  recebem a mesma versão anterior com **200 de primeira** (cache válido até 15 s, depois SWR até
+  35 s), e o worker, que só vê o status, aplica `max-age=20` como em qualquer 200. O ciclo se
+  repete enquanto o banco estiver fora. Consequência, já na spec (US2.8, FR-024): a versão
+  anterior pode passar de 60 s durante a falha e continuar sendo servida por até 1 minuto
+  (35 + 20 s + render) depois que o banco volta. Marcar `no-store` em todo `STALE` não resolve:
+  o `HIT` da entrada regravada também traz conteúdo antigo.
+- **Pedidos de revalidação da fila (C1)**: o `DOQueueHandler` revalida mandando um `HEAD` ao
+  próprio worker com `x-prerender-revalidate` e `x-isr: 1` (`dist/api/durable-objects/queue.js`
+  ~linha 86) e interpreta o status: 200 sem `x-nextjs-cache: REVALIDATED` é `FatalError`, 500
+  entra no estado de falha com nova tentativa. Por isso o worker deixa esses pedidos passarem
+  **sem mudança**: sem repetição, sem 503 e sem cabeçalhos novos. No 500 de um pedido com
+  `x-isr: 1`, ele só registra o evento (D11) com `resultado: "revalidacao"`; é assim que a falha
+  em segundo plano (entrada entre 15 e 35 s) fica registrada (FR-024).
   O comportamento é provado no spike SF0 (quickstart §2) e coberto por teste unitário de
   `ajustarResposta` com handler falso.
 
@@ -178,6 +215,11 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   dinâmica). Se houver `categoria`, pede o 1º bloco filtrado a `GET /api/catalogo/produtos` e
   mostra estado de carregando na lista. O filtro são links `?categoria=<slug>` com
   `aria-current`; trocar de filtro é navegação do cliente na mesma página.
+- **Filtro dentro da lista cliente (I2)**: no ISR, a navegação do filtro é renderizada pela
+  própria `ListaCatalogo`, e o `aria-current` vem do `categoria` efetivo (o da URL até o GET
+  responder, depois o `categoria` devolvido, que pode ser `null` ⇒ "Todas", US4.6). Um filtro
+  renderizado no servidor sem `searchParams` marcaria sempre "Todas" (FR-023, US4.7). No
+  FALLBACK, o servidor já conhece o slug efetivo e o passa por props.
 - **Alternatives considered**: página inicial dinâmica (rejeitada em P2); caminho `/c/<slug>`
   (contraria H2).
 
@@ -196,6 +238,8 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   dinâmico com `Cache-Control: public, max-age=20`. É GET e não Server Action porque é leitura
   pública e idempotente, e não precisa do custo de uma action. Resposta JSON com só os campos
   públicos (contrato).
+- **Cursor e FR-002 (A5)**: o conteúdo decodificado é exatamente `^\d{1,17}\.\d{1,10}$` (µs e
+  código, nada mais); a conformidade do GET decodifica o `proximo` e confere esse formato.
 - **Índice**: sem migration. Com ~500 produtos, um sort em memória do Postgres é desprezível
   (mesma escala do `test:perf` da 003). Se a medição do SC-002 apontar a consulta, o índice
   `(criado_em DESC, id DESC)` vira tarefa com migration própria.
@@ -218,7 +262,9 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 - Mensagem: `Olá! Tenho interesse no produto <nome> (#0042): <SITE_URL>/p/0042`.
 - Ausente ou inválido ⇒ o botão não é renderizado e é registrado
   `{evento:"catalogo.whatsapp_invalido"}`, sem o valor (D11). Com ISR, o registro acontece a
-  cada renderização, no máximo uma vez a cada 20 s por página.
+  cada renderização, no máximo uma vez a cada 15 s por página. No FALLBACK (toda visita
+  renderiza), `configCatalogo()` registra a falha **uma vez por isolate** (memo em módulo), para
+  não gastar o teto de 200 mil eventos/dia do Workers Logs.
 
 ### D11. Registro de falhas
 
@@ -236,6 +282,8 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
     "versao_anterior" | "503" }`
   - inesperado: `{ evento: "catalogo.erro_inesperado", rota, causa: "inesperado", resultado:
     "versao_anterior" | "503" }`
+  - revalidação da fila (`x-isr: 1`, D5): o mesmo evento conforme a causa, com `resultado:
+    "revalidacao"` e a resposta repassada sem mudança.
   A cliente vê a mesma coisa nos dois casos. Que o OpenNext repassa o `ctx` é conferido no spike
   SF0. Se não repassar, o marcador vai num `AsyncLocalStorage` publicado em `globalThis` pelo
   worker (mesmo efeito, sem mudar o contrato do log).
@@ -254,7 +302,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   segredo): local `http://localhost:8787`, dev `https://roseshop-dev.willsmt.workers.dev`,
   produção `https://roseshop.willsmt.workers.dev`. Validado com Zod (`url()`, `https:` fora do
   local). Ausente ou inválido ⇒ prévia sem imagem e mensagem sem link, com registro (o resto
-  funciona).
+  funciona). Previsto na spec desde a A6 (FR-018/FR-019).
 
 ### D13. Build sem banco (pré-renderização de `/`)
 
@@ -262,11 +310,11 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   tem banco.
 - **Decision**: a leitura da página inicial checa `process.env.NEXT_PHASE ===
   "phase-production-build"` e, no build, devolve o estado "indisponível" sem tocar no banco. O
-  deploy grava essa entrada no R2 (populate cache). Pelo D2, ela é regenerada no primeiro
-  pedido depois de 20 s e, passados 40 s, o pedido espera a regeneração. Na prática, ninguém vê a
+  deploy grava essa entrada no R2 (populate cache, D16). Pelo D2, ela é regenerada no primeiro
+  pedido depois de 15 s e, passados 35 s, o pedido espera a regeneração. Na prática, ninguém vê a
   página do build. `/p/[codigo]` usa `generateStaticParams` → `[]` e não é pré-renderizada.
 - **Verificação**: faz parte do spike SF0 (abrir `/` logo após o `preview` e o deploy do
-  `roseshop-spike`, e após 40 s).
+  `roseshop-spike`, e após 35 s).
 
 ### D14. Acessibilidade e telas
 
@@ -291,9 +339,46 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
   de pintar. Sem `history.state`: o App Router usa o próprio `history.state` e escrever nele
   disputa com o router.
 - Os itens restaurados podem ter até 30 min (estado do navegador, como o "voltar" de qualquer
-  site). O FR-020 trata do que o servidor entrega. O próximo "Carregar mais" já vem do servidor.
+  site). A spec registra essa exceção no FR-020 (A3): o detalhe, onde fica o botão do WhatsApp,
+  e o próximo "Carregar mais" seguem o prazo de 1 minuto.
+- **Ordem na montagem (U2)**: se houver restauração válida para o filtro atual, ela vale e o
+  GET do 1º bloco **não** é feito; sem restauração, a lista segue o fluxo normal (no ISR, GET do
+  1º bloco filtrado quando há `categoria`).
+- **URL (U1)**: "Carregar mais" e a restauração não mexem na URL (nem `router.push`/`replace`,
+  nem `history.pushState`/`replaceState` pela lista); a URL só muda pelos links do filtro.
+- **Limpeza (F3)**: o link "Ver o catálogo" (404 e detalhe aberto direto) apaga as restaurações
+  guardadas antes de navegar, para que abrir `/` por ele comece do 1º bloco.
 
-## 4. Riscos
+### D16. Permissão do CI para popular o cache (A4)
+
+- **Problema**: o `opennextjs-cloudflare deploy` sempre popula o cache R2 remoto
+  (`dist/cli/commands/deploy.js` ~linha 22). Antes de gravar, chama `ensureR2Bucket`
+  (`populate-cache.js` ~linha 165) e sobe um worker remoto com binding do bucket, o que exige
+  permissão de R2 na conta. O token do CI hoje só tem *Workers Scripts: Edit* e leituras de
+  conta/usuário (`docs/operacao.md`), então o deploy do ramo ISR falharia.
+- **Decision (opção a)**: no ramo ISR, ampliar o token do CI (`CLOUDFLARE_API_TOKEN` dos
+  environments `dev` e `production` do GitHub) com *Workers R2 Storage: Edit*, mantendo a
+  restrição à conta e a validade atual. Workflows e scripts de deploy não mudam.
+- **Rationale (risco marginal)**: o token do CI já publica o worker, e o worker tem binding para
+  o bucket de fotos (`PRODUCT_IMAGES`). Quem controla esse token já pode publicar um worker que
+  lê ou apaga as fotos. A permissão de R2 na conta acrescenta pouco a esse alcance e mantém o
+  caminho documentado do OpenNext, sem dependência nova.
+- **Prova antes do GATE**: o deploy do `roseshop-spike` (T006) é feito com um token temporário
+  de **mesmo escopo** que o token ampliado do CI (sem o login OAuth do mantenedor), e o log
+  precisa mostrar o populate do cache com sucesso. O token temporário é apagado na T009. A
+  ampliação do token real só acontece no ramo ISR, depois do GATE (T015a).
+- **Alternatives considered**:
+  - **(c) credenciais S3 limitadas ao bucket de cache**, pela opção de cópia via rclone do
+    OpenNext (conferida no 1.20.8: lê `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e
+    `CF_ACCOUNT_ID` e não chama `ensureR2Bucket`). **Descartada**: (1) exige uma dependência
+    opcional cujo script de instalação baixa um executável em **todo** `npm ci`, inclusive nos
+    jobs que não fazem deploy; (2) os nomes das variáveis coincidem com as chaves de fotos da 004, e localmente o
+    `.dev.vars` sobrepõe o ambiente do processo, então um deploy manual usaria as chaves de
+    fotos; (3) o caminho completo só seria provado no deploy do PR, já no fim da feature.
+  - **(b) `wrangler deploy` sem popular o cache**: sai do caminho documentado do OpenNext e mexe
+    nos scripts de deploy.
+
+## 4. Riscos## 4. Riscos
 
 | # | Risco | Tratamento |
 |---|---|---|
@@ -303,6 +388,7 @@ Perguntas feitas durante o plan, com a opção recomendada aceita em todas:
 | R4 | `useSearchParams` sem `<Suspense>` derruba a página inteira para CSR no build | Teste de conformidade: build do `preview` + checagem de que `/` sai como ISR (`x-nextjs-cache`) no spike |
 | R5 | Crawler do WhatsApp não gera a prévia (noindex, tamanho da imagem, tempo) | Roteiro manual no dev (US5); a imagem tem no máximo 1 MiB (004) e o WhatsApp aceita até ~5 MB |
 | R6 | Entrada de build ("indisponível") vista logo após o deploy | D13; janela de segundos; checada no spike |
+| R7 | Token do CI com *Workers R2 Storage: Edit* na conta (D16) alcança também o bucket de fotos | Risco marginal aceito (o token já publica o worker com binding para as fotos); token restrito à conta, só nos environments do GitHub, validade em `docs/operacao.md`; nota no ADR-011 |
 
 ## 5. Resultado do spike SF0
 

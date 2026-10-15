@@ -19,10 +19,13 @@ Abordagem técnica:
 - **Cache.** Em `*.workers.dev` não há cache de borda, então as páginas públicas usam ISR do
   OpenNext: cache incremental num bucket R2 próprio por ambiente e fila de revalidação em
   Durable Object (SQLite, Free).
-- **Prazo de 1 minuto (FR-020).** O `revalidate` fica em 20 s e o `expireTime` em 40 s: depois
-  disso o pedido espera a página ser refeita. O navegador guarda por até 20 s. Pior caso:
-  40 + 20 = 60 s. O spike SF0 prova que o `expire` funciona no OpenNext; se falhar, as páginas
-  viram dinâmicas.
+- **Prazo de 1 minuto (FR-020).** O `revalidate` fica em 15 s e o `expireTime` em 35 s (35 s é
+  o `expireTime`, não o `revalidate`): depois disso o pedido espera a página ser refeita. O
+  navegador guarda por até 20 s. Pior caso: 35 + 20 = 55 s + tempo de render (5 s de folga,
+  A2). Um teste de conformidade trava a soma em ≤ 60 s. O spike SF0 prova que o `expire`
+  funciona no OpenNext; se falhar, as páginas viram dinâmicas.
+- **Deploy do cache (A4).** O token do CI ganha *Workers R2 Storage: Edit* para o deploy popular
+  o cache R2; provado no spike com token de mesmo escopo antes do GATE (research D16).
 - **Filtro.** A página inicial não lê a query (senão deixaria de ser ISR). O filtro
   `?categoria=<slug>` é aplicado no cliente por um GET público, que também serve o
   "Carregar mais", com cursor opaco (data de cadastro em µs + código).
@@ -71,7 +74,7 @@ SC-005, alterações visíveis ≤ 60 s.
 **Scale/Scope**:
 - Volume: ~500 produtos, ≤ 1.500 fotos, tráfego de loja que circula por link.
 - Superfície: 2 páginas, 1 GET de lista, 1 rota de fotos, `robots.ts`.
-- Infra: 1 bucket e 1 DO novos por ambiente; 1 secret e 1 var novos.
+- Infra: 1 bucket e 1 DO novos por ambiente; 1 secret e 1 var novos; [ISR] token do CI ampliado com *Workers R2 Storage: Edit* (D16).
 
 Sem `NEEDS CLARIFICATION`. O R1 (`expire` num isolate novo) é tratado como prova da SF0 com
 fallback aprovado.
@@ -84,7 +87,7 @@ fallback aprovado.
 |---|---|---|---|
 | I. Fonte de verdade | Spec com Given/When/Then e 3 clarificações; cada critério mapeado a teste ([Cobertura](#cobertura)); correções da spec feitas antes do código: Notas para o plan (sem "cache de borda") e nota no FR-002 sobre o cursor; **ADR-011** (cache do catálogo em `workers.dev`: ISR + R2 + DO, orçamento de 60 s) escrito após a SF0 e aprovado pelo humano antes da SF1 | ✅ | ✅ |
 | II. Stack fechada | Sem troca de stack: R2 e Workers já estão na tabela; ISR e DO são recursos do OpenNext/Workers (ADR-001); `axe-core` é só de dev (justificado no commit); Zod em query, cursor, slug, código e configuração | ✅ | ✅ |
-| III.1 Segredos | `WHATSAPP_NUMBER` só em `wrangler secret`/`.dev.vars` (P5, repositório público); `SITE_URL` é pública (`vars`); logs sem número, chave, IP nem mensagem de exceção | ✅ | ✅ |
+| III.1 Segredos | `WHATSAPP_NUMBER` só em `wrangler secret`/`.dev.vars` (P5, repositório público); `SITE_URL` é pública (`vars`); token do CI ampliado só com *Workers R2 Storage: Edit* e nenhum secret novo (D16); logs sem número, chave, IP nem mensagem de exceção | ✅ | ✅ |
 | III.2 Allowlist | O painel não muda; nenhuma rota pública importa `@/lib/auth` (conformidade); a rota de fotos do painel continua com sessão | ✅ | ✅ |
 | III.3 Zod | `codigo`, `categoria`, `depois`, `arquivo` (regex da 004), `WHATSAPP_NUMBER` (E.164), `SITE_URL` | ✅ | ✅ |
 | III.4 Upload | Não se aplica (só leitura); o bucket de fotos continua privado (FR-016); o bucket de cache não tem token S3 nem CORS | ✅ | ✅ |
@@ -124,7 +127,7 @@ cloudflare/
 ├── worker.ts                     # + prepararPedido/ajustarResposta, + export DOQueueHandler [protegido]
 └── publico.ts                    # NOVO: regras puras do worker para rotas públicas [protegido]
 open-next.config.ts               # r2IncrementalCache + doQueue
-next.config.ts                    # expireTime: 40
+next.config.ts                    # expireTime: 35 [ISR]
 wrangler.jsonc                    # NEXT_INC_CACHE_R2_BUCKET, NEXT_CACHE_DO_QUEUE + migrations, SITE_URL (3 ambientes) [protegido]
 .dev.vars.example                 # + WHATSAPP_NUMBER [protegido]
 src/app/
@@ -143,7 +146,9 @@ src/lib/
 ├── db/catalogo.ts                # NOVO: SQL público [protegido]
 └── catalogo/                     # NOVO: exibicao, slug, cursor (puros); config, registro, leitura, index (server-only)
 src/test/
-├── conformance/catalogo-acesso.test.ts   # NOVO: sem auth, campos públicos, 404 idêntico, noindex
+├── conformance/catalogo-acesso.test.ts   # NOVO: sem auth, campos públicos, cursor, 404 idêntico, noindex
+├── conformance/catalogo-orcamento.test.ts # NOVO: soma dos prazos ≤ 60 s (K1)
+├── conformance/fotos-bucket-privado.test.ts # NOVO: CORS sem leitura, sem domínio público (K1)
 └── db/catalogo-fixtures.ts       # NOVO
 ```
 
@@ -158,10 +163,10 @@ Detalhe e alternativas em [research.md §3](./research.md#3-decisões-técnicas)
 | # | Decisão |
 |---|---|
 | D1 | ISR com `r2IncrementalCache` em bucket próprio por ambiente; sem tag cache |
-| D2 | `revalidate` 20 s + `expireTime` 40 s + navegador 20 s = 60 s; SF0 prova; fallback dinâmico aprovado |
+| D2 | `revalidate` 15 s + `expireTime` 35 s + navegador 20 s = 55 s + render (A2); SF0 prova; fallback dinâmico aprovado |
 | D3 | Fila em Durable Object (`DOQueueHandler`, SQLite) |
 | D4 | O worker canoniza `/p/<n>` (308) e reescreve formatos inválidos para `/p/0` |
-| D5 | O worker aplica `Cache-Control: public, max-age=20` e `X-Robots-Tag`; no 500 repete o pedido uma vez: versão anterior (`no-store`) se houver, senão 503 `no-store` + `Retry-After` (P9) |
+| D5 | O worker aplica `Cache-Control: public, max-age=20` e `X-Robots-Tag`; no 500 repete o pedido uma vez: versão anterior (`no-store`, só nessa resposta) se houver, senão 503 `no-store` + `Retry-After` (P9, A1); pedidos de revalidação da fila (`x-isr: 1`) passam sem mudança e só registram |
 | D6 | `GET /fotos/[arquivo]`: banco a cada pedido (só `produto_fotos`), `public, max-age=60`, 404 idêntico, 503 em falha |
 | D7 | Slug = `replace(chave,' ','-')` (injetivo, sem desempate); filtro no cliente via GET; página inicial sem `searchParams` |
 | D8 | Ordem `criado_em DESC, id DESC`; cursor opaco `base64url(µs.id)`; bloco de 24; GET público `max-age=20`; sem índice novo |
@@ -171,7 +176,8 @@ Detalhe e alternativas em [research.md §3](./research.md#3-decisões-técnicas)
 | D12 | `SITE_URL` por ambiente em `vars` para `metadataBase` e link da mensagem |
 | D13 | Build sem banco: `NEXT_PHASE` de build devolve "indisponível"; regenerado pelo D2 |
 | D14 | `axe-core` nos testes de componente; `<img loading>` sem otimizador; `lang="pt-BR"` |
-| D15 | Voltar do detalhe: `sessionStorage` por filtro (itens, cursor, scroll), validade de 30 min |
+| D15 | Voltar do detalhe: `sessionStorage` por filtro (itens, cursor, scroll), validade de 30 min (exceção do FR-020, A3); restauração antes do GET; URL só com o filtro; "Ver o catálogo" limpa |
+| D16 | Token do CI ampliado com *Workers R2 Storage: Edit* (risco marginal); prova no spike com token de mesmo escopo; credenciais S3 por bucket descartadas (A4) |
 
 ## Subfeatures
 
@@ -180,13 +186,13 @@ check` verde (e `test:int` em série, quando houver) e um commit do humano.
 
 | SF | Conteúdo | Dono |
 |---|---|---|
-| SF0 | Spike do `expire` (quickstart §2) no `preview` e num worker descartável `roseshop-spike` (bucket `roseshop-cache-spike`, apagados ao fim); registrar resultado e ramo; ADR-011 para aprovação (GATE). Só no ramo ISR, depois do GATE: buckets `roseshop-cache-dev`/`-prod` e infra definitiva (`open-next.config.ts`, `next.config.ts`, `wrangler.jsonc` com DO e migration, reexportação no worker) | tech-lead + humano |
+| SF0 | Spike do `expire` (quickstart §2) no `preview` e num worker descartável `roseshop-spike` (bucket `roseshop-cache-spike`, apagados ao fim); registrar resultado e ramo; ADR-011 para aprovação (GATE). Só no ramo ISR, depois do GATE: buckets `roseshop-cache-dev`/`-prod`, token do CI ampliado com *Workers R2 Storage: Edit* e `docs/operacao.md` atualizado, e infra definitiva (`open-next.config.ts`, `next.config.ts`, `wrangler.jsonc` com DO e migration, reexportação no worker) | tech-lead + humano |
 | SF1 | `src/lib/db/catalogo.ts` + integração (keyset, empates, remoção entre blocos, slug, `fotoPublica`) | tech-lead (testes: test-writer) |
 | SF2 | `src/lib/catalogo/` puros: `exibicao`, `cursor`, `slug` | principal (testes: test-writer) |
 | SF3 | `config`, `registro`, `leitura`, barrel e regra de lint; `SITE_URL` no `wrangler.jsonc`; `WHATSAPP_NUMBER` no `.dev.vars.example` | tech-lead (testes: test-writer) |
-| SF4 | Rota pública de fotos + conformidade | tech-lead (testes: test-writer) |
+| SF4 | Rota pública de fotos + conformidade (incluindo bucket privado) | tech-lead (testes: test-writer) |
 | SF5 | `GET /api/catalogo/produtos` + conformidade do JSON | principal (testes: test-writer) |
-| SF6 | Worker (`publico.ts`, `worker.ts`) e `robots.ts` | tech-lead (testes: test-writer) |
+| SF6 | Worker (`publico.ts`, `worker.ts`), `robots.ts` e teste do orçamento de 60 s | tech-lead (testes: test-writer) |
 | SF7 | Telas do detalhe, erro e 404; layouts; `axe-core` | ui-dev (testes: test-writer) |
 | SF8 | Página inicial: destaques, filtro e 1º bloco | ui-dev (testes: test-writer) |
 | SF9 | Lista cliente: "Carregar mais", filtro no cliente e retorno do detalhe | ui-dev (testes: test-writer) |
@@ -208,21 +214,21 @@ M = manual (quickstart).
 | US1.6, US2.6, FR-023 | U (rótulo em texto) |
 | US1.7, FR-012 | U (`precoPublico`, milhar) |
 | US1.8, FR-005 | U (estado vazio) |
-| US1.9, FR-007 | U (restauração por `sessionStorage`) + M §4.4–4.5 |
+| US1.9, FR-007 | U (restauração por `sessionStorage`; URL sem blocos; restauração antes do GET) + M §4.4–4.5 |
 | US2.1, FR-014, FR-017 | U (componente do detalhe, alt) + I (`obterPublico` com fotos ordenadas) |
 | US2.2/2.5, FR-013 | U (`prepararPedido`: 308 canônico) + M §4.7 |
 | US2.3/2.4 | U (`prepararPedido` → `/p/0`; página → `notFound`) + M §4.8 |
 | US2.7, FR-002 | C (chaves do JSON e do RSC payload sem campos internos nem e-mail) |
-| US2.8, FR-024 | U (`ajustarResposta` com handler falso: 500 → repetição 200 = versão anterior; 500 → 500 = 503 `no-store`; evento por causa) + U (rota de fotos e GET → 503) + spike SF0 (P9) + M §4.11 |
+| US2.8, FR-024 | U (`ajustarResposta` com handler falso: 500 → repetição 200 = versão anterior; 500 → 500 = 503 `no-store`; `x-isr: 1` passa sem mudança e registra; evento por causa) + U (rota de fotos e GET → 503) + spike SF0 (P9) + M §4.11 |
 | US3.1/3.2, FR-018 | U (`linkWhatsapp` com `&#?`, acento, emoji, ida e volta) + M §5.1 |
 | US3.3 | U (esgotado ⇒ sem botão) |
 | US3.4/3.5, FR-019 | U (`configCatalogo`: E.164, ausente ⇒ `null` + log) + M §4.14 |
 | US4.1–4.6, FR-010/011 | I (`categoriasComProdutos`, slug) + U (fallback para "Todas") |
-| US4.7 | U (axe-core; `aria-current`, `aria-live`) |
+| US4.7 | U (axe-core; `aria-current` vindo do filtro efetivo na lista cliente, `aria-live`) |
 | US5.1–5.3, FR-021 | U (`generateMetadata`; 404 sem Open Graph de produto) + M §5.2 |
-| US5.4, US6.3, FR-015, FR-020, SC-005 | Spike SF0 + M §4.15 (cronômetro) |
+| US5.4, US6.3, FR-015, FR-020, SC-005 | C (orçamento: `revalidate` + `expireTime` + `max-age` das páginas, `max-age` do GET e das fotos ≤ 60 s) + U (fotos sem `immutable`) + spike SF0 + M §4.15 (cronômetro) |
 | US6.1–6.4, FR-015 | I (`fotoPublica` × envio pendente) + C (404 idêntico, mesmos cabeçalhos) |
-| US6.5, FR-016 | C (bucket sem domínio público; sem CORS de leitura) + M |
+| US6.5, FR-016 | C (CORS de `infra/r2/` sem `GET`/`HEAD`; `wrangler.jsonc` sem domínio público nem bucket de fotos fora de `PRODUCT_IMAGES`) + M |
 | FR-003 | U (texto com `<b>` e `**` exibido literal) |
 | FR-004, SC-009 | U (`ajustarResposta`) + C (metadata do layout) + M §4.13 |
 | FR-008 | U (`loading` por posição) |

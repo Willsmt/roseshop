@@ -65,7 +65,8 @@ interno no `listarBloco`. O id nunca sai na resposta.
 `base64url("<µs>.<id>")`. Validação (Zod): base64url decodificável; conteúdo
 `^\d{1,17}\.\d{1,10}$`; `id` em 1…2.147.483.647; `µs` ≤ 2^53 − 1 é desnecessário porque nunca
 vira `number` (vai como texto para o SQL com cast `::bigint`). Inválido ⇒ 400. Opaco por
-convenção, não por segredo (P7; nota no FR-002).
+convenção, não por segredo (P7, mantida na A5; nota no FR-002). O conteúdo decodificado é só
+`<µs>.<id>`, conferido pela conformidade do GET.
 
 ## 4. Configuração por ambiente
 
@@ -74,7 +75,7 @@ convenção, não por segredo (P7; nota no FR-002).
 | `WHATSAPP_NUMBER` | `wrangler secret` (dev, produção); `.dev.vars` (local) | `^\+[1-9]\d{7,14}$` | sem botão + `catalogo.whatsapp_invalido` |
 | `SITE_URL` | `vars` no `wrangler.jsonc` (os 3 ambientes) | URL; `https:` fora do local; sem barra final | prévia sem imagem, mensagem sem link + `catalogo.site_url_invalida` |
 | `NEXT_INC_CACHE_R2_BUCKET` | binding R2 (`roseshop-cache-<amb>`) | — | o OpenNext ignora o cache e renderiza (IgnorableError) |
-| `NEXT_CACHE_DO_QUEUE` | binding DO `DOQueueHandler` | — | sem revalidação em segundo plano (o pedido após 40 s ainda espera, D2) |
+| `NEXT_CACHE_DO_QUEUE` | binding DO `DOQueueHandler` | — | sem revalidação em segundo plano (o pedido após 35 s, o `expireTime`, ainda espera, D2) |
 
 ## 5. Estados da página pública
 
@@ -85,5 +86,8 @@ convenção, não por segredo (P7; nota no FR-002).
 | Detalhe | 200 | idem | ProdutoPublico |
 | Código não canônico | 308 → `/p/NNNN` | idem | — |
 | Código inválido, inexistente, removido | 404 | idem | "Produto não encontrado" + link ao catálogo, sem Open Graph de produto |
-| Banco indisponível, com versão guardada | 200 | `no-store` | versão anterior da página (FR-024, P9) |
+| Banco indisponível, com versão guardada | 200 | `no-store` **só na resposta repetida pelo worker**; os pedidos seguintes recebem a mesma versão com `public, max-age=20` [ISR] (research D5, A1) | versão anterior da página, durante a falha e até 1 min depois que o banco volta (FR-024, P9) |
 | Banco indisponível, sem versão guardada | 503 | `no-store`, `Retry-After: 30` | "Não foi possível carregar agora" + "Tentar de novo" |
+| Revalidação da fila (`HEAD` com `x-isr: 1`) [ISR] | o do Next, sem mudança | sem mudança | o worker não repete nem converte; no 500, só registra com `resultado: "revalidacao"` (research D5) |
+
+Os valores de `Cache-Control` desta tabela são do ramo **[ISR]**. No ramo **[FALLBACK]**, 200/308/404 levam `public, max-age=60`, não há versão guardada (todo 500 vira 503) nem revalidação da fila (tasks, "Ramo ISR × ramo FALLBACK").

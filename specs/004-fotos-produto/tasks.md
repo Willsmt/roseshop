@@ -1132,7 +1132,7 @@ da observação).
   Cron Trigger, hooks/CI): sincronizar `docs/` (incluindo `docs/operacao.md`: segredos, CORS,
   cron, modo registro) e as seções "Comandos"/"Estrutura"/"Estado atual" do `CLAUDE.md`; o agente
   só propõe a mensagem — **doc-sync**
-- [ ] T148 **Humano executa — configuração de produção ANTES do merge no `main`** (Q§1 para
+- [X] T148 **Humano executa — configuração de produção ANTES do merge no `main`** (Q§1 para
   `production`), com **checagem item a item** e o output real de cada uma entregue:
   (1) token R2 **Object Read & Write** com escopo só em `roseshop-prod`;
   (2) segredos: `npx wrangler secret put R2_ACCESS_KEY_ID --env production`,
@@ -1148,6 +1148,9 @@ da observação).
   (6) `SELECT count(*) FROM produtos;` em produção ⇒ `0` (somente leitura, console do Neon);
   (7) `FOTOS_VERIFICACAO` ausente de `wrangler.jsonc` (conferido pela conformidade verde) —
   **humano**
+  - Feita em 2026-10-14, itens 1 a 7 conferidos com output real; registro no quickstart §1
+    ("Produção, estado em 2026-10-14"). Prova de ponta a ponta das chaves do R2 entra no
+    roteiro do merge (T150): um cadastro com foto em produção.
 - [ ] T149 Commits (humano), mensagens:
   ```text
   docs(specs): aponta a 003 para a 004
@@ -1165,7 +1168,8 @@ da observação).
   ```
   — **humano**
 - [ ] T150 **Merge no `main` — humano**, só depois de T141–T149 concluídos, do PR aprovado e
-  do deploy de produção validado pelo `/api/health` e pelo smoke do CI. Nenhum agente faz
+  do deploy de produção validado pelo `/api/health` e pelo smoke do CI e de um cadastro com
+  foto em produção (prova das chaves do R2, T148). Nenhum agente faz
   push ou merge sem confirmação — **humano**
 
 ---

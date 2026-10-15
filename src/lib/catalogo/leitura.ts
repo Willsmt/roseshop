@@ -16,7 +16,14 @@ import { arquivoDaChave, chaveDoArquivo } from "@/lib/r2";
 
 import { configCatalogo } from "./config";
 import { codificarCursor, lerCursor } from "./cursor";
-import { altFoto, hrefProduto, linkWhatsapp, mensagemWhatsapp, precoPublico } from "./exibicao";
+import {
+  altFoto,
+  hrefProduto,
+  linkWhatsapp,
+  mensagemWhatsapp,
+  mostrarWhatsapp,
+  precoPublico,
+} from "./exibicao";
 import { marcarCausaBanco } from "./registro";
 import { validarSlug } from "./slug";
 
@@ -93,9 +100,9 @@ function publico(p: ProdutoPublicoDb): ProdutoPublico {
     descricao: p.descricao,
     fotos,
     whatsapp:
-      p.esgotado || whatsapp === null
-        ? null
-        : { href: linkWhatsapp(whatsapp, mensagemWhatsapp(p.nome, p.id, siteUrl)) },
+      whatsapp !== null && mostrarWhatsapp(p.esgotado, true)
+        ? { href: linkWhatsapp(whatsapp, mensagemWhatsapp(p.nome, p.id, siteUrl)) }
+        : null,
   };
 }
 

@@ -4,6 +4,8 @@ import path from "node:path";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ProdutoPublico } from "@/lib/catalogo";
+
 // Feature 005, T041 (primeira parte), T047 e T047a: o catálogo público não tem sessão. Será
 // ampliado nas SF7 e SF8 (páginas sem ações do painel). Nega por padrão: a rota pública de fotos
 // DEVE existir e exportar GET, e a varredura de sessão cobre todo `src/app`, menos as áreas que
@@ -287,6 +289,82 @@ describe("catálogo público sem sessão (T041)", () => {
       expect(decodificado).toBe(`${US}.${itens[23].id}`);
       const ultimo = corpo.itens[23] as { codigo: string };
       expect(Number(ultimo.codigo.replace(/\D/g, ""))).toBe(itens[23].id);
+    });
+  });
+
+  describe("SF7: layouts e props do detalhe (T061)", () => {
+    const LAYOUT_PUBLICO = "src/app/(public)/layout.tsx";
+    const LAYOUT_RAIZ = "src/app/layout.tsx";
+    const PAGINA_DETALHE = "src/app/(public)/p/[codigo]/page.tsx";
+    // `Record<keyof ProdutoPublico, true>` quebra o typecheck se o tipo ganhar ou perder uma chave.
+    const CHAVES: Record<keyof ProdutoPublico, true> = {
+      capa: true,
+      categoria: true,
+      codigo: true,
+      descricao: true,
+      esgotado: true,
+      fotos: true,
+      href: true,
+      nome: true,
+      preco: true,
+      whatsapp: true,
+    };
+    const CHAVES_PRODUTO_PUBLICO = Object.keys(CHAVES);
+
+    it("o layout (public) exporta metadata.robots { index: false, follow: false }", async () => {
+      const mod = (await import("../../app/(public)/layout")) as {
+        metadata: { robots?: unknown };
+      };
+      expect(mod.metadata.robots).toEqual({ index: false, follow: false });
+    });
+
+    it("o layout raiz tem lang=\"pt-BR\" e não tem Create Next App", () => {
+      const fonte = fs.readFileSync(path.join(process.cwd(), LAYOUT_RAIZ), "utf8");
+      expect(fonte).toMatch(/lang=["{]+\s*["']?pt-BR/);
+      expect(fonte).not.toContain("Create Next App");
+      expect(fonte).not.toMatch(/lang="en"/);
+      expect(fs.existsSync(path.join(process.cwd(), LAYOUT_PUBLICO))).toBe(true);
+    });
+
+    it("os componentes (não-DOM) da página do detalhe só recebem props com chaves de ProdutoPublico (US2.7)", async () => {
+      const produto: ProdutoPublico = {
+        codigo: "#0042",
+        href: "/p/0042",
+        nome: "Meia",
+        preco: "R$ 12,90",
+        esgotado: false,
+        capa: { url: "/fotos/a.webp", alt: "Meia" },
+        categoria: "Meias",
+        descricao: "d",
+        fotos: [{ url: "/fotos/a.webp", alt: "Meia — foto 1 de 1" }],
+        whatsapp: { href: "https://wa.me/5511999999999?text=x" },
+      };
+      expect(Object.keys(produto).sort()).toEqual([...CHAVES_PRODUTO_PUBLICO].sort());
+      vi.doMock("@/lib/catalogo", () => ({
+        lerProduto: vi.fn(async () => produto),
+        configCatalogo: () => ({ whatsapp: "+5511999999999", siteUrl: null }),
+      }));
+      vi.doMock("next/link", () => ({ default: "a" }));
+      const { default: Page } = await import("../../app/(public)/p/[codigo]/page");
+      const arvore = await Page({ params: Promise.resolve({ codigo: "0042" }) });
+
+      const componentes: Record<string, unknown>[] = [];
+      const visita = (n: unknown): void => {
+        if (Array.isArray(n)) return n.forEach(visita);
+        if (n === null || typeof n !== "object" || !("props" in n)) return;
+        const el = n as { type: unknown; props: Record<string, unknown> };
+        if (typeof el.type !== "string") componentes.push(el.props);
+        visita(el.props.children);
+      };
+      visita(arvore);
+
+      expect(fs.existsSync(path.join(process.cwd(), PAGINA_DETALHE))).toBe(true);
+      for (const props of componentes) {
+        const extras = Object.keys(props).filter(
+          (k) => k !== "children" && !CHAVES_PRODUTO_PUBLICO.includes(k),
+        );
+        expect(extras).toEqual([]);
+      }
     });
   });
 });

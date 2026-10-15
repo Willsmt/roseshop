@@ -6,6 +6,7 @@ import {
   hrefProduto,
   linkWhatsapp,
   mensagemWhatsapp,
+  mostrarWhatsapp,
   precoPublico,
 } from "./exibicao";
 
@@ -74,5 +75,16 @@ describe("linkWhatsapp", () => {
     expect(url.origin + url.pathname).toBe("https://wa.me/5511999999999");
     expect(url.searchParams.get("text")).toBe(msg);
     expect(decodeURIComponent(url.search.slice("?text=".length))).toBe(msg);
+  });
+});
+
+describe("mostrarWhatsapp (FR-018)", () => {
+  it.each([
+    [false, true, true],
+    [true, true, false],
+    [false, false, false],
+    [true, false, false],
+  ])("esgotado=%s, temNumero=%s ⇒ %s", (esgotado, temNumero, esperado) => {
+    expect(mostrarWhatsapp(esgotado, temNumero)).toBe(esperado);
   });
 });

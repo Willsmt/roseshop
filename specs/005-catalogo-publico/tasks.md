@@ -554,7 +554,7 @@ SC-005/US5.4/US6.3 (orçamento travado por teste, K1).
 - [X] T057 Revisão do diff pelo tech-lead (reescrita sem cache novo, 503 `no-store`, painel
   intocado, log sem URL, revalidação da fila intocada, orçamento vindo de `prazos.ts`) —
   **tech-lead**
-- [ ] T058 Commit (humano):
+- [X] T058 Commit (humano):
   ```text
   feat(worker): canoniza o detalhe e trata falhas das páginas públicas
 
@@ -579,11 +579,11 @@ e testes; `package.json` (`axe-core`); `src/test/axe.ts` (sugerido).
 
 **Nota (SF6)**: toda rota pública nova precisa entrar no prefixo de noindex do `cloudflare/publico.ts`, com teste.
 
-- [ ] T059 Instalar `axe-core` como devDependency com **versão exata** (`npm i -D -E`), publicada
+- [X] T059 Instalar `axe-core` como devDependency com **versão exata** (`npm i -D -E`), publicada
   há pelo menos duas semanas (ADR-007), e criar o helper `src/test/axe.ts` (sugerido) que roda o
   axe no `container` do Testing Library e falha em violações `serious`/`critical`. Justificativa
   da dependência no corpo do commit — **principal**
-- [ ] T060 [US2] [US3] [US5] **Teste primeiro** — testes de componente (jsdom) do detalhe:
+- [X] T060 [US2] [US3] [US5] **Teste primeiro** — testes de componente (jsdom) do detalhe:
   produto com 3 fotos ⇒ `<h1>` com nome, "#0042 · Meias", preço de `precoPublico`, `<img>` na ordem
   com `alt` "Nome — foto n de 3", descrição em `whitespace-pre-line`; nome com `<b>x</b>` e
   `**x**` aparece literal (FR-003); descrição vazia ⇒ sem seção "Descrição"; esgotado ⇒ texto
@@ -593,18 +593,18 @@ e testes; `package.json` (`axe-core`); `src/test/axe.ts` (sugerido).
   `/`, sem Open Graph de produto; `error.tsx` ⇒ `<h1>Não foi possível carregar agora</h1>` e botão
   "Tentar de novo" que chama `reset()`; axe sem violações graves em cada tela —
   **test-writer**
-- [ ] T061 [US1] [US2] **Teste primeiro** — ampliar `catalogo-acesso.test.ts`: o layout `(public)`
+- [X] T061 [US1] [US2] **Teste primeiro** — ampliar `catalogo-acesso.test.ts`: o layout `(public)`
   exporta `metadata.robots` `{ index: false, follow: false }`; o layout raiz tem
   `lang="pt-BR"` e não tem "Create Next App"; as props passadas pela página do detalhe aos
   componentes cliente não contêm chaves fora de `ProdutoPublico` (US2.7). Ampliar
   `catalogo-orcamento.test.ts`: **[ISR]** o literal `export const revalidate = N` de
   `p/[codigo]/page.tsx` (lido como texto: o Next exige literal) = `REVALIDATE_S`; **[FALLBACK]**
   a página exporta `dynamic = "force-dynamic"` e nenhum `revalidate` — **test-writer**
-- [ ] T062 `src/app/layout.tsx`: `lang="pt-BR"`, metadata padrão "Roseshop" — **ui-dev**
-- [ ] T063 `src/app/(public)/layout.tsx` (robots, `metadataBase` de `configCatalogo().siteUrl`,
+- [X] T062 `src/app/layout.tsx`: `lang="pt-BR"`, metadata padrão "Roseshop" — **ui-dev**
+- [X] T063 `src/app/(public)/layout.tsx` (robots, `metadataBase` de `configCatalogo().siteUrl`,
   título e `openGraph.siteName` "Roseshop"), `error.tsx` (client: `reset()` + `router.refresh()`),
   `_catalogo/textos.ts` (todos os textos das telas públicas, sem dependências) — **ui-dev**
-- [ ] T064 `src/app/(public)/p/[codigo]/page.tsx` + `not-found.tsx` + `_catalogo/galeria.tsx` +
+- [X] T064 `src/app/(public)/p/[codigo]/page.tsx` + `not-found.tsx` + `_catalogo/galeria.tsx` +
   `_catalogo/botao-whatsapp.tsx`: `lerProduto` do barrel; `"nao_encontrado"` ⇒ `notFound()`;
   código não canônico ⇒ `permanentRedirect` para o canônico (defesa em profundidade; o `next dev`
   não passa pelo worker); falha de leitura **propaga** (nunca `notFound()`). **[ISR]**
@@ -613,7 +613,7 @@ e testes; `package.json` (`axe-core`); `src/test/axe.ts` (sugerido).
   **[FALLBACK]** `export const dynamic = "force-dynamic"`. `<img>` simples (sem `next/image`),
   `loading="eager"` na capa e `lazy` nas demais, `width`/`height` fixos. "Voltar ao catálogo" como
   link para `/` (a SF9 troca pelo `router.back()` condicional) — **ui-dev**
-- [ ] T065 `npm run check`; colar o output real — **júnior**
+- [X] T065 `npm run check`; colar o output real — **júnior**
 - [ ] T066 Commit (humano):
   ```text
   feat(catalogo): adiciona o detalhe público do produto

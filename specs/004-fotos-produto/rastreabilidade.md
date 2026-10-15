@@ -18,7 +18,7 @@ a partir dos seus critérios, antes da implementação. Legenda: **INT** = `npm 
 | SC-005 | Coberto (UNI): pipeline do aparelho com teto de 1 MiB. Prova com Chrome Android real no dev (SF10); Safari iOS e HEIF ficam como risco aceito, a refazer antes de liberar uma administradora com iPhone. | `src/lib/fotos/aparelho/{preparar-foto,codificar,suporta-webp}.test.ts` |
 | SC-006 | Coberto (UNI): verificação por lista de permitidos com arquivos forjados e recusa com remoção na confirmação. | `src/lib/r2/verificacao/*.test.ts`, `src/lib/fotos/actions.test.ts` |
 | SC-007 | Coberto (INT): ações simultâneas sobre o conjunto de fotos. | `src/lib/db/fotos.concorrencia.int.test.ts`, `fotos.conjunto.int.test.ts` |
-| SC-008 | Coberto (INT). Prova do cron no `roseshop-dev` pendente (T118b, abaixo). | `src/lib/db/fotos.limpeza.int.test.ts`, `src/lib/fotos/limpeza.int.test.ts` |
+| SC-008 | Coberto (INT). Cron provado no `roseshop-dev` em 2026-10-15 (T118b, abaixo). | `src/lib/db/fotos.limpeza.int.test.ts`, `src/lib/fotos/limpeza.int.test.ts` |
 | SC-009 | Coberto (UNI): IA indisponível não impede o cadastro manual. | `src/lib/produtos/sugestao.test.ts` |
 | SC-010 | Coberto por SF: testes antes da implementação em cada SF, `npm run check` verde (96 arquivos, 2524 testes em 2026-10-14); `check` e `test:int` do fechamento na T141. Mapeamento critério → teste na tabela "Cobertura dos critérios de aceite" do `plan.md`; o analyze de 2026-10-08 confirmou 100% dos FR e SC com task de teste. | `plan.md` ("Cobertura dos critérios de aceite"), `tasks.md` (Fecha de cada SF) |
 | SC-011 | Mensagens revisadas na T144: só `foto_expirada` mudou ("Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo."). **Pendente da entrega**: mensagens que a administradora não entender, na observação (T143). | `src/lib/fotos/mensagens.ts`, `src/lib/produtos/sugestao.ts` |
@@ -36,5 +36,5 @@ a partir dos seus critérios, antes da implementação. Legenda: **INT** = `npm 
 
 | Prova | Situação |
 |---|---|
-| Cron da limpeza no `roseshop-dev` (T118b) | O plano gratuito não guarda os logs do cron; a execução de 2026-10-15 06:00 UTC é capturada por `wrangler tail`. O merge (T150) só depois desse resultado. |
-| CPU no Workers Free (T139) | **Risco aceito**: `sugerirProduto` mediu 21 ms de CPU, acima dos 10 ms, sem falha. Sinal de alerta: Erro 1102 nos logs; contingência: Workers Paid com emenda da constitution VII (ADR-010). |
+| Cron da limpeza no `roseshop-dev` (T118b) | **Provado** em 2026-10-15 06:00 UTC, capturado por `wrangler tail --env dev` (o plano gratuito não guarda os logs do cron): `outcome` `ok`, `cpuTime` 225 ms, `wallTime` 2550 ms, 0 envios expirados, 0 órfãos, 0 falhas, status 200. |
+| CPU no Workers Free (T139, T118b) | **Risco aceito**: `sugerirProduto` mediu 21 ms de CPU e o cron da limpeza 225 ms (T118b; `/api/health` até 470 ms na mesma captura), acima dos 10 ms, sem falha. Sinal de alerta: Erro 1102 nos logs; contingência: Workers Paid com emenda da constitution VII (ADR-010). |

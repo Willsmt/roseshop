@@ -927,12 +927,20 @@ Spec: US6-AC1/AC3–6, SC-008.
   - [X] T118a **Parte local** (fecha a T118 nesta SF): build, `wrangler dev --test-scheduled`,
     `curl` do scheduled (log com as contagens e `{"evento":"limpeza","status":200}`) e `POST` sem
     header ⇒ 404. Output real colado aqui — **humano**
-  - [ ] T118b **Parte do dev — PENDENTE** (decisão do humano, 2026-10-12, opção B: sem cron
+  - [X] T118b **Parte do dev — PENDENTE** (decisão do humano, 2026-10-12, opção B: sem cron
     temporário). O deploy do `roseshop-dev` vem do CI do PR com o commit da SF12 e o cron
     `0 6 * * *` final. Na primeira execução real (06:00 UTC = 03:00 em Brasília) depois do
     deploy, o humano confere em roseshop-dev → Logs a execução do cron sem erro, o
     `{"evento":"limpeza","status":200}` e as contagens, e entrega o resultado. Falha ou ausência
     da execução volta ao tech-lead antes da SF15 — **humano**
+    - Feita em 2026-10-15 (relato do humano): o plano gratuito não guarda os logs do cron, então
+      a execução foi capturada por `wrangler tail --env dev` (a noite toda, timeout de 5 h).
+      Cron `0 6 * * *`, `outcome` `ok`, `cpuTime` 225 ms, `wallTime` 2550 ms; logs
+      `{"evento":"limpeza","enviosExpirados":0,"orfaosApagados":0,"falhas":0}` e
+      `{"evento":"limpeza","status":200}`. Outras requisições capturadas, todas `ok`: `/painel`
+      35 ms, `/painel/entrar` 271 ms, `/api/health` 470 e 154 ms de CPU. O cron também passa
+      dos 10 ms do Workers Free sem erro: registrado no risco de CPU (ADR-010, `docs/operacao.md`,
+      `rastreabilidade.md`).
 - [X] T119 Revisão do diff pelo tech-lead (opus): rota (404 uniforme, comparação em tempo
   fixo), worker, `tsconfig`, `wrangler.jsonc` (cron restaurado), lock e snapshot da limpeza —
   **tech-lead**

@@ -797,12 +797,17 @@ real, cadastro com 3 fotos: `sugerirProduto` com **21 ms** de CPU (`wallTime` 42
 tudo espera pela OpenAI); as outras requisições de `/painel/produtos/novo` entre 3 e 24 ms;
 todas com `outcome` `ok`. O excesso é do app inteiro, não só da IA.
 
+Prova do cron em 2026-10-15 (T118b, `wrangler tail --env dev`): a limpeza rodou com `outcome`
+`ok`, **225 ms** de CPU (`wallTime` 2550 ms), sem nada a apagar (0 envios expirados, 0 órfãos,
+0 falhas) e status 200. O cron também passa dos 10 ms, sem erro. Na mesma captura, `/painel`
+35 ms, `/painel/entrar` 271 ms e `/api/health` 470 e 154 ms de CPU, todas `ok`.
+
 | Item | Valor |
 |---|---|
 | Limite documentado (Workers Free) | 10 ms de CPU por requisição HTTP e por Cron Trigger |
 | Sinal de alerta | Erro 1102 nos logs do Worker (dev ou produção) |
 | Contingência | Migrar para o Workers Paid, com emenda da constitution VII |
-| Gatilho da contingência | Aparecer um 1102, ou a prova do cron (T118b) mostrar a limpeza estourando |
+| Gatilho da contingência | Aparecer um 1102, ou a limpeza falhar por limite de CPU (na T118b, 2026-10-15, rodou `ok` com 225 ms) |
 | Modelo da IA em produção | `gpt-6-luna`, esforço `none`: **provisórios** (T120a); a escolha final (T132/T133) é pendência de entrega e não bloqueia o merge (ADR-010 emendado em 2026-10-14) |
 
 Fontes: [ADR-010](../specs/adr/010-ia-openai.md) (Consequências) e

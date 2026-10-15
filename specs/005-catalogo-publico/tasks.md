@@ -355,12 +355,12 @@ DM§4; research D7, D10, D11, D12, D13; resultado de D11 na T008 (`ctx` ou plano
 FR-002 (visões públicas fechadas).
 **Revisão TL**: ✅ (`wrangler.jsonc`, `.dev.vars.example`).
 
-- [ ] T031 **[TL✅]** `wrangler.jsonc`: `SITE_URL` em `vars` dos três ambientes (local
+- [X] T031 **[TL✅]** `wrangler.jsonc`: `SITE_URL` em `vars` dos três ambientes (local
   `http://localhost:8787`, dev `https://roseshop-dev.willsmt.workers.dev`, produção
   `https://roseshop.willsmt.workers.dev`), ao lado do `R2_S3_ENDPOINT`; `.dev.vars.example`:
   bloco `WHATSAPP_NUMBER=` com comentário "E.164, ex. +5511999999999; local: qualquer número de
   teste; dev e produção: `wrangler secret put`" — **principal**
-- [ ] T032 **Humano executa**: acrescentar `WHATSAPP_NUMBER` ao `.dev.vars` local; depois o
+- [X] T032 **Humano executa**: acrescentar `WHATSAPP_NUMBER` ao `.dev.vars` local; depois o
   principal roda `npm run cf-typegen` e confere `SITE_URL` e `WHATSAPP_NUMBER` no
   `cloudflare-env.d.ts` — **humano** + **principal**
 - [X] T033 [P] [US3] **Teste primeiro** — `src/lib/catalogo/config.test.ts` e `registro.test.ts`
@@ -396,9 +396,9 @@ FR-002 (visões públicas fechadas).
   `@/lib/catalogo/*` fora de `src/lib/catalogo/`, **exceto** `@/lib/catalogo/exibicao` (puro, usado
   por componentes cliente) — **principal**
 - [X] T037 `npm run check`; colar o output real — **júnior**
-- [ ] T038 Revisão do diff pelo tech-lead (`wrangler.jsonc`, `.dev.vars.example`, log sem valor,
+- [X] T038 Revisão do diff pelo tech-lead (`wrangler.jsonc`, `.dev.vars.example`, log sem valor,
   marca da causa) — **tech-lead**
-- [ ] T039 Commit (humano):
+- [X] T039 Commit (humano):
   ```text
   feat(catalogo): adiciona leitura pública, configuração e registro
 

@@ -171,6 +171,36 @@ describe("lerProduto", () => {
     expect(decodeURIComponent(p.whatsapp!.href)).toContain("/p/0042");
   });
 
+  it("campos internos que a linha do banco traga a mais nunca chegam às visões (DM§1, FR-002)", async () => {
+    const internos = {
+      categoriaId: 7,
+      versao: 3,
+      fotosVersao: 2,
+      fotosOperacao: "op-1",
+      destaqueVaga: 1,
+      criadoPor: "a@x.com",
+      atualizadoPor: "a@x.com",
+      atualizadoEm: "2026-10-01",
+    };
+    db.obterPublico.mockResolvedValue({ ...publicoDb(), ...internos } as sql.ProdutoPublicoDb);
+    db.listarDestaques.mockResolvedValue([{ ...cartaoDb(42), ...internos } as sql.CartaoDb]);
+    db.listarBloco.mockResolvedValue({
+      itens: [{ ...cartaoDb(43), ...internos } as sql.CartaoDb],
+      haMais: false,
+      proximo: null,
+    });
+    const p = await lerProduto("42");
+    const v = await lerVitrine("meias");
+    if (p === "nao_encontrado") throw new Error("inesperado");
+    expect(Object.keys(p).sort()).toEqual(CHAVES_PUBLICO);
+    expect(Object.keys(v.destaques[0]).sort()).toEqual(CHAVES_CARTAO);
+    expect(Object.keys(v.bloco.itens[0]).sort()).toEqual(CHAVES_CARTAO);
+    const texto = JSON.stringify({ p, v });
+    for (const campo of [...Object.keys(internos), '"id"', "a@x.com", '"fotos/']) {
+      expect(texto).not.toContain(campo);
+    }
+  });
+
   it("whatsapp null se esgotado", async () => {
     db.obterPublico.mockResolvedValue(publicoDb({ esgotado: true }));
     const p = await lerProduto("0042");

@@ -1,10 +1,11 @@
 # Arquitetura
 
 > Estado: **Fase 0 concluída + features 001 (autenticação), 002 (categorias)
-> e 003 (produtos) implementadas; feature 004 (fotos) em andamento: existem o
-> servidor de fotos (`src/lib/r2/`, `src/lib/fotos/`, rota de exibição) até a SF7, o
-> pipeline da foto no aparelho (SF8), as telas do cadastro com fotos (SF9) e a tela de
-> fotos do produto existente (SF11), a limpeza diária de fotos (SF12) e o servidor da sugestão por IA (SF13, sem tela ainda)**. Este documento descreve apenas o que existe hoje
+> e 003 (produtos) implementadas; feature 004 (fotos) construída (SF1 a SF14) e em
+> fechamento (SF15), ainda não em produção: servidor de fotos (`src/lib/r2/`,
+> `src/lib/fotos/`, rota de exibição), pipeline da foto no aparelho, telas do cadastro e da
+> tela Fotos, limpeza diária (worker próprio com `scheduled`) e sugestão por IA (servidor e
+> tela do cadastro)**. Este documento descreve apenas o que existe hoje
 > no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
@@ -366,7 +367,8 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   otimização de imagem do Next (`no-img-element` desligado com comentário).
 - **Objetos órfãos dependem do cron** (SF12): recusa de confirmação e remoção de produto
   apagam objetos do R2 em melhor esforço; a limpeza diária recolhe o resto. **T118b
-  pendente**: a prova do cron no `roseshop-dev` ainda não foi feita (ver
+  pendente**: a prova do cron no `roseshop-dev` (execução de 2026-10-15 06:00 UTC, via
+  `wrangler tail`) ainda não foi feita; o merge só depois (ver
   [operacao.md, Troubleshooting](./operacao.md#troubleshooting)).
 - **Durable Objects do OpenNext não reexportados**: `.open-next/worker.js` também exporta
   classes de DO (fila e cache de tags); hoje não há `durable_objects` no `wrangler.jsonc`.
@@ -470,13 +472,15 @@ enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras 
 | `src/lib/ai/config.ts` | Constantes: `MODELO` (`gpt-6-luna`) e `ESFORCO` (`none`), **provisórios até a medição da SF13 (T133)**; `TEMPO_LIMITE_MS` 20 000, `MAX_SAIDA` 800, `LIMITE_POR_PESSOA` 30 e `LIMITE_TOTAL` 100 por dia de Brasília. |
 | `src/lib/ai/sugestao.ts` | `pedirSugestao`: `fetch` direto à Responses API (`https://api.openai.com/v1/responses`), `store: false`, saída `json_schema` estrita, imagens em base64 com `detail: "low"`, aborto em 20 s; revalida a forma da resposta (Zod `.strict()`, `categoria_id` só da lista enviada). Log `ia.sugestao` só com modelo, status HTTP, duração, contadores numéricos de `usage` e o motivo da falha; nunca chave, imagem, prompt nem texto devolvido. |
 | `src/lib/ai/index.ts` | Barrel `server-only`: `pedirSugestao`, tipos e os dois limites. |
+| `src/lib/ai/medicao-relatorio.ts` | Tabela Markdown da medição manual (T132; `ia-medicao/resultado.md`, fora do git). Puro e sem `server-only`; usado só por `medicao.ia.test.ts`. |
 
 - **Fronteira**: `api.openai.com` e `OPENAI_API_KEY` só aparecem em `src/lib/ai/`;
   `src/test/conformance/ia-acesso.test.ts` (AST, nega por padrão) também restringe quem
   importa `@/lib/ai`, `@/lib/db/ia-uso` e `@/lib/produtos/sugestao`.
 - **Contador**: `consumirSugestao` em `src/lib/db/ia-uso.ts` (um `db.batch` sob
   `LOCK_IA_USO` = 4002, dia de Brasília; ver [database.md](./database.md#tabela-ia_uso)).
-- **Teto de gasto no provedor**: aplicado no projeto OpenAI dev em 2026-10-12 (T014b, ADR-010).
+- **Teto de gasto no provedor**: aplicado no projeto OpenAI dev em 2026-10-12 (T014b, ADR-010) e no projeto de produção (separado, T148, 2026-10-14).
+- **Modelo em produção**: `gpt-6-luna` com esforço `none`, provisórios (ADR-010 emendado em 2026-10-14); T132/T133 são pendência de entrega.
 - **Medição manual**: `npm run test:ia` (ver [operacao.md](./operacao.md#testes-vitest)).
 - **Risco aceito (CPU)**: `sugerirProduto` mediu 21 ms de CPU no dev, acima dos 10 ms do
   Workers Free; ver [operacao.md](./operacao.md#limite-de-cpu-do-plano-gratuito-do-workers).

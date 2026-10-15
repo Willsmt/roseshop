@@ -366,11 +366,12 @@ ambiente) e o bucket precisa aceitar o envio vindo do site (CORS).
   restrito ao bucket do ambiente. Local: valores falsos e fixos em `.dev.vars.example`
   (iguais aos de `local_dev.experimental_s3_credentials`; não são segredo). Dev e produção:
   `npx wrangler secret put R2_ACCESS_KEY_ID --env <amb>` (idem `R2_SECRET_ACCESS_KEY`),
-  com o procedimento por pipe de "Cadastrar um secret". **Dev já cadastrado**; **produção
-  fica para a SF15** da feature 004.
+  com o procedimento de "Gravar os segredos sem expor o valor" (abaixo). **Dev e produção já
+  cadastrados** (produção em 2026-10-14, T148: token Object Read & Write só no
+  `roseshop-prod`, sem expiração).
 - **`CRON_SECRET`**: protege `POST /api/interno/limpeza` (limpeza diária, SF12). Local:
-  `.dev.vars` (qualquer valor não vazio). Dev: `wrangler secret` **já cadastrado**. Produção:
-  fica para a SF15.
+  `.dev.vars` (qualquer valor não vazio). Dev e produção: `wrangler secret`, **já
+  cadastrados**.
 - **CORS** versionado em `infra/r2/` (formato do wrangler, `rules[].allowed`, **não** o do S3):
 
 ```bash
@@ -380,8 +381,57 @@ npx wrangler r2 bucket cors list roseshop-dev   # conferir
 
   `cors.dev.json` libera só a origem `https://roseshop-dev.willsmt.workers.dev`, método
   `PUT`, headers `content-type` e `if-none-match`, `maxAgeSeconds` 600 (aplicado e
-  conferido em `roseshop-dev`). `cors.production.json` tem a origem **ainda por preencher**
-  (placeholder); aplicar na SF15.
+  conferido em `roseshop-dev`). `cors.production.json` tem o mesmo formato, com a origem
+  `https://roseshop.willsmt.workers.dev`; foi aplicado e conferido em `roseshop-prod` na
+  T148 (2026-10-14):
+
+```bash
+npx wrangler r2 bucket cors set roseshop-prod --file infra/r2/cors.production.json
+npx wrangler r2 bucket cors list roseshop-prod   # conferir
+```
+
+  Mudou a origem do site (domínio próprio, por exemplo)? Edite o JSON do ambiente, reaplique
+  com `cors set` e confira com `cors list`; sem isso o navegador recusa o `PUT` direto ao R2.
+
+#### Gravar os segredos sem expor o valor
+
+Nenhum valor passa por argumento de comando, histórico do shell ou arquivo. Os segredos
+das chaves do R2 (cole o valor quando o `read` pedir; ele não aparece na tela):
+
+```bash
+read -rs V; printf %s "$V" | npx wrangler secret put R2_ACCESS_KEY_ID --env <amb>; unset V
+read -rs V; printf %s "$V" | npx wrangler secret put R2_SECRET_ACCESS_KEY --env <amb>; unset V
+```
+
+`CRON_SECRET` é gerado, não escolhido, e nunca é impresso:
+
+```bash
+V="$(openssl rand -base64 32)"; printf %s "$V" | npx wrangler secret put CRON_SECRET --env <amb>; unset V
+```
+
+(`<amb>` = `dev` ou `production`; `OPENAI_API_KEY` segue o mesmo padrão do `read -rs`.)
+Confira só os **nomes** com `npx wrangler secret list --env <amb>`. Produção tem 9 segredos
+(os 6 de "Cadastrar um secret" mais `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e
+`CRON_SECRET`). O `scheduled` e a rota leem o mesmo `CRON_SECRET` do ambiente; ao trocá-lo, confira
+com `wrangler tail` que a próxima limpeza não devolve 404.
+
+#### Revogar o token R2 (suspeita de vazamento)
+
+O token só vale para o bucket do ambiente (Object Read & Write: lê e apaga fotos). Em caso
+de vazamento de `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`, a revogação é **manual**
+([ADR-009](../specs/adr/009-fotos-r2.md)): no painel da Cloudflare (R2 → **Manage API tokens**),
+revogue o token do ambiente; crie outro com o mesmo escopo e grave os dois segredos de novo
+(procedimento acima). Enquanto o novo par não estiver gravado, o envio de foto falha; o resto do painel
+continua. Produção e dev têm tokens separados.
+
+#### Modo registro da verificação (desligado)
+
+`FOTOS_VERIFICACAO=registro` relaxava a verificação do arquivo e registrava o resultado
+(`fotos.verificacao.registro`) para a prova com aparelho real (SF10). Está **desligado e não
+deve existir** em `wrangler.jsonc`, `.dev.vars` nem `.dev.vars.example`: o teste
+`src/test/conformance/verificacao-modo.test.ts` falha se a chave reaparecer. Só reative por
+decisão do tech-lead, em dev, e remova no mesmo PR (ver
+[F04](./features/F04-fotos.md#prova-com-aparelho-real)).
 
 ## Variáveis de ambiente
 
@@ -400,10 +450,10 @@ local").
 | `AUTH_GOOGLE_SECRET` | Client Secret do OAuth do Google (começa com `GOCSPX-`). | `src/lib/auth/config.ts` (`createAuthConfig`, provedor Google). | Secret em dev online e produção |
 | `ADMIN_EMAILS` | Allowlist de e-mails das administradoras, separados por vírgula, sem espaço. Comparação sem diferenciar maiúsculas; entradas inválidas são ignoradas. | `src/lib/auth/config.ts` (callback `signIn`) e `src/lib/auth/guard.ts` (`getAdminSession`, a cada acesso). | Secret em dev online e produção (contém e-mails pessoais) |
 | `R2_S3_ENDPOINT` | Endpoint S3 do bucket do ambiente (já inclui o nome do bucket). | `src/lib/r2/config.ts` (`configR2`), usado por `assinarEnvio`. Declarada em `vars` no `wrangler.jsonc`, redeclarada por ambiente. | Var pública (`wrangler.jsonc`) |
-| `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
-| `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online (cadastrado) e produção (SF15); local: valor falso em `.dev.vars.example` |
-| `CRON_SECRET` | Protege a limpeza diária de fotos (SF12): o `scheduled` o envia como Bearer. | `cloudflare/worker.ts` (`scheduled`) e `src/app/api/interno/limpeza/route.ts`. | Secret em dev online (cadastrado) e produção (SF15); local: qualquer valor não vazio |
-| `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usará a de `roseshop-prod`. | `src/lib/ai/sugestao.ts` (`pedirSugestao`), lida de `process.env`; sem a chave a sugestão falha com `sem_chave` (vira `ia_indisponivel`). | Secret em dev online e produção |
+| `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online e produção (cadastrados); local: valor falso em `.dev.vars.example` |
+| `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online e produção (cadastrados); local: valor falso em `.dev.vars.example` |
+| `CRON_SECRET` | Protege a limpeza diária de fotos (SF12): o `scheduled` o envia como Bearer. | `cloudflare/worker.ts` (`scheduled`) e `src/app/api/interno/limpeza/route.ts`. | Secret em dev online e produção (cadastrados); local: qualquer valor não vazio |
+| `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usa a de `roseshop-prod` (projeto OpenAI separado, com teto de gasto). | `src/lib/ai/sugestao.ts` (`pedirSugestao`), lida de `process.env`; sem a chave a sugestão falha com `sem_chave` (vira `ia_indisponivel`). | Secret em dev online e produção |
 
 As variáveis de auth, R2 e `CRON_SECRET` estão em `.dev.vars.example` e tipadas em
 `cloudflare-env.d.ts`. Todas têm consumidor (coluna "Onde é usada"); `OPENAI_API_KEY` só é referenciada em `src/lib/ai/`. O **bucket** é
@@ -574,7 +624,8 @@ ambiente (`openssl rand -base64 32`). Não use `echo` com o valor.
 Os 6 secrets de runtime de produção (`DATABASE_URL`, `AUTH_SECRET`,
 `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`) já
 foram cadastrados pelo mesmo procedimento (validar + pipe), conforme relato do
-mantenedor. Não confundir com os secrets do GitHub (seção "CI"), que servem só
+mantenedor; a feature 004 acrescentou `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e
+`CRON_SECRET` (9 no total em 2026-10-14; ver "R2: segredos, endpoint e CORS"). Não confundir com os secrets do GitHub (seção "CI"), que servem só
 ao deploy.
 
 **Regra operacional**: ao rodar wrangler, responda **no** a qualquer oferta de
@@ -752,6 +803,7 @@ todas com `outcome` `ok`. O excesso é do app inteiro, não só da IA.
 | Sinal de alerta | Erro 1102 nos logs do Worker (dev ou produção) |
 | Contingência | Migrar para o Workers Paid, com emenda da constitution VII |
 | Gatilho da contingência | Aparecer um 1102, ou a prova do cron (T118b) mostrar a limpeza estourando |
+| Modelo da IA em produção | `gpt-6-luna`, esforço `none`: **provisórios** (T120a); a escolha final (T132/T133) é pendência de entrega e não bloqueia o merge (ADR-010 emendado em 2026-10-14) |
 
 Fontes: [ADR-010](../specs/adr/010-ia-openai.md) (Consequências) e
 [quickstart §5 item 3](../specs/004-fotos-produto/quickstart.md). O tamanho das fotos tratadas
@@ -773,8 +825,11 @@ não foi registrado na medição.
   por SQL em `ia_uso` (banco local: `npm run db:psql`).
 - **`npm run test:ia` falha de cara**: falta a pasta `ia-medicao/` (ignorada pelo git, com
   fotos reais e `gabarito.json`) ou a chave dev no `.dev.vars`. Cada execução custa dinheiro.
-- **Cron da limpeza não aparece ou falha no dev (T118b pendente)**: confira em Cloudflare →
-  roseshop-dev → Logs depois da primeira execução das 03:00 de Brasília (06:00 UTC). A
+- **Cron da limpeza não aparece ou falha (T118b: prova no dev pendente)**: no plano gratuito
+  os logs do cron **não ficam guardados** no painel (Logs); a execução só é vista ao vivo.
+  Deixe `npx wrangler tail --env dev` (ou `--env production`) aberto antes das 06:00 UTC
+  (03:00 de Brasília) e capture o evento `scheduled` com o `outcome`. A primeira execução com
+  o cron no dev é a de 2026-10-15 06:00 UTC; o merge da 004 só depois desse resultado. A
   falha mostra `limpeza: status <N>` (o `scheduled` lança de propósito). Status 404 indica
   `CRON_SECRET` ausente ou diferente no ambiente; 500 indica erro no banco ou no R2 (o log
   da rota não traz a mensagem). Testar localmente:

@@ -126,3 +126,9 @@ limite de gasto configurado no provedor. O projeto não tem SDK de IA instalado.
   falha). Sinal de alerta: Erro 1102 nos logs. Contingência: migrar para o Workers Paid, com
   emenda da constitution VII, se aparecer um 1102 ou se a prova do cron (T118b) mostrar a limpeza
   estourando.
+- (−) **Prova do cron (2026-10-15, T118b)**: a limpeza no `roseshop-dev` rodou com `outcome`
+  `ok`, `cpuTime` **225 ms** (`wallTime` 2550 ms), sem nada a apagar (0 envios expirados, 0
+  órfãos, 0 falhas) e status 200. O cron também passa dos 10 ms do Workers Free, sem erro; na
+  mesma captura, `/painel` 35 ms, `/painel/entrar` 271 ms e `/api/health` 470 e 154 ms de CPU,
+  todas `ok`. A limpeza não falhou, então a contingência não foi acionada; o risco aceito
+  continua, com o mesmo sinal de alerta (Erro 1102).

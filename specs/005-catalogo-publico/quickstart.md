@@ -9,8 +9,8 @@ Roteiro de validação. Contratos em [contracts/](./contracts/), modelo em
 - Stack local: `npm run db:up` e `npm run db:migrate` (sem migration nova na 005).
 - `.dev.vars` com a chave nova `WHATSAPP_NUMBER` (local: um número de teste em E.164, ex.
   `+5511999999999`; não precisa ser real).
-- `wrangler.jsonc` com `SITE_URL`, o bucket de cache e o DO da fila nos três ambientes (contrato
-  §1, research D1/D3/D12).
+- `wrangler.jsonc` com `SITE_URL` nos três ambientes e, só no ramo **[ISR]**, o bucket de cache e
+  o DO da fila (contrato §1, research D1/D3/D12).
 
 ## 1. Configuração por ambiente online (humano)
 
@@ -28,6 +28,12 @@ Para `dev` e depois `production`:
    ```
 3. Conferir: `npx wrangler secret list --env dev` com `WHATSAPP_NUMBER` e, no ramo ISR,
    `npx wrangler r2 bucket list` com `roseshop-cache-dev`.
+4. Só no ramo ISR, depois do GATE (tasks T015a–T015b, research D16): o token do CI
+   (`CLOUDFLARE_API_TOKEN`) ganha *Workers R2 Storage: Edit*, para o deploy popular o cache; o
+   valor do secret não muda. Prova feita antes, no spike, com token de mesmo escopo (T006).
+5. Bucket de fotos continua privado (US6.5): `npx wrangler r2 bucket dev-url get roseshop-dev`
+   mostra o acesso público desligado e `npx wrangler r2 bucket domain list roseshop-dev` não
+   lista domínio (o mesmo para `roseshop-prod`; tasks T085 e T090).
 
 Produção é configurada antes do merge, no mesmo modelo da T148 da 004.
 
@@ -45,12 +51,14 @@ Worker do spike (humano; detalhes nas tasks T001, T002, T006 e T009):
    `triggers: { crons: [] }` (sem a limpeza da 004), `WORKER_SELF_REFERENCE` → `roseshop-spike`,
    `NEXT_INC_CACHE_R2_BUCKET` → `roseshop-cache-spike`, DO `NEXT_CACHE_DO_QUEUE` com a migration
    `new_sqlite_classes`. `env.dev` e `env.production` não mudam.
-3. Deploy e banco: `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy --env
-   spike`; `npx wrangler secret put DATABASE_URL --env spike` com a mesma branch dev do Neon
+3. Deploy e banco: com um token temporário de mesmo escopo que o token do CI terá no ramo ISR
+   (*Workers Scripts: Edit* + *Workers R2 Storage: Edit* + leituras, research D16), nunca o
+   login OAuth, `npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy --env
+   spike`, com o populate do cache bem-sucedido no log; `npx wrangler secret put DATABASE_URL --env spike` com a mesma branch dev do Neon
    (secret próprio do spike); logs por `npx wrangler tail --env spike`. Os produtos são mudados
    pelo painel do `roseshop-dev`, que usa a mesma branch.
 4. Ao fim, antes de limpar o tree: `npx wrangler delete --env spike`, esvaziar e apagar o bucket
-   (`npx wrangler r2 bucket delete roseshop-cache-spike`).
+   (`npx wrangler r2 bucket delete roseshop-cache-spike`) e apagar o token temporário.
 
 | # | Cenário | Passos | Esperado |
 |---|---|---|---|
@@ -60,10 +68,14 @@ Worker do spike (humano; detalhes nas tasks T001, T002, T006 e T009):
 
 Conferências que o spike também registra (sem acionar o fallback por si sós):
 
-- P9: com `/p/<código>` já em cache, `npm run db:down`, esperar mais de 40 s e abrir ⇒ a
+- P9: com `/p/<código>` já em cache, `npm run db:down`, esperar mais de 35 s e abrir ⇒ a
   versão anterior com 200 e `Cache-Control: no-store`, e o log `catalogo.banco_indisponivel`
   com `resultado: "versao_anterior"`; abrir um código nunca visitado ⇒ 503 e o mesmo evento com
-  `resultado: "503"`.
+  `resultado: "503"`. **Só a resposta repetida sai `no-store`**: pedidos seguintes ao mesmo
+  detalhe, com o banco ainda fora, recebem a mesma versão com 200 e `max-age=20` (esperado,
+  research D5/A1, não é falha do P9). Depois do `db:up`, o estado atual aparece em até 1 minuto.
+- Revalidação da fila (C1): com o banco fora e a entrada entre 15 e 35 s, o log mostra o evento
+  com `resultado: "revalidacao"`, e o `HEAD` da fila não recebe 503 nem `Cache-Control` novo.
 - D11: o `ctx` do pedido chega a `getCloudflareContext().ctx` (senão, usar o plano B do D11).
 
 ## 3. Verificação automática
@@ -85,14 +97,14 @@ só com esgotados, uma categoria vazia, um nome com `&`, `#`, `?`, acento e emoj
 | 1 | Aba anônima → `/` | destaques na ordem das vagas; lista do mais recente; 24 itens + "Carregar mais"; nenhuma ação do painel |
 | 2 | "Carregar mais" ×1 | +24 sem repetir; o botão some no fim |
 | 3 | Filtro "Meias" | só Meias; destaques iguais; categoria vazia ausente; categoria só com esgotados presente; anúncio do leitor de tela |
-| 4 | Abrir um item, voltar | mesmos itens e posição; filtro mantido |
+| 4 | Abrir um item, voltar | mesmos itens e posição; filtro mantido; a URL não ganhou parâmetro de bloco |
 | 5 | Copiar o endereço filtrado, abrir noutra aba | 1º bloco, filtro mantido |
 | 6 | `/?categoria=nao-existe` | lista "Todas", filtro em "Todas" |
 | 7 | `/p/42`, `/p/00042` | 308 para `/p/0042` |
 | 8 | `/p/abc`, `/p/0`, `/p/-1`, `/p/9999` | "Produto não encontrado", 404 |
 | 9 | Detalhe esgotado | "Esgotado" e sem botão |
 | 10 | Detalhe disponível com nome especial | link `wa.me/<dígitos>?text=` decodifica para o nome exato |
-| 11 | `npm run db:down` → abrir `/p/0001` (já visitado) e `/p/<nunca visitado>` | o primeiro mostra a versão anterior (200, `no-store`); o segundo, 503 "Não foi possível carregar agora" (`no-store`); fotos 503; logs `catalogo.banco_indisponivel`; `db:up` + "Tentar de novo" ⇒ página normal |
+| 11 | `npm run db:down` → abrir `/p/0001` (já visitado) e `/p/<nunca visitado>` | **[ISR]** o primeiro mostra a versão anterior (200; `no-store` só na primeira resposta, depois `max-age=20`); o segundo, 503 "Não foi possível carregar agora" (`no-store`). **[FALLBACK]** 503 nos dois. Fotos 503; logs `catalogo.banco_indisponivel`; `db:up` + "Tentar de novo" ⇒ estado atual em até 1 minuto |
 | 12 | `/fotos/<chave de envio pendente>` e de foto removida há > 60 s | 404 vazio, cabeçalhos iguais aos de um uuid inventado |
 | 13 | `curl -sI` em `/`, `/p/0001`, `/fotos/<válida>` | `X-Robots-Tag: noindex, nofollow`; HTML com `<meta name="robots" content="noindex, nofollow">`; `/robots.txt` sem `Disallow` |
 | 14 | Remover `WHATSAPP_NUMBER` do `.dev.vars`, reiniciar | sem botão; log `catalogo.whatsapp_invalido`; resto funciona |

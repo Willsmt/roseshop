@@ -30,6 +30,17 @@
   temporário (503, não 404), nunca guardada em cache, com registro para o
   mantenedor; falha nunca vira "Produto não encontrado".
 
+### Emendas pós-analyze (2026-10-15, aprovadas pelo humano)
+
+- US2.8 e FR-024: com versão guardada, a versão anterior pode continuar sendo servida
+  enquanto durar a falha e por até 1 minuto depois que o banco volta (mecanismo do ISR,
+  research D5); "a página seguinte" virou "em até 1 minuto". Edge case "Banco fora do ar"
+  alinhado.
+- FR-020: exceção explícita para o voltar do navegador (a lista restaurada pode mostrar o
+  que já estava na tela; detalhe e "Carregar mais" seguem o prazo).
+- FR-018/FR-019: sem a URL do site configurada, a mensagem do WhatsApp sai sem o link, com
+  registro da falha.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ver os produtos na página inicial (Priority: P1)
@@ -123,8 +134,8 @@ de "produto não encontrado".
    para o mantenedor; **Given** o banco indisponível e nenhuma versão guardada
    daquela página, **Then** vê a mensagem de que não foi possível carregar agora,
    com botão de tentar de novo, e a resposta é de indisponível temporário (503) e
-   não de inexistente; nos dois casos, quando o banco volta, a página seguinte já
-   mostra o estado atual (o erro não ficou guardado).
+   não de inexistente; nos dois casos, quando o banco volta, em até 1 minuto a
+   página mostra o estado atual (o erro não fica guardado).
 
 ---
 
@@ -277,7 +288,7 @@ conferir que só a última é entregue.
 - **Preço alto**: separador de milhar no formato brasileiro (R$ 1.234,56).
 - **Banco fora do ar ou lento ao abrir uma página pública**: se a página já tem
   uma versão guardada, a cliente vê essa versão anterior (que pode ter mais de 1
-  minuto enquanto o banco não volta); só sem versão guardada aparece a mensagem de
+  minuto enquanto o banco não volta e por até 1 minuto depois); só sem versão guardada aparece a mensagem de
   indisponibilidade temporária com "tentar de novo" (FR-024); nunca "Produto não
   encontrado". As fotos, consultadas no banco a cada pedido, ficam indisponíveis
   (503) durante a falha; a prévia do link nesse momento pode sair sem dados do
@@ -390,18 +401,24 @@ conferir que só a última é entregue.
   WhatsApp", que abre uma conversa com o número da vendedora configurado para o
   ambiente, com mensagem pronta contendo o nome do produto, o código no formato
   "#0042" e o link do produto, preservando exatamente todos os caracteres do nome.
+  Sem a URL do site configurada para o ambiente (FR-019), a mensagem sai sem o link.
   Produto esgotado MUST NOT oferecer o botão.
 - **FR-019**: O número da vendedora MUST ser configuração por ambiente (dev: número
   de teste do mantenedor; produção: número da Rose), validado no formato
   internacional; nenhum número MUST estar escrito no código. Sem número válido
   configurado, o botão MUST NOT ser oferecido, o restante do catálogo MUST
-  funcionar e a falha MUST ficar registrada para o mantenedor.
+  funcionar e a falha MUST ficar registrada para o mantenedor. A URL pública do site
+  também é configuração por ambiente: ausente ou inválida, a mensagem do WhatsApp sai
+  sem o link e a prévia sem imagem, o restante MUST funcionar e a falha MUST ficar
+  registrada para o mantenedor.
 
 **Atualização**
 
 - **FR-020**: Qualquer alteração feita no painel (cadastro, edição, esgotado,
   destaque, fotos, remoção de produto ou categoria) MUST estar refletida no
   catálogo público, na página inicial, no detalhe e nas fotos, em até 1 minuto.
+  Exceção: ao voltar pelo navegador, a lista pode mostrar o que já estava na tela, como
+  o voltar de qualquer site; o detalhe e o próximo "Carregar mais" seguem o prazo.
 
 **Prévia do link**
 
@@ -428,7 +445,7 @@ conferir que só a última é entregue.
 - **FR-024**: Se os dados do catálogo não puderem ser lidos (banco fora do ar ou
   sem resposta), a página inicial e o detalhe MUST exibir a última versão guardada
   daquela página, quando existir (exceção ao prazo do FR-020 enquanto durar a
-  falha). Só quando não houver nenhuma versão guardada, MUST exibir uma página
+  falha e por até 1 minuto depois que o banco volta). Só quando não houver nenhuma versão guardada, MUST exibir uma página
   simples em português dizendo que não foi possível carregar agora, com ação de
   tentar de novo e resposta de indisponível temporário (503). Essa resposta MUST
   NOT ser guardada em cache e MUST NOT ser apresentada como "Produto não

@@ -554,6 +554,10 @@ SC-005/US5.4/US6.3 (orçamento travado por teste, K1).
 - [X] T057 Revisão do diff pelo tech-lead (reescrita sem cache novo, 503 `no-store`, painel
   intocado, log sem URL, revalidação da fila intocada, orçamento vindo de `prazos.ts`) —
   **tech-lead**
+- [X] T057a [US2] Desvio 3 da SF10 (T082): o 503 das páginas saía com status line "HTTP/1.1 503 "
+  sem reason phrase, e o das fotos e da lista com "Service Unavailable". **Teste primeiro**
+  (`cloudflare/publico.test.ts`, "o 503 não herda o statusText do 500": `statusText` =
+  "Service Unavailable"), depois `comCabecalhos` em `cloudflare/publico.ts` — **tech-lead**
 - [X] T058 Commit (humano):
   ```text
   feat(worker): canoniza o detalhe e trata falhas das páginas públicas
@@ -772,6 +776,15 @@ lenta ou falha ao tocar em Carregar mais".
   `no-store` só na primeira resposta, depois `max-age=20`, A1) e 503 num nunca visitado;
   **[FALLBACK]** 503 nos dois; depois do `db:up`, estado atual em até 1 minuto. Item 14 exige o humano tirar o
   `WHATSAPP_NUMBER` do `.dev.vars` e devolver depois — **humano**
+- [X] T082a Desvios 1 e 2 da SF10, investigados sem mudança de código. (1) Botão do WhatsApp
+  ausente: a lista de bindings do segundo `npm run preview` no log não traz `WHATSAPP_NUMBER`
+  (a do primeiro traz); o número é lido de `process.env` como `DATABASE_URL`, `R2_*` e os
+  segredos do Auth, que funcionam no mesmo worker. O preview foi iniciado sem a chave: repetir
+  /p/<COD> depois de reiniciá-lo com ela no `.dev.vars`. (2) Registros ausentes do log:
+  `registrarFalha` usa `console.error`, que o `wrangler dev` escreve no **stderr** (medido com um
+  worker mínimo: `console.log` em stdout, `console.error`/`warn` em stderr); o log foi capturado
+  só do stdout. Capturar com `npm run preview > /tmp/preview-sf10.log 2>&1`. O build mantém as
+  chamadas (conferido em `.open-next/.../handler.mjs`) — **principal**
 - [ ] T083 Registrar os resultados e qualquer desvio; desvio vira task nova na SF que o
   originou (reabrir a SF, corrigir, novo commit) antes de seguir — **principal**
 - [ ] T084 Commit (humano):

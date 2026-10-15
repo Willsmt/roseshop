@@ -22,7 +22,7 @@ describe("mensagemFoto", () => {
     ["nao_passou", "Não deu para usar essa foto. Tente de novo ou use 'Tirar foto'."],
     ["nao_enviada", "Não enviada"],
     ["sem_foto", "Coloque pelo menos 1 foto do produto."],
-    ["foto_expirada", "Uma das fotos expirou. Envie de novo."],
+    ["foto_expirada", "Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo."],
     ["alterado", "As fotos deste produto foram mudadas por outra pessoa. Veja como ficaram e faça de novo."],
     ["limite", "Este produto já tem 3 fotos. Remova ou troque uma para colocar outra."],
     ["ultima", "O produto precisa de pelo menos 1 foto."],

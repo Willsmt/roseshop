@@ -1115,9 +1115,14 @@ da observação).
   trocar a capa de um produto existente (≤ 1 min — SC-002). Registrar tempo, onde hesitou,
   mensagens que não entendeu (SC-011) e o **peso das capas na lista** (D17). Registrar em
   `specs/004-fotos-produto/` — **humano**
-- [ ] T144 Revisão das mensagens (SC-011) contra `src/lib/fotos/mensagens.ts` e I§6: nenhuma
+- [X] T144 Revisão das mensagens (SC-011) contra `src/lib/fotos/mensagens.ts` e I§6: nenhuma
   palavra técnica, "Tirar" só em "Tirar foto"; ajustes de texto vão para o `redator` com
   aprovação do humano — **principal**
+  - Feita em 2026-10-14: só `foto_expirada` mudou (aprovado pelo humano), de "Uma das fotos
+    expirou. Envie de novo." para "Uma das fotos ficou muito tempo sem ser salva. Envie essa
+    foto de novo." (`src/lib/fotos/mensagens.ts`, `src/lib/produtos/mensagens.ts`, F§8, spec e
+    5 testes; `npm run check` verde). "Tirar do destaque" e "Tire um do destaque" (003) ficam
+    como estão (opção A do humano): ponto a observar na entrega final.
 - [ ] T145 [P] Nota na spec da 003 (`specs/003-produtos/spec.md`) apontando FR-013/FR-014 para
   a 004 (produto passa a exigir 1 a 3 fotos), sem alterar critérios da 003 — **redator**
 - [ ] T146 [P] Atualizar `README.md` (fotos no R2, sugestão por IA, `npm run test:ia`,

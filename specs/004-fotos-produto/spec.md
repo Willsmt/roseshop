@@ -362,8 +362,8 @@ o que pertence a produtos existentes, ou é temporário recente, continua guarda
   primeiro envio.
 - **Adoção de foto temporária já expirada**: se a limpeza apagou uma foto
   temporária antes do "Salvar" (cadastro aberto por mais de 24 horas), o cadastro
-  é recusado com "Uma das fotos expirou. Envie de novo." e a tela mostra quais
-  fotos faltam.
+  é recusado com "Uma das fotos ficou muito tempo sem ser salva. Envie essa foto
+  de novo." e a tela mostra quais fotos faltam.
 - **Envio de foto durante o "Salvar"**: o produto é criado só com as fotos que já
   estavam enviadas quando ela tocou em "Salvar"; uma foto ainda em envio não é
   incluída e o botão "Salvar" fica indisponível enquanto houver envio em curso.

@@ -65,6 +65,6 @@ describe("falhaDoResultado", () => {
       envioIds: ["11111111-1111-4111-8111-111111111111"],
     };
     expect(f.envioIds).toHaveLength(1);
-    expect(f.mensagem).toBe("Uma das fotos expirou. Envie de novo.");
+    expect(f.mensagem).toBe("Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo.");
   });
 });

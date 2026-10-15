@@ -118,7 +118,7 @@ describe("CadastroProduto + useEnvioFotos real — foto expirada ao salvar", () 
     expect(screen.queryByRole("heading", { name: "Dados do produto" })).toBeNull();
 
     // O aviso do passo Fotos (o do formulário fica no passo escondido).
-    expect(screen.getByRole("alert")).toHaveTextContent("Uma das fotos expirou. Envie de novo.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Uma das fotos ficou muito tempo sem ser salva. Envie essa foto de novo.");
 
     const primeira = screen.getByRole("listitem", { name: "Foto 1" });
     const segunda = screen.getByRole("listitem", { name: "Foto 2" });

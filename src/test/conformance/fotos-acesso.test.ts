@@ -149,8 +149,10 @@ function coletarImports(arquivo: string, fonte: string): Importacao[] {
   return out;
 }
 
+// Entrada terminada em "/" é diretório (prefixo); qualquer outra é um arquivo e só casa por
+// igualdade exata, para que "leitura.ts" não autorize "leitura.tsx" nem "leitura.ts.bak.ts".
 const dentro = (arquivo: string, ...dirs: string[]) =>
-  dirs.some((d) => arquivo.startsWith(d));
+  dirs.some((d) => (d.endsWith("/") ? arquivo.startsWith(d) : arquivo === d));
 const eModulo = (modulo: string, alvo: string) =>
   modulo === alvo || modulo.startsWith(`${alvo}/`);
 // `@/lib/db/fotos` e `@/lib/db/fotos/...`, mas não `@/lib/db/fotos-outra`.
@@ -349,6 +351,32 @@ describe("autoteste do detector de imports (a violação seria pega)", () => {
     ]) {
       expect(viola(f, `import { x } from "@/lib/r2";`)).toEqual([]);
     }
+  });
+
+  it("regra 1: a exceção do catálogo vale só para src/lib/catalogo/leitura.ts, por igualdade", () => {
+    const barrel = `import { x } from "@/lib/r2";`;
+    expect(viola("src/lib/catalogo/leitura.ts", barrel)).toEqual([]);
+    for (const f of [
+      "src/lib/catalogo/leitura.tsx",
+      "src/lib/catalogo/leitura.ts.bak.ts",
+      "src/lib/catalogo/leitura.test.ts",
+      "src/lib/catalogo/leitura.int.test.ts",
+      "src/lib/catalogo/index.ts",
+      "src/lib/catalogo/config.ts",
+      "src/lib/catalogo/leitura/x.ts",
+    ]) {
+      expect(viola(f, barrel)).toHaveLength(1);
+    }
+    expect(viola("src/lib/catalogo/leitura.test.ts", `vi.mock("@/lib/r2");`)).toHaveLength(1);
+  });
+
+  it("regra 2: leitura.ts do catálogo também só usa o barrel", () => {
+    expect(
+      viola("src/lib/catalogo/leitura.ts", `import { x } from "@/lib/r2/chaves";`),
+    ).toHaveLength(1);
+    expect(
+      viola("src/lib/catalogo/leitura.ts", `import { x } from "../r2/bucket";`),
+    ).toHaveLength(1);
   });
 
   it("regra 2: submódulo de r2 fora de src/lib/r2/ (mesmo em área autorizada)", () => {

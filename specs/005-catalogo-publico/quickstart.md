@@ -122,3 +122,40 @@ só com esgotados, uma categoria vazia, um nome com `&`, `#`, `?`, acento e emoj
 4. CPU (R2 do research): `wrangler tail --env dev` em `/`, `/p/<código>`, GET da lista e
    `/fotos/<arquivo>`; anotar `cpuTime`; alerta = Erro 1102.
 5. SC-001 (observação com pessoa real) fica como pendência de entrega, como a T143 da 004.
+
+## Resultado do roteiro
+
+Roteiro do `preview` (Q§4, SF10, T080–T083), ramo FALLBACK, banco local com o seed
+(`npm run seed:local`, T080a, 41 produtos). Resultados relatados pelo mantenedor, que executou os
+passos; os eventos de log abaixo foram conferidos nos arquivos de stderr capturados.
+
+| Item | Resultado |
+|---|---|
+| 7 | `/p/42` e `/p/00042` ⇒ 308 para `/p/0042`. Passou |
+| 8 | `/p/abc`, `/p/0`, `/p/-1`, `/p/9999` ⇒ 404, sem `Location` em `abc`, `0`, `-1` e `9999`. Passou |
+| 12 | `/fotos/*` de uuid inventado, de envio pendente e de objeto órfão ⇒ 404 com cabeçalhos idênticos. Passou |
+| 13 | `X-Robots-Tag: noindex, nofollow` em `/`, no detalhe, na foto e no GET da lista; meta robots no HTML; `/robots.txt` sem `Disallow`. Passou |
+| 11 | Banco fora (`npm run db:down`) ⇒ 503 `Service Unavailable` com `no-store` nas páginas, na foto e no GET da lista; depois do `db:up`, volta a 200; eventos `catalogo.banco_indisponivel` no stderr. Passou |
+| 14 | Sem `WHATSAPP_NUMBER`: o botão some e a página segue 200; `catalogo.whatsapp_invalido` registrado uma vez (`/tmp/pv14.err`). Passou |
+| 1–6, 9, 10 | Navegador. O item 10 decodificou a mensagem do WhatsApp com o nome exato (`&`, `#`, `?`, acento e emoji). Passou |
+| 15 | Mudanças do painel refletidas em até 60 s (SC-005). Passou |
+| 16 | 360 px e Lighthouse de acessibilidade. Passou |
+| E1–E5 | Restauração por `router.back` e bfcache, e "Ver o catálogo" limpando a restauração. Passou |
+
+Notas operacionais:
+
+- O `wrangler dev` escreve `console.error` e `console.warn` no **stderr**; para guardar os
+  registros do worker, capture com `npm run preview > arquivo.log 2>&1`.
+- Ao encerrar, o `wrangler dev` repete o stderr inteiro depois de "ERROR Wrangler dev command
+  failed:". Um evento aparece então duas vezes no arquivo (uma ao vivo, outra na repetição); o
+  worker registra uma vez por pedido (T082b).
+
+Desvios do roteiro:
+
+- T057a (SF6): o 503 das páginas saía sem reason phrase; agora é `Service Unavailable`.
+- T082a: botão do WhatsApp ausente porque o preview foi reiniciado sem a variável; registros
+  ausentes porque o log capturava só o stdout. Ambos de ambiente, sem mudança de código.
+- T082b: o registro de FR-019 estava correto e os "eventos duplicados" são a repetição do stderr
+  pelo wrangler. Sem mudança de código.
+
+Pendente fora do `preview`: roteiro do dev em celular Android (SF11).

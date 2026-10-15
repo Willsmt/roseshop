@@ -760,7 +760,7 @@ lenta ou falha ao tocar em Carregar mais".
 (Lighthouse), FR-024 (item 11).
 **Revisão TL**: —.
 
-- [ ] T080 Preparar os dados no `preview` (por `npm run seed:local`, T080a, ou pelo painel): ≥ 30 produtos, alguns em destaque, alguns
+- [X] T080 Preparar os dados no `preview` (por `npm run seed:local`, T080a, ou pelo painel): ≥ 30 produtos, alguns em destaque, alguns
   esgotados, uma categoria só com esgotados, uma vazia, um nome com `&`, `#`, `?`, acento e emoji
   (Q§4) — **humano**
 - [X] T080a `scripts/seed-catalogo-local.ts` (`npm run seed:local`): popula só o Postgres local do
@@ -770,8 +770,8 @@ lenta ou falha ao tocar em Carregar mais".
   também um envio pendente e um objeto órfão para o item 12. Trava de ambiente em
   `scripts/seed-catalogo-local/trava.ts` (banco, endpoint e credencial do R2 locais; recusa CI),
   com teste unitário — **tech-lead**
-- [ ] T081 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
-- [ ] T082 **Humano executa** Q§4 itens 1 a 16, entregando os `curl -sI` dos itens 7, 8, 11, 12 e
+- [X] T081 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
+- [X] T082 **Humano executa** Q§4 itens 1 a 16, entregando os `curl -sI` dos itens 7, 8, 11, 12 e
   13 e os tempos do item 15. Item 11: **[ISR]** versão anterior num detalhe já visitado (200;
   `no-store` só na primeira resposta, depois `max-age=20`, A1) e 503 num nunca visitado;
   **[FALLBACK]** 503 nos dois; depois do `db:up`, estado atual em até 1 minuto. Item 14 exige o humano tirar o
@@ -785,7 +785,16 @@ lenta ou falha ao tocar em Carregar mais".
   worker mínimo: `console.log` em stdout, `console.error`/`warn` em stderr); o log foi capturado
   só do stdout. Capturar com `npm run preview > /tmp/preview-sf10.log 2>&1`. O build mantém as
   chamadas (conferido em `.open-next/.../handler.mjs`) — **principal**
-- [ ] T083 Registrar os resultados e qualquer desvio; desvio vira task nova na SF que o
+- [X] T082b Segunda rodada de desvios da SF10, sem mudança de código. (1) FR-019 "sem registro":
+  `/tmp/pv14.err` traz `catalogo.whatsapp_invalido` (ausente conta como inválido: `config.ts`
+  usa `numero !== undefined && E164.test(numero)`), uma vez no fluxo ao vivo; os testes de
+  `config.test.ts` já cobrem ausente, vazio e inválido com uma chamada, sem o valor, e "uma vez
+  por isolate" em chamadas repetidas, e passam — não houve teste que falhasse. (2) Eventos em
+  dobro: em `/tmp/pv.err` cada evento aparece uma vez no fluxo ao vivo (linhas 96 e 99) e de novo
+  na repetição do stderr que o `wrangler dev` imprime ao encerrar (depois de "ERROR Wrangler dev
+  command failed:", linhas 169 e 172); o código registra uma vez por pedido. É exibição do
+  wrangler, não do código — **principal**
+- [X] T083 Registrar os resultados e qualquer desvio; desvio vira task nova na SF que o
   originou (reabrir a SF, corrigir, novo commit) antes de seguir — **principal**
 - [ ] T084 Commit (humano):
   ```text

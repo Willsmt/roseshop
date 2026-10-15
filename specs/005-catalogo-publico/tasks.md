@@ -492,7 +492,7 @@ FR-002 (visões públicas fechadas).
 - [X] T048 Implementar `route.ts` com `lerBloco` do barrel; só GET; `max-age` de
   `NAVEGADOR_LISTA_S` — **principal**
 - [X] T049 `npm run check`; colar o output real — **júnior**
-- [ ] T050 Commit (humano):
+- [X] T050 Commit (humano):
   ```text
   feat(catalogo): adiciona o GET público do bloco da lista
 
@@ -514,11 +514,11 @@ revalidação da fila), FR-004/SC-009 (cabeçalho), R3 (formato inválido sem ca
 SC-005/US5.4/US6.3 (orçamento travado por teste, K1).
 **Revisão TL**: ✅.
 
-- [ ] T051 [US2] **Teste primeiro** — `prepararPedido(url, método)`: `/p/abc`, `/p/-1`, `/p/0`,
+- [X] T051 [US2] **Teste primeiro** — `prepararPedido(url, método)`: `/p/abc`, `/p/-1`, `/p/0`,
   `/p/00`, `/p/2147483648`, `/p/1234567890` ⇒ `reescrever` para `/p/0`; `/p/42` ⇒ 308 para
   `/p/0042`; `/p/00042?x=1` ⇒ 308 para `/p/0042?x=1`; `/p/0042`, `/p/10000` ⇒ `seguir`;
   `/p/1/2`, `/painel/x`, `/` ⇒ `seguir`; POST em `/p/42` ⇒ `seguir` — **test-writer**
-- [ ] T052 [US2] **Teste primeiro** — `ajustarResposta` com handler falso:
+- [X] T052 [US2] **Teste primeiro** — `ajustarResposta` com handler falso:
   `/` e `/p/*` com 200, 308 e 404 ⇒ `Cache-Control: public, max-age=20` **[ISR]** ou
   `public, max-age=60` **[FALLBACK]**;
   **[ISR]** 500 → repetição 200 ⇒ 200 com `no-store` e log `resultado: "versao_anterior"`;
@@ -533,25 +533,25 @@ SC-005/US5.4/US6.3 (orçamento travado por teste, K1).
   com 200 ou 500 ⇒ resposta **idêntica** à do handler (status, corpo e cabeçalhos), handler
   chamado **uma** vez, e no 500 um log com `resultado: "revalidacao"`; pedido comum com
   `x-isr` mas sem `x-prerender-revalidate` segue a regra normal — **test-writer**
-- [ ] T053a [P] **Teste primeiro (K1)** — `src/test/conformance/catalogo-orcamento.test.ts`
+- [X] T053a [P] **Teste primeiro (K1)** — `src/test/conformance/catalogo-orcamento.test.ts`
   (FR-020, SC-005, US5.4, US6.3): **[ISR]** `REVALIDATE_S` < `EXPIRE_S`; `expireTime` do
   `next.config.ts` (importado) = `EXPIRE_S`; `EXPIRE_S + NAVEGADOR_PAGINA_S` ≤ 55 (5 s de folga
   para o render, A2); **[FALLBACK]** `NAVEGADOR_PAGINA_S` ≤ 60 e o `next.config.ts` sem
   `expireTime`; em ambos: `NAVEGADOR_LISTA_S` ≤ 60, `NAVEGADOR_FOTOS_S` ≤ 60, e o
   `max-age` que `ajustarResposta` aplica a `/` e `/p/*` é `NAVEGADOR_PAGINA_S`. A SF7 e a SF8
   acrescentam o literal `revalidate` das páginas — **test-writer**
-- [ ] T053 [P] **Teste primeiro** — `src/app/robots.test.ts`: `rules` = `[{ userAgent: "*", allow:
+- [X] T053 [P] **Teste primeiro** — `src/app/robots.test.ts`: `rules` = `[{ userAgent: "*", allow:
   "/" }]`, sem `disallow` e sem `sitemap` — **test-writer**
-- [ ] T054 **[TL✅]** Implementar `cloudflare/publico.ts` (funções puras; `max-age` de
+- [X] T054 **[TL✅]** Implementar `cloudflare/publico.ts` (funções puras; `max-age` de
   `src/lib/catalogo/prazos.ts` por import relativo) e ligar no `cloudflare/worker.ts`: `fetch` =
   `prepararPedido` → (308 direto | reescrita | seguir) → `handler.fetch(pedido, env,
   ctxDoPedido)` → `ajustarResposta`; **[ISR]** pedido de revalidação da fila passa direto (só
   registro no 500). O `scheduled` (SF12 da 004) e a reexportação do `DOQueueHandler` **[ISR]**
   não mudam. Nota: `registrarFalha` passa a aceitar só os nomes de evento e rota do contrato §7
   (decisão da revisão T038) — **principal**
-- [ ] T055 [P] Implementar `src/app/robots.ts` — **principal**
-- [ ] T056 `npm run check` (o `typecheck` cobre `cloudflare/`: o `tsconfig` inclui `**/*.ts`); colar o output real — **júnior**
-- [ ] T057 Revisão do diff pelo tech-lead (reescrita sem cache novo, 503 `no-store`, painel
+- [X] T055 [P] Implementar `src/app/robots.ts` — **principal**
+- [X] T056 `npm run check` (o `typecheck` cobre `cloudflare/`: o `tsconfig` inclui `**/*.ts`); colar o output real — **júnior**
+- [X] T057 Revisão do diff pelo tech-lead (reescrita sem cache novo, 503 `no-store`, painel
   intocado, log sem URL, revalidação da fila intocada, orçamento vindo de `prazos.ts`) —
   **tech-lead**
 - [ ] T058 Commit (humano):
@@ -576,6 +576,8 @@ D12, D14; spec US2, US3, US5, FR-003, FR-014, FR-017, FR-018, FR-021, FR-022, FR
 e testes; `package.json` (`axe-core`); `src/test/axe.ts` (sugerido).
 **Fecha**: US2.1–2.4, US2.6, US2.7, US3.1, US3.3, US3.5 (sem botão), US5.1–5.3, FR-003.
 **Revisão TL**: —.
+
+**Nota (SF6)**: toda rota pública nova precisa entrar no prefixo de noindex do `cloudflare/publico.ts`, com teste.
 
 - [ ] T059 Instalar `axe-core` como devDependency com **versão exata** (`npm i -D -E`), publicada
   há pelo menos duas semanas (ADR-007), e criar o helper `src/test/axe.ts` (sugerido) que roda o
@@ -632,6 +634,8 @@ DM§5; research D7, D13, D14; spec US1, US4.3/4.4, FR-005, FR-008, FR-009, FR-01
 testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
 **Fecha**: US1.1, US1.3, US1.4, US1.6, US1.7, US1.8, US4.3, US4.4 (tela).
 **Revisão TL**: —.
+
+**Nota (SF6)**: toda rota pública nova precisa entrar no prefixo de noindex do `cloudflare/publico.ts`, com teste.
 
 - [ ] T067 [US1] [US4] **Teste primeiro** — componentes (jsdom): `CartaoProduto` com `<a
   href="/p/0042">` envolvendo foto (ou o texto "Sem foto"), nome, "#0042", preço e "Esgotado" em

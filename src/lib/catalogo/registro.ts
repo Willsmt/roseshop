@@ -2,21 +2,11 @@ import "server-only";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-// Registro estruturado de falhas do catálogo (contracts/publico.md §7, research D11).
-// `causa` é um código fechado: nunca a mensagem da exceção, o valor de configuração, a chave de
-// objeto, IP, cabeçalho ou e-mail.
-export type CausaFalha = "banco" | "r2" | "config" | "inesperado";
+import type { CausaFalha } from "./falha";
 
-export type Falha = {
-  evento: string;
-  rota: string;
-  causa: CausaFalha;
-  resultado?: string;
-};
-
-export function registrarFalha({ evento, rota, causa, resultado }: Falha): void {
-  console.error(JSON.stringify({ evento, rota, causa, resultado }));
-}
+// `registrarFalha` e os tipos fechados de evento, rota e causa vivem em `falha.ts` (puro, para o
+// worker também usar).
+export { type CausaFalha, type EventoFalha, type Falha, registrarFalha, type ResultadoFalha, type RotaFalha } from "./falha";
 
 // O worker (SF6) passa ao OpenNext um `ctx` do pedido com `roseshop: { causa: null }`, e o
 // OpenNext o devolve em `getCloudflareContext().ctx` (D11, conferido no spike). Onde a exceção

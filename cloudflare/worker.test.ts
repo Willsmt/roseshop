@@ -29,9 +29,23 @@ beforeEach(() => {
 });
 
 describe("cloudflare/worker.ts", () => {
-  it("reexporta o fetch do handler do OpenNext (o mesmo)", () => {
-    expect(worker.fetch).toBe(m.fetch);
+  it("o fetch delega ao handler do OpenNext (fora do catálogo, pedido e ctx intactos)", async () => {
+    const pedido = new Request("https://roseshop.test/painel");
+    await worker.fetch(pedido, env, ctx);
+    expect(m.fetch).toHaveBeenCalledWith(pedido, env, ctx);
   });
+
+  it.each(["/painel/produtos", "/api/auth/session", "/api/interno/limpeza", "/api/health"])(
+    "worker.fetch de %s devolve a resposta do handler intacta (inclusive 500)",
+    async (caminho) => {
+      const resposta = new Response("x", { status: 500, headers: { "cache-control": "no-store" } });
+      m.fetch.mockResolvedValue(resposta);
+      const pedido = new Request(`https://roseshop.test${caminho}`);
+      const r = await worker.fetch(pedido, env, ctx);
+      expect(r).toBe(resposta);
+      expect(m.fetch).toHaveBeenCalledWith(pedido, env, ctx);
+    },
+  );
 
   it("scheduled chama o handler uma vez, com URL, método e header exatos, e o MESMO env e ctx", async () => {
     await agendar();

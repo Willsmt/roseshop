@@ -8,6 +8,28 @@
 
 **Input**: User description: "Feature 005 — Catálogo público do Roseshop. Qualquer pessoa com o link vê os produtos e pergunta por eles no WhatsApp. Não há login de cliente, busca, sacola nem pagamento. Telas são um esqueleto funcional provisório (semântica, acessibilidade, celular Android), sem identidade visual." (descrição completa, com regras de negócio, fora do escopo e notas para o plan, registrada na conversa de abertura desta spec)
 
+## Clarifications
+
+### Session 2026-10-15
+
+- Decisão do humano (aplicada antes das perguntas): o prazo de atualização do
+  catálogo público (FR-020) é de até 1 minuto, no lugar do alvo provisório de 5
+  minutos. Ajustados FR-015, FR-020, SC-005, US5 cenário 4, US6 cenário 3, o edge
+  case do produto que esgota no detalhe, Assumptions e Notas para o plan.
+- Q: Ao abrir um produto e voltar, a lista mantém o que já foi carregado e a
+  posição? → A: Sim: ao voltar, a lista mostra os mesmos produtos já carregados e
+  volta à posição de onde a cliente saiu; um link copiado abre a partir do
+  começo da lista, mantendo só o filtro.
+- Q: Lista e destaques usam o mesmo arquivo de foto do detalhe ou uma versão
+  menor? → A: O mesmo arquivo gravado pela 004 em todo lugar; na lista e nos
+  destaques a foto só é baixada quando está para aparecer na tela; o SC-002 é
+  medido com fotos reais; se falhar, versão menor vira feature própria.
+- Q: O que a cliente vê quando o banco não responde ao abrir a página inicial ou
+  o detalhe? → A: Página simples em português dizendo que não foi possível
+  carregar agora, com botão de tentar de novo, resposta de indisponível
+  temporário (503, não 404), nunca guardada em cache, com registro para o
+  mantenedor; falha nunca vira "Produto não encontrado".
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ver os produtos na página inicial (Priority: P1)
@@ -50,6 +72,11 @@ ordem, preço e marcação de esgotado.
    "Consulte o valor", "R$ 12,90" e "a partir de R$ 12,90".
 8. **Given** nenhum produto cadastrado, **When** a página abre, **Then** uma
    mensagem simples diz que ainda não há produtos, sem erro.
+9. **Given** a cliente tocou em "Carregar mais" duas vezes (72 produtos na tela),
+   **When** abre um produto e usa o voltar do navegador, **Then** a lista mostra
+   os mesmos 72 produtos, na mesma ordem, e a tela volta à posição de onde ela
+   saiu; **Given** o endereço da lista copiado nesse momento, **When** aberto em
+   outro aparelho, **Then** mostra só o primeiro bloco, com o filtro mantido.
 
 ---
 
@@ -90,6 +117,11 @@ de "produto não encontrado".
    e dados enviados ao navegador), **Then** não há e-mail de administradora,
    identificador interno, versão, posição de destaque nem nenhum outro campo do
    painel.
+8. **Given** o banco indisponível, **When** a cliente abre `/p/0042` ou a página
+   inicial, **Then** vê a mensagem de que não foi possível carregar agora, com
+   botão de tentar de novo, a resposta é de indisponível temporário (503) e não
+   de inexistente, e, quando o banco volta, a página seguinte já mostra o produto
+   (o erro não ficou guardado).
 
 ---
 
@@ -181,7 +213,7 @@ WhatsApp num celular Android e conferir nome e foto na prévia.
 3. **Given** o link de um produto inexistente, **When** colado, **Then** a prévia
    não mostra dados de nenhum produto.
 4. **Given** um produto cuja foto de capa foi trocada no painel, **When** o link é
-   colado depois do prazo de atualização (FR-020), **Then** a prévia usa a nova
+   colado mais de 1 minuto depois da troca (FR-020), **Then** a prévia usa a nova
    capa (prévias já geradas antes, guardadas pelo próprio WhatsApp, estão fora do
    controle do sistema).
 
@@ -209,8 +241,8 @@ conferir que só a última é entregue.
    pede o endereço público correspondente, **Then** a resposta é de inexistente,
    sem revelar se o arquivo existe no armazenamento.
 3. **Given** uma foto removida de um produto, trocada por outra ou de um produto
-   removido, **When** pedida pelo endereço público depois do prazo de
-   atualização (FR-020), **Then** a resposta é de inexistente.
+   removido, **When** pedida pelo endereço público mais de 1 minuto depois da
+   alteração (FR-020), **Then** a resposta é de inexistente.
 4. **Given** um endereço de foto malformado ou com caminho manipulado, **When**
    pedido, **Then** a resposta é de inexistente e nenhum outro arquivo do
    armazenamento é alcançado.
@@ -232,7 +264,7 @@ conferir que só a última é entregue.
   meio tempo pode só aparecer ao recarregar a página.
 - **Produto que esgota com a cliente no detalhe**: o detalhe já aberto pode ainda
   mostrar o botão; a mensagem ao WhatsApp segue normalmente e a vendedora responde
-  que acabou. Ao recarregar após o prazo de atualização, o botão some.
+  que acabou. Ao recarregar mais de 1 minuto depois do esgotado, o botão some.
 - **Produto que esgota estando em destaque**: sai do destaque (regra da 003) e
   continua na lista como "Esgotado".
 - **Código acima de #9999**: `/p/10000` funciona como qualquer outro.
@@ -240,6 +272,9 @@ conferir que só a última é entregue.
   texto puro, nunca interpretado.
 - **Descrição vazia**: a seção de descrição não aparece; nada de "sem descrição".
 - **Preço alto**: separador de milhar no formato brasileiro (R$ 1.234,56).
+- **Banco fora do ar ou lento ao abrir uma página pública**: mensagem de
+  indisponibilidade temporária com "tentar de novo" (FR-024), nunca "Produto não
+  encontrado"; a prévia do link nesse momento pode sair sem dados do produto.
 - **Rede lenta ou falha ao tocar em "Carregar mais"**: os produtos já exibidos
   continuam na tela, aparece uma mensagem simples e o botão permite tentar de novo.
 - **Cliente sem WhatsApp instalado**: o link abre a página do WhatsApp na web, que
@@ -282,10 +317,14 @@ conferir que só a última é entregue.
   "Carregar mais" que acrescenta o bloco seguinte sem repetir nem pular produtos;
   não há paginação numerada. A ação MUST não aparecer quando não houver mais
   produtos e MUST permitir tentar de novo após uma falha, mantendo o que já foi
-  exibido.
+  exibido. Ao voltar do detalhe pelo navegador, a lista MUST mostrar os mesmos
+  produtos já carregados, na posição de onde a cliente saiu; o endereço
+  compartilhado MUST guardar só o filtro, nunca os blocos carregados.
 - **FR-008**: Cada item da lista e dos destaques MUST mostrar foto de capa (ou o
   marcador de "sem foto"), nome, código, preço (FR-012) e, quando for o caso,
-  "Esgotado", e levar ao detalhe do produto.
+  "Esgotado", e levar ao detalhe do produto. A foto MUST ser o mesmo arquivo
+  gravado pela 004 (sem versão reduzida nesta feature) e, fora da primeira tela
+  visível, MUST ser baixada só quando estiver para aparecer na tela.
 
 **Destaques**
 
@@ -327,7 +366,7 @@ conferir que só a última é entregue.
 **Fotos públicas**
 
 - **FR-015**: O público MUST receber somente fotos que, no momento do pedido,
-  pertencem a um produto cadastrado (respeitado o prazo de FR-020). Fotos de envio
+  pertencem a um produto cadastrado (com atraso de até 1 minuto, FR-020). Fotos de envio
   pendente, substituídas, removidas ou de produto removido MUST receber resposta de
   inexistente, indistinguível da de um arquivo que nunca existiu, inclusive por
   endereço direto ou manipulado.
@@ -353,8 +392,7 @@ conferir que só a última é entregue.
 
 - **FR-020**: Qualquer alteração feita no painel (cadastro, edição, esgotado,
   destaque, fotos, remoção de produto ou categoria) MUST estar refletida no
-  catálogo público, na página inicial, no detalhe e nas fotos, em até 5 minutos
-  (alvo provisório, a confirmar no `/speckit-clarify`).
+  catálogo público, na página inicial, no detalhe e nas fotos, em até 1 minuto.
 
 **Prévia do link**
 
@@ -375,6 +413,16 @@ conferir que só a última é entregue.
   as telas sem mudar essas regras.
 - **FR-023**: Estado "Esgotado" e categoria escolhida no filtro MUST ser
   identificáveis por texto, não só por cor ou posição.
+
+**Indisponibilidade temporária**
+
+- **FR-024**: Se os dados do catálogo não puderem ser lidos (banco fora do ar ou
+  sem resposta), a página inicial e o detalhe MUST exibir uma página simples em
+  português dizendo que não foi possível carregar agora, com ação de tentar de
+  novo e resposta de indisponível temporário (503). Essa resposta MUST NOT ser
+  guardada em cache, MUST NOT ser apresentada como "Produto não encontrado" (404)
+  e MUST ficar registrada para o mantenedor. A rota de fotos, na mesma situação,
+  MUST responder indisponível temporário sem cache, nunca inexistente.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -398,15 +446,16 @@ conferir que só a última é entregue.
   celular Android (observação com pelo menos uma pessoa real).
 - **SC-002**: A página inicial e o detalhe de produto mostram conteúdo útil em
   até 3 segundos numa conexão móvel 4G típica, excluindo o primeiro acesso após
-  um período de inatividade do banco (mesma exceção do SC-007 da 003).
+  um período de inatividade do banco (mesma exceção do SC-007 da 003), medido
+  com fotos reais gravadas pela 004 e pelo menos 24 produtos na lista.
 - **SC-003**: 100% dos produtos testados exibem preço, "a partir de", "Consulte o
   valor" e "Esgotado" conforme as regras, e 100% dos produtos esgotados ficam sem
   o botão de WhatsApp.
 - **SC-004**: Em 100% das tentativas de teste, fotos de envio pendente, removidas,
   substituídas ou de produto removido não são entregues ao público, e nenhuma
   página ou resposta pública contém e-mail de administradora ou campo interno.
-- **SC-005**: Uma alteração feita no painel aparece no catálogo público dentro do
-  prazo de FR-020 em 100% das verificações.
+- **SC-005**: Uma alteração feita no painel aparece no catálogo público em até 1
+  minuto (FR-020) em 100% das verificações.
 - **SC-006**: Colar o link de um produto no WhatsApp (Android) mostra nome e foto
   de capa na prévia.
 - **SC-007**: As telas públicas passam numa verificação de acessibilidade
@@ -425,8 +474,11 @@ conferir que só a última é entregue.
   spec).
 - Mensagem pronta do WhatsApp: "Olá! Tenho interesse no produto <nome> (#<código>):
   <link do produto>"; o texto exato pode ser ajustado no plano sem mudar a regra.
-- Prazo de atualização do catálogo: 5 minutos como alvo provisório, que o
-  `/speckit-clarify` confirma ou ajusta.
+- Prazo de atualização do catálogo: até 1 minuto (decisão do humano no clarify de
+  2026-10-15); durante esse intervalo a cliente pode ver o estado anterior.
+- Fotos: um único arquivo por foto (o da 004, até 1200 px e 1 MiB) serve lista,
+  destaques, detalhe e prévia. Se o SC-002 falhar por peso das fotos, a versão
+  reduzida é feature própria (muda o pipeline da 004), não retrabalho da 005.
 - O nome da loja exibido e usado na prévia é "Roseshop" até a feature de design.
 - Prévias de link já geradas e guardadas pelo WhatsApp, e fotos já guardadas no
   navegador da cliente, estão fora do controle do sistema.
@@ -457,15 +509,18 @@ conferir que só a última é entregue.
 Registradas a pedido do humano; não são decisões da spec.
 
 - **Fotos**: rota no Worker que confere no banco se a chave pertence a um produto e
-  entrega o objeto pelo binding do R2; bucket segue privado; cache longo assumindo
-  chaves imutáveis (troca de foto = chave nova) — confirmar no código da 004. O
-  crawler do WhatsApp precisa alcançar essa rota (Open Graph). Conciliar o cache
-  longo com FR-015/FR-020 (foto removida deixa de ser entregue no prazo).
+  entrega o objeto pelo binding do R2; bucket segue privado; cache com no máximo
+  60 s (ver "Cache e atualização"), mesmo com chaves imutáveis, para a foto
+  removida deixar de ser entregue em até 1 minuto (FR-015/FR-020). O crawler do
+  WhatsApp precisa alcançar essa rota (Open Graph).
 - **Destaques**: ordenar por `destaque_vaga` ASC; nenhuma migration e nenhuma
   mudança em `produtos.ts` nesta feature.
-- **Renderização**: comparar renderização dinâmica com cache HTTP curto versus ISR
-  do OpenNext (exige cache incremental em R2/KV), com prós e contras, CPU do Workers
-  Free (risco aceito da T139, ADR-010) e o prazo de FR-020.
+- **Cache e atualização** (decisão do humano, 2026-10-15): cache de borda/HTTP com
+  no máximo 60 s nas páginas públicas e na rota de fotos; sem revalidação sob
+  demanda nesta feature (as actions do painel não invalidam cache).
+- **Renderização**: comparar renderização dinâmica com cache HTTP de até 60 s versus
+  ISR do OpenNext com revalidação por tempo de até 60 s (exige cache incremental em
+  R2/KV), com prós e contras e a CPU do Workers Free (risco aceito da T139, ADR-010).
 - **WhatsApp**: `WHATSAPP_NUMBER` por ambiente no wrangler, validado em E.164; link
   `wa.me` com texto codificado para URL.
 - **Privacidade**: nenhuma rota pública expõe autoria (e-mail) nem campos internos;
@@ -479,5 +534,5 @@ Registradas a pedido do humano; não são decisões da spec.
   no plan; o fallback para "Todas" já cobre link quebrado.
 - **"Carregar mais"**: paginação por cursor composto (data de cadastro, código),
   não por offset, para não repetir nem pular com empates de data.
-- **Rota de fotos**: cada pedido consulta o Neon; avaliar cache de borda curto
-  também como proteção contra raspagem esgotando o compute do free tier (SC-008).
+- **Rota de fotos**: cada pedido sem cache consulta o Neon; o cache de até 60 s
+  também protege contra raspagem esgotando o compute do free tier (SC-008).

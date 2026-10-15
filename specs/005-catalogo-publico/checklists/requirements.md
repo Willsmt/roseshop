@@ -37,9 +37,8 @@
 - `/p/0042`, "404" e "celular Android (Chrome)" vêm da descrição do humano e são
   requisitos de produto (endereço compartilhável, resposta de inexistente,
   aparelho-alvo), não escolha de tecnologia.
-- O prazo de atualização (FR-020) está com alvo provisório de 5 minutos, porque o
-  humano pediu para defini-lo no `/speckit-clarify`; não foi marcado como
-  [NEEDS CLARIFICATION] para não antecipar a pergunta.
+- O prazo de atualização (FR-020) é de até 1 minuto, decidido pelo humano no
+  `/speckit-clarify` de 2026-10-15.
 - Revisão de 2026-10-15 (duas decisões do humano antes do clarify): ordem dos
   destaques pela vaga existente da 003 (FR-009 do momento do destaque removido, a
   005 não altera a 003) e catálogo fora dos buscadores (FR-004 e SC-009 novos).

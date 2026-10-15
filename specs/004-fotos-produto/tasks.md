@@ -1189,7 +1189,7 @@ da observação).
   Estado atual do CLAUDE.md com fotos, R2, IA e limpeza diária.
   ```
   — **humano**
-- [ ] T150 **Merge no `main` — humano**, só depois de T141–T149 concluídos, do PR aprovado e
+- [x] T150 **Merge no `main` — humano**, só depois de T141–T149 concluídos, do PR aprovado e
   do deploy de produção validado pelo `/api/health` e pelo smoke do CI e de um cadastro com
   foto em produção (prova das chaves do R2, T148). Nenhum agente faz
   push ou merge sem confirmação — **humano**

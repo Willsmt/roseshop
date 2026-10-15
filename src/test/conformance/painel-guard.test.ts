@@ -22,6 +22,8 @@ const EXCECOES_PUBLICAS: readonly string[] = [
   // Foto pública do catálogo (005 SF4): sem sessão por desenho; o banco decide a cada pedido e
   // catalogo-acesso.test.ts prova que a rota não importa auth.
   "src/app/fotos/[arquivo]/route.ts#GET",
+  // Bloco da lista do catálogo (005 SF5): sem sessão por desenho; só leitura pública.
+  "src/app/api/catalogo/produtos/route.ts#GET",
   "src/app/api/interno/limpeza/route.ts#HEAD",
   "src/app/api/interno/limpeza/route.ts#PUT",
   "src/app/api/interno/limpeza/route.ts#PATCH",

@@ -444,7 +444,7 @@ FR-002 (visões públicas fechadas).
 - [X] T043 `npm run check`; colar o output real — **júnior**
 - [X] T044 Revisão do diff pelo tech-lead (404 indistinguível, banco antes do R2, 503 sem cache) —
   **tech-lead**
-- [ ] T045 Commit (humano):
+- [X] T045 Commit (humano):
   ```text
   feat(fotos): adiciona a rota pública de fotos do catálogo
 
@@ -453,6 +453,15 @@ FR-002 (visões públicas fechadas).
   60 s no navegador e 503 sem cache se o banco ou o R2 falhar.
   ```
   — **humano**
+
+> **Pendências da revisão da SF4** (registradas em 2026-10-15):
+>
+> 1. Na SF5 ou na primeira SF que ampliar `src/app` público, a varredura de sessão do
+>    `catalogo-acesso.test.ts` passa a cobrir todo `src/app` (menos `painel/`, `api/auth/` e
+>    `api/interno/`), exige ao menos um arquivo em `src/app/fotos`, reconhece import relativo e
+>    `next-auth` e ganha um teste com fonte sintética. **Executada na SF5 (T047a, feita).**
+> 2. Um teste que compara a regex copiada nos mocks (`ARQUIVO_VALIDO` em `route.test.ts` e em
+>    `catalogo-acesso.test.ts`, onde é `ARQUIVO_VALIDO_MOCK`) com a de `chaveDoArquivo` (`src/lib/r2/chaves.ts`). **Aberta.**
 
 ---
 
@@ -465,20 +474,24 @@ FR-002 (visões públicas fechadas).
 (JSON).
 **Revisão TL**: —.
 
-- [ ] T046 [US1] [US4] **Teste primeiro** — `route.test.ts`: sem query ⇒ 200 `BlocoLista` de
+- [X] T046 [US1] [US4] **Teste primeiro** — `route.test.ts`: sem query ⇒ 200 `BlocoLista` de
   "Todas", `Cache-Control: public, max-age=20`, `Content-Type: application/json`, `nosniff`;
   `categoria=meias` ⇒ filtrado e `categoria: "meias"`; `categoria=nao-existe` ou `MEIAS` ⇒ "Todas"
   e `categoria: null`; `depois` inválido ⇒ 400 `{}` `no-store`; banco fora ⇒ 503 `{}` `no-store` e
   log `catalogo.banco_indisponivel` com `rota: "/api/catalogo/produtos"`; POST ⇒ 405 —
   **test-writer**
-- [ ] T047 [US2] **Teste primeiro** — ampliar `catalogo-acesso.test.ts`: as chaves de cada item
+- [X] T047 [US2] **Teste primeiro** — ampliar `catalogo-acesso.test.ts`: as chaves de cada item
   do JSON são **exatamente** as de `ProdutoCartao`, e as do envelope são `itens`, `proximo` e
   `categoria`; nenhum valor contém `@` (e-mail); com mais de 24 produtos, o `proximo`
   decodificado de base64url casa **exatamente** `^\d{1,17}\.\d{1,10}$` e o código é o do 24º
   item (nada além de µs e código, FR-002/P7/A5) — **test-writer**
-- [ ] T048 Implementar `route.ts` com `lerBloco` do barrel; só GET; `max-age` de
+- [X] T047a [US2] **Teste primeiro** (pendência 1 da SF4) — `catalogo-acesso.test.ts`: a
+  varredura de sessão cobre todo `src/app` exceto `painel/`, `api/auth/` e `api/interno/`; exige
+  ao menos um arquivo em `src/app/fotos`; `violacoesDeSessao` reconhece import relativo que
+  resolve para `src/lib/auth` e `next-auth`; teste com fonte sintética — **test-writer**
+- [X] T048 Implementar `route.ts` com `lerBloco` do barrel; só GET; `max-age` de
   `NAVEGADOR_LISTA_S` — **principal**
-- [ ] T049 `npm run check`; colar o output real — **júnior**
+- [X] T049 `npm run check`; colar o output real — **júnior**
 - [ ] T050 Commit (humano):
   ```text
   feat(catalogo): adiciona o GET público do bloco da lista

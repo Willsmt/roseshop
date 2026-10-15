@@ -34,7 +34,7 @@ const proibirSubmoduloR2 = {
 };
 
 // Feature 005 (contracts/publico.md §6): só o barrel "@/lib/catalogo" tem `server-only`; um import
-// de submódulo o contornaria. Exceção: `exibicao` é puro e os componentes cliente o usam; `prazos` é puro (constantes) e as rotas o usam.
+// de submódulo o contornaria. Exceção: `exibicao` é puro e os componentes cliente o usam; `prazos` é puro (constantes) e as rotas o usam; `restauracao` é puro (sessionStorage) e a lista cliente o usa.
 const proibirSubmoduloCatalogo = {
   group: [
     "@/lib/catalogo/*",
@@ -43,6 +43,8 @@ const proibirSubmoduloCatalogo = {
     "!**/lib/catalogo/exibicao",
     "!@/lib/catalogo/prazos",
     "!**/lib/catalogo/prazos",
+    "!@/lib/catalogo/restauracao",
+    "!**/lib/catalogo/restauracao",
   ],
   message: 'Catálogo fora da fronteira (contracts/publico.md §6). Importe só o barrel "@/lib/catalogo".',
 };

@@ -36,3 +36,10 @@ export function linkWhatsapp(whatsapp: string, mensagem: string): string {
 export function mostrarWhatsapp(esgotado: boolean, temNumero: boolean): boolean {
   return !esgotado && temNumero;
 }
+
+// "Carregar mais": acrescenta o bloco novo sem repetir o que a lista já mostra (um produto pode
+// mudar de posição entre dois pedidos).
+export function acrescentarSemRepetir<T extends { href: string }>(atuais: T[], novos: T[]): T[] {
+  const vistos = new Set(atuais.map((p) => p.href));
+  return [...atuais, ...novos.filter((p) => !vistos.has(p.href))];
+}

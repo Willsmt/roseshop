@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
@@ -7,6 +6,7 @@ import { configCatalogo, lerProduto } from "@/lib/catalogo";
 
 import { BotaoWhatsapp } from "../../_catalogo/botao-whatsapp";
 import { Galeria } from "../../_catalogo/galeria";
+import { LinkCatalogo } from "../../_catalogo/link-catalogo";
 import { textos } from "../../_catalogo/textos";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +42,7 @@ export default async function Detalhe({ params }: Props) {
 	return (
 		<main className="mx-auto max-w-xl p-4">
 			<nav>
-				<Link href="/" className="inline-flex min-h-12 items-center underline">
-					{textos.voltarAoCatalogo}
-				</Link>
+				<LinkCatalogo voltar>{textos.voltarAoCatalogo}</LinkCatalogo>
 			</nav>
 			<article className="flex flex-col gap-3">
 				<h1 className="text-xl font-bold">{produto.nome}</h1>

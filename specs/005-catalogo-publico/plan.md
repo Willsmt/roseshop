@@ -8,6 +8,14 @@
 nesta sessão ([research.md §1–2](./research.md#1-restrições-do-humano-entrada-do-plan-não-reabrir)).
 A SF0 é um spike que decide entre ISR com `expire` e o fallback dinâmico já aprovado.
 
+> **Ramo FALLBACK (2026-10-15, GATE T014):** o spike SF0 reprovou o ISR. As páginas públicas
+> são dinâmicas (`force-dynamic`), com `Cache-Control: public, max-age=60` no navegador, sem cache
+> incremental, fila, Durable Object, guarda de build nem permissão nova no token do CI; todo 500
+> público vira 503. Os trechos de ISR abaixo (cache, prazo 15/35/20, deploy do cache, filtro no
+> cliente) **não se aplicam** e ficam como registro. Vale o
+> [ADR-011](../adr/011-cache-catalogo-workers-dev.md) e a tabela
+> [Tasks condicionais](./tasks.md#tasks-condicionais-isr--fallback), coluna FALLBACK.
+
 ## Summary
 
 Página inicial (`/`) e detalhe (`/p/0042`) públicos, sem login, com destaques, lista em blocos de

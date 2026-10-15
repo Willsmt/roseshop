@@ -49,6 +49,10 @@ restauração × GET (D15, U1/U2) e limpeza da restauração pelo "Ver o catálo
 
 ## 3. Decisões técnicas
 
+> **Ramo FALLBACK (2026-10-15, §5):** D1, D3, D13 e D16 foram retirados; o "Ponto não provado"
+> do D2 foi confirmado (falhou); os trechos de ISR do D5, D7 e D11 não se aplicam. Os textos
+> ficam como registro para uma revisão futura do ISR (ADR-011).
+
 ### D1. Cache: ISR do OpenNext com R2 + fila DO, sem tag cache
 
 - **Decision**: `open-next.config.ts` com `incrementalCache: r2IncrementalCache` e
@@ -378,18 +382,73 @@ restauração × GET (D15, U1/U2) e limpeza da restauração pelo "Ver o catálo
   - **(b) `wrangler deploy` sem popular o cache**: sai do caminho documentado do OpenNext e mexe
     nos scripts de deploy.
 
-## 4. Riscos## 4. Riscos
+## 4. Riscos
 
 | # | Risco | Tratamento |
 |---|---|---|
-| R1 | `expire` não respeitado num isolate novo ⇒ SWR sem teto | Spike SF0; fallback dinâmico aprovado (D2) |
+| R1 | `expire` não respeitado num isolate novo ⇒ SWR sem teto | **Confirmado** no spike (§5) ⇒ FALLBACK |
 | R2 | CPU do Workers Free (10 ms) na renderização e na regeneração | Mesmo risco aceito da T139/ADR-010: medir CPU de `/` e `/p/<código>` no dev (SF de prova); sinal = Erro 1102 |
-| R3 | Varredura de `/p/<n>` e `/fotos/<uuid>` gasta escrita do R2 e compute do Neon (P8) | Risco aceito; o worker recusa formato inválido sem cache novo; `docs/operacao.md` ganha o sinal (Class A do R2 e compute do Neon) e a contingência (domínio próprio com rate limiting) |
-| R4 | `useSearchParams` sem `<Suspense>` derruba a página inteira para CSR no build | Teste de conformidade: build do `preview` + checagem de que `/` sai como ISR (`x-nextjs-cache`) no spike |
+| R3 | Varredura de `/p/<n>` e `/fotos/<uuid>` gasta escrita do R2 e compute do Neon (P8). No FALLBACK, sem escrita de cache, mas toda varredura de `/p/<n>` consulta o Neon | Risco aceito; o worker recusa formato inválido sem cache novo; `docs/operacao.md` ganha o sinal (Class A do R2 e compute do Neon) e a contingência (domínio próprio com rate limiting) |
+| R4 | (Não se aplica no FALLBACK, §5) `useSearchParams` sem `<Suspense>` derruba a página inteira para CSR no build | Teste de conformidade: build do `preview` + checagem de que `/` sai como ISR (`x-nextjs-cache`) no spike |
 | R5 | Crawler do WhatsApp não gera a prévia (noindex, tamanho da imagem, tempo) | Roteiro manual no dev (US5); a imagem tem no máximo 1 MiB (004) e o WhatsApp aceita até ~5 MB |
-| R6 | Entrada de build ("indisponível") vista logo após o deploy | D13; janela de segundos; checada no spike |
-| R7 | Token do CI com *Workers R2 Storage: Edit* na conta (D16) alcança também o bucket de fotos | Risco marginal aceito (o token já publica o worker com binding para as fotos); token restrito à conta, só nos environments do GitHub, validade em `docs/operacao.md`; nota no ADR-011 |
+| R6 | **Confirmado** no spike (§5); não se aplica no FALLBACK. Entrada de build ("indisponível") vista logo após o deploy | D13; janela de segundos; checada no spike |
+| R7 | (Não se aplica no FALLBACK: o token não muda) Token do CI com *Workers R2 Storage: Edit* na conta (D16) alcança também o bucket de fotos | Risco marginal aceito (o token já publica o worker com binding para as fotos); token restrito à conta, só nos environments do GitHub, validade em `docs/operacao.md`; nota no ADR-011 |
 
 ## 5. Resultado do spike SF0
 
-_(preenchido na implementação)_
+**Ramo escolhido: FALLBACK** (2026-10-15, T008, decisão do humano pela regra da T008: qualquer
+cenário falho no `preview` ⇒ FALLBACK). Os cenários a e b (detalhe) falharam no `preview`. O
+spike não foi repetido online: pela opção A aprovada na sessão, o `roseshop-spike` só rodaria se
+o `preview` passasse. Nenhum recurso foi criado na nuvem (sem bucket, token, worker nem secret),
+então a T001, a T006 e a T009 não se aplicam. A prova do populate com token de mesmo escopo
+(D16, A4) não foi feita, porque o ramo dispensa a permissão.
+
+### Onde rodou
+
+`npm run preview` (workerd local, `@opennextjs/cloudflare` 1.20.8, `next` 16.3.8), banco local
+(Docker), `open-next.config.ts` com `r2IncrementalCache` + `doQueue`, `expireTime: 35`, páginas
+com `revalidate = 15`. Código do spike descartado na T010 (tree de volta ao `HEAD`).
+
+### Leitura do código instalado (T003)
+
+- **`/p/[codigo]` sem `expire` num isolate novo.** No prerender manifest gerado
+  (`.open-next/server-functions/default/.next/prerender-manifest.json`), `routes["/"]` traz
+  `initialRevalidateSeconds: 15` e `initialExpireSeconds: 35`, mas
+  `dynamicRoutes["/p/[codigo]"]` não traz `fallbackRevalidate` nem `fallbackExpire`
+  (`fallback: null`, `compute: "blocking"`). Além disso, `SharedCacheControls.get`
+  (`next/dist/server/lib/incremental-cache/shared-cache-controls.external.js`) procura
+  `dynamicRoutes` pelo caminho concreto (`/p/0002`), não pelo padrão, e cai em "A new runtime
+  pathname has no initial lifetime". Sem o mapa em memória do isolate, `calculateRevalidate`
+  usa 1 s e `expire` fica indefinido: SWR sem teto (R1 confirmado).
+- **Entrada de build vista logo após o deploy.** O `lastModified` é `r2Object.uploaded`
+  (`r2-incremental-cache.js`), e o populate do cache, feito pelo `preview` e pelo `deploy`,
+  regrava a entrada de build de `/` com `uploaded` = agora. Ela vale como nova por 15 s e é
+  servida como STALE até os 35 s. O D13 ("na prática ninguém vê a página do build") não se
+  sustenta (R6 confirmado).
+- **D11:** o worker do OpenNext faz `cloudflareContextALS.run({ env, ctx, cf }, …)` com o `ctx`
+  recebido em `handler.fetch`, então `getCloudflareContext().ctx` é o mesmo objeto. Cuidado:
+  `{ ...ctx }` perde `waitUntil` e `passThroughOnException` (métodos no protótipo); um `ctx`
+  próprio precisa de `bind` nos métodos.
+
+### Cenários no `preview` (T005, relato do humano; cabeçalhos incompletos, sem `cache-control`/`age` no cenário a)
+
+| # | Resultado | Observado |
+|---|---|---|
+| a | **Falhou** | Por ~48 s após subir, `/` saiu sem produtos: HIT e depois STALE, com "gerado em 16:15:00" (build). Só às 16:15:48 veio `REVALIDATED` com os produtos |
+| b (`/`) | Passou | Servidor parado, reiniciado com `npx wrangler dev` (sem repopular): `REVALIDATED` às 16:18:14, já sem o produto 3 |
+| b (detalhe) | **Falhou** | `/p/0002` gerado às 16:24:11 (MISS); produto esgotado no painel; servidor parado por mais de 70 s e reiniciado com `npx wrangler dev`; o primeiro pedido veio `x-nextjs-cache: STALE`, sem "Esgotado" e sem `Cache-Control` |
+| c | Passou (mesmo isolate) | `/p/0004` `REVALIDATED` com "Esgotado" 70 s depois |
+
+### Conferências
+
+- **P9 (banco fora, ISR):** passados os 35 s, `/p/<código>` em cache respondeu **503
+  `no-store`**, não a versão anterior que a leitura do `response-cache` (D5) previa. Não foi
+  aprofundado porque o ramo já estava decidido. Registro para revisão futura: com o ISR, o
+  FR-024 ("versão anterior") não foi observado no `preview`.
+- **C1:** não conferido (o ramo dispensa a fila).
+- **D11:** passou: o log do spike mostrou `ctxTemRoseshop: true`. Os eventos do worker
+  (`console.error`) não foram capturados (o `tee` pegou só stdout); `causa: "banco"` fica sem
+  prova de log.
+- **R6:** confirmado no cenário a.
+- **R4:** não se aplica no FALLBACK (sem ISR em `/`, o `useSearchParams` sai do plano; D7
+  simplificado).

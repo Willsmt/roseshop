@@ -81,10 +81,10 @@ secret próprio). **Nunca** no `roseshop-dev` nem no `roseshop`.
 infra definitiva.
 **Revisão TL**: ✅ (infra protegida + ADR).
 
-- [ ] T001 **Humano executa**: `npx wrangler r2 bucket create roseshop-cache-spike` (privado, sem
+- [X] T001 **Humano executa**: `npx wrangler r2 bucket create roseshop-cache-spike` (privado, sem
   CORS, sem token S3) e `npx wrangler r2 bucket list` mostrando o bucket. Entregar o output real
-  — **humano**
-- [ ] T002 **[TL✅]** Infra do spike, **descartável** (D1, D2, D3):
+  — **humano** — **não se aplica**: o `roseshop-spike` só rodaria se o `preview` passasse (opção A da sessão, 2026-10-15); nenhum bucket criado
+- [X] T002 **[TL✅]** (sem revisão TL: código descartado na T010) Infra do spike, **descartável** (D1, D2, D3):
   `open-next.config.ts` com `incrementalCache: r2IncrementalCache`
   (`@opennextjs/cloudflare/overrides/incremental-cache/r2-incremental-cache`) e `queue: doQueue`
   (`@opennextjs/cloudflare/overrides/queue/do-queue`), **sem** `tagCache`;
@@ -100,11 +100,11 @@ infra definitiva.
   `PRODUCT_IMAGES`), o mesmo `durable_objects` e a mesma `migrations`. **`env.dev` e
   `env.production` não mudam.** `cloudflare/worker.ts`: `export { DOQueueHandler } from
   "open-next-worker";`. `npm run cf-typegen` — **principal**
-- [ ] T003 Conferir no código instalado de `@opennextjs/cloudflare` 1.20.x e `next` 16.3.8 (sem
+- [X] T003 Conferir no código instalado de `@opennextjs/cloudflare` 1.20.x e `next` 16.3.8 (sem
   rede) e anotar em rascunho para a T007: (a) se o `expire` vai para `fallbackExpire` da rota
   `/p/[codigo]` no prerender manifest gerado em `.open-next/`; (b) se o `ctx` passado a
   `handler.fetch` chega em `getCloudflareContext().ctx` (D11) — **principal**
-- [ ] T004 Código do spike, **descartável** (listar cada arquivo criado no rascunho da sessão
+- [X] T004 Código do spike, **descartável** (listar cada arquivo criado no rascunho da sessão
   para a T010 apagar): substituir temporariamente `src/app/page.tsx` e criar
   `src/app/p/[codigo]/page.tsx`, ambos com `export const revalidate = 15`, mostrando o instante
   da renderização (`gerado em <ISO>`) para observar a regeneração. `/` lista `id`, `nome` e
@@ -120,7 +120,7 @@ infra definitiva.
   503 `no-store` se vier 500 de novo (D5, P9). Pedido com `x-isr: 1` (revalidação da fila) passa
   sem mudança e, no 500, só registra com `resultado: "revalidacao"` (D5). Nenhum teste novo: o spike não entra no `check`
   — **principal**
-- [ ] T005 **Humano executa no `preview`** (banco local com ≥ 3 produtos, um deles B e outro C,
+- [X] T005 **Humano executa no `preview`** (banco local com ≥ 3 produtos, um deles B e outro C,
   disponíveis): cenários Q§2 **a**, **b** (reiniciar o `preview` durante a espera para ter isolate
   novo; esperar > 60 s) e **c**. Para cada pedido, `curl -s -D - -o /dev/null` com
   `x-nextjs-cache`, `cache-control`, `age`/`date` e o `gerado em` do corpo. Depois, as
@@ -132,8 +132,8 @@ infra definitiva.
   (esperado ≤ 60 s). **D11** (o log mostra `causa: "banco"`). **C1**: com o banco fora e a
   entrada entre 15 e 35 s, um pedido dispara a revalidação da fila e o log mostra
   `resultado: "revalidacao"`, sem `Retry-After` nem 503 no `HEAD` da fila. `npm run db:up` ao
-  fim. Entregar o output real — **humano**
-- [ ] T006 **Humano executa no `roseshop-spike`** (cenários a, b, c; P9 não se repete online
+  fim. Entregar o output real — **humano** — **feito** (relato do humano, 2026-10-15; research §5): a e b (detalhe) falharam; P9 deu 503; D11 passou
+- [X] T006 **Humano executa no `roseshop-spike`** (cenários a, b, c; P9 não se repete online
   porque o Neon não é derrubado): criar no painel da Cloudflare um token **temporário**
   `roseshop-spike-deploy` com o **mesmo escopo** que o token do CI terá no ramo ISR (*Workers
   Scripts: Edit*, *Workers R2 Storage: Edit* e as leituras de conta/usuário do token atual,
@@ -145,31 +145,33 @@ infra definitiva.
   dev do Neon (secret próprio do spike, nunca em arquivo); `npx wrangler tail --env spike` em
   outro terminal. Produtos B e C mudados pelo painel do `roseshop-dev` (mesma branch do Neon).
   Mesmos `curl` da T005 contra `https://roseshop-spike.willsmt.workers.dev`. Entregar o output
-  real — **humano**
-- [ ] T007 Registrar em `research.md` §5 os outputs reais da T005 e da T006 (resumidos, com os
-  cabeçalhos relevantes), o achado da T003 e o resultado de P9, D11 e R6 — **principal**
-- [ ] T008 **Decisão do ramo**, registrada no topo de `research.md` §5 e depois neste arquivo,
+  real — **humano** — **não se aplica**: o `preview` falhou antes (opção A); nenhum token, worker ou secret criado
+- [X] T007 Registrar em `research.md` §5 os outputs reais da T005 e da T006 (resumidos, com os
+  cabeçalhos relevantes), o achado da T003 e o resultado de P9, D11 e R6 — **principal** — **feito** (research §5)
+- [X] T008 **Decisão do ramo**, registrada no topo de `research.md` §5 e depois neste arquivo,
   na linha "Ramo escolhido" abaixo: **ISR** se os cenários a, b e c passaram no `preview` **e** no
   `roseshop-spike`; **FALLBACK** se qualquer um falhou. P9 e D11 não decidem o ramo: P9 falho no
   ISR ⇒ o FR-024 fica só com o 503 (registrar como limitação no ADR-011); D11 falho ⇒ plano B do
-  D11 (`AsyncLocalStorage` em `globalThis`), anotado para a SF3 e a SF6 — **principal**
+  D11 (`AsyncLocalStorage` em `globalThis`), anotado para a SF3 e a SF6 — **principal** — **feito**: FALLBACK
 
-  **Ramo escolhido**: _(preencher na T008: ISR ou FALLBACK, com data)_
+  **Ramo escolhido**: **FALLBACK** (2026-10-15). Cenários a e b (detalhe) falharam no `preview`;
+  detalhes e motivo técnico em `research.md` §5.
 
-- [ ] T009 **Humano executa**, ainda com o `env.spike` no `wrangler.jsonc`: `npx wrangler delete
+- [X] T009 **Humano executa**, ainda com o `env.spike` no `wrangler.jsonc`: `npx wrangler delete
   --env spike` (apaga o worker `roseshop-spike`, seus Durable Objects e o secret); esvaziar o
   bucket `roseshop-cache-spike` (o R2 só apaga bucket vazio; pelo painel da Cloudflare ou por
   `npx wrangler r2 object delete`) e `npx wrangler r2 bucket delete roseshop-cache-spike`;
   conferir com `npx wrangler r2 bucket list` (sem o bucket) e `npx wrangler deployments list
   --env spike` (erro de worker inexistente); apagar no painel o token temporário
-  `roseshop-spike-deploy` da T006. Entregar o output real — **humano**
-- [ ] T010 Limpar o tree: `git restore` de todos os arquivos alterados na T002 e na T004
+  `roseshop-spike-deploy` da T006. Entregar o output real — **humano** — **não se aplica**: nenhum recurso do spike foi criado na nuvem
+- [X] T010 Limpar o tree: `git restore` de todos os arquivos alterados na T002 e na T004
   (`open-next.config.ts`, `next.config.ts`, `wrangler.jsonc`, `cloudflare/worker.ts`,
   `cloudflare-env.d.ts`, `src/app/page.tsx`) e apagar os arquivos novos da T004
   (`src/app/p/[codigo]/page.tsx`, `src/lib/db/spike.ts`). `git status` deve mostrar só
-  `research.md` e este `tasks.md` — **principal**
-- [ ] T011 Rodar `npm run check`; colar o output real — **júnior**
-- [ ] T012 Rascunhar `specs/adr/011-cache-catalogo-workers-dev.md` (sugerido) no formato dos
+  `research.md` e este `tasks.md` — **principal** — **feito** (2026-10-15): `git status` só com `research.md` e `tasks.md`
+- [X] T011 Rodar `npm run check`; colar o output real — **júnior** — **feito** (2026-10-15):
+  96 arquivos e 2524 testes passaram, depois de apagar o `.next/types` antigo do build do spike
+- [X] T012 Rascunhar `specs/adr/011-cache-catalogo-workers-dev.md` (sugerido) no formato dos
   ADRs existentes: contexto (`*.workers.dev` sem cache de borda nem Cache API, FR-020 de 1 min,
   FR-024), decisão conforme o ramo (**[ISR]**: ISR do OpenNext, R2 próprio por ambiente, fila em
   DO SQLite, orçamento `revalidate` 15 + `expireTime` 35 + navegador 20 = 55 s + render, com a
@@ -185,24 +187,24 @@ infra definitiva.
   primeira visita), evidência (link para `research.md` §5, incluindo onde o spike rodou),
   consequências (Free tier, R2/R3, como reverter) e o que fica fora (revalidação sob demanda)
   **[TL✅]** — **principal**
-- [ ] T013 Revisão pelo tech-lead (opus): coerência do ADR-011 com `research.md` §5, tree sem
+- [X] T013 Revisão pelo tech-lead (opus): coerência do ADR-011 com `research.md` §5, tree sem
   resto do spike, worker e bucket do spike apagados (output da T009) — **tech-lead**
-- [ ] T014 **GATE — aprovação do humano**: ler e aprovar o ADR-011 e o ramo escolhido. **Nada da
-  infra definitiva (T015 a T016) nem a SF1 começam sem esta aprovação** — **humano**
-- [ ] T015 **[ISR] Humano executa**: `npx wrangler r2 bucket create roseshop-cache-dev` e `npx
+- [X] T014 **GATE — aprovação do humano**: ler e aprovar o ADR-011 e o ramo escolhido. **Nada da
+  infra definitiva (T015 a T016) nem a SF1 começam sem esta aprovação** — **humano** — **aprovado** (2026-10-15): FALLBACK e ADR-011; E1, E2 e E3 = A
+- [X] T015 **[ISR] Humano executa**: `npx wrangler r2 bucket create roseshop-cache-dev` e `npx
   wrangler r2 bucket create roseshop-cache-prod` (privados, sem CORS); `npx wrangler r2 bucket
-  list` com os dois. Entregar o output real — **humano**
-- [ ] T015a **[ISR] Humano executa** (research D16): no painel da Cloudflare, editar o token do CI
+  list` com os dois. Entregar o output real — **humano** — **não se aplica (ramo FALLBACK, T008)**
+- [X] T015a **[ISR] Humano executa** (research D16): no painel da Cloudflare, editar o token do CI
   (o mesmo valor gravado como `CLOUDFLARE_API_TOKEN` nos environments `dev` e `production` do
   GitHub) e acrescentar *Workers R2 Storage: Edit*, com o mesmo escopo do token temporário
   provado na T006, mantendo a restrição à conta e a validade. Editar as permissões não muda o
   valor, então os secrets do GitHub não mudam. Entregar a lista de permissões do token, sem o
-  valor — **humano**
-- [ ] T015b Acionar o `doc-sync-onboarding` para atualizar `docs/operacao.md` com as permissões
+  valor — **humano** — **não se aplica (ramo FALLBACK, T008)**
+- [X] T015b Acionar o `doc-sync-onboarding` para atualizar `docs/operacao.md` com as permissões
   do token do CI (*Workers Scripts: Edit* + *Workers R2 Storage: Edit* + leituras de
   conta/usuário, restrito à conta, validade inalterada) e o porquê (o deploy popula o cache R2,
-  research D16). Commit `docs` próprio na T019 — **doc-sync**
-- [ ] T016 **[ISR] [TL✅]** Infra definitiva do ISR, nos **três** ambientes (bindings não são
+  research D16). Commit `docs` próprio na T019 — **doc-sync** — **não se aplica (ramo FALLBACK, T008)**
+- [X] T016 **[ISR] [TL✅]** Infra definitiva do ISR, nos **três** ambientes (bindings não são
   herdados): `open-next.config.ts` e `next.config.ts` como na T002; `wrangler.jsonc` com
   `NEXT_INC_CACHE_R2_BUCKET` → `roseshop-cache-local` | `roseshop-cache-dev` |
   `roseshop-cache-prod`, `durable_objects.bindings` = `[{ name: "NEXT_CACHE_DO_QUEUE",
@@ -211,13 +213,13 @@ infra definitiva.
   `cloudflare/worker.ts`: `export { DOQueueHandler } from "open-next-worker";` e atualizar o
   comentário do topo (que hoje diz "não há durable_objects"); `npm run cf-typegen`. Workflows e
   scripts de deploy não mudam (D16). A classe só chega ao `roseshop-dev` no deploy do PR e ao
-  `roseshop` no merge — **principal**
-- [ ] T017 **[ISR]** `npm run check` (o `typecheck` cobre `cloudflare/`: o `tsconfig` inclui `**/*.ts`); colar o output real —
-  **júnior**
-- [ ] T018 **[ISR]** Revisão do diff da T016 e do `docs/operacao.md` da T015b pelo tech-lead
+  `roseshop` no merge — **principal** — **não se aplica (ramo FALLBACK, T008)**
+- [X] T017 **[ISR]** `npm run check` (o `typecheck` cobre `cloudflare/`: o `tsconfig` inclui `**/*.ts`); colar o output real —
+  **júnior** — **não se aplica (ramo FALLBACK, T008)**
+- [X] T018 **[ISR]** Revisão do diff da T016 e do `docs/operacao.md` da T015b pelo tech-lead
   (bindings e migration nos três ambientes, nenhum resto do `env.spike`, cron da limpeza intacto,
   `expireTime: 35`, workflows e scripts de deploy sem mudança, permissões do token conferidas
-  contra o output da T015a) — **tech-lead**
+  contra o output da T015a) — **tech-lead** — **não se aplica (ramo FALLBACK, T008)**
 - [ ] T019 Commit (humano). Mensagem **[ISR]**:
   ```text
   feat(cache): liga o ISR do catálogo com R2 e fila em DO
@@ -649,6 +651,22 @@ testes; remoção de `src/app/page.tsx` e migração de `src/app/page.test.tsx`.
   bloco da lista e estado vazio. Fotos fora da primeira tela em lazy.
   ```
   — **humano**
+- [ ] T072a **Humano executa** (CPU antecipada, risco da T139/ADR-010; o FALLBACK renderiza a cada
+  primeira visita do navegador): `npm run deploy:dev` deste branch (manual, permitido no dev) e
+  `npx wrangler tail --env dev --format json` em outro terminal; abrir `/` e `/p/<código>` 5 vezes
+  cada (a primeira com o Neon frio, as outras com 61 s de intervalo para escapar do `max-age=60`
+  do navegador, ou com `curl`). Entregar o `cpuTime`, o `wallTime` e o `outcome` de cada pedido,
+  sem cabeçalhos nem corpo. Sem `WHATSAPP_NUMBER` no dev, a página sai sem o botão e registra a
+  falha de configuração; isso não afeta a medição — **humano**
+- [ ] T072b Registrar a medição da T072a em `research.md` §5 ("CPU das páginas no dev"): acima de
+  10 ms sem Erro 1102 ⇒ risco aceito da T139, seguir; Erro 1102 ou falha por limite de CPU ⇒
+  parar a SF9 e levar ao humano (contingência do ADR-010: Workers Paid com emenda da constitution
+  VII). A T087 da SF11 repete a medição com fotos reais — **principal**
+- [ ] T072c Commit (humano):
+  ```text
+  docs(specs): registra a CPU das páginas no dev
+  ```
+  — **humano**
 
 ---
 
@@ -695,9 +713,9 @@ lenta ou falha ao tocar em Carregar mais".
   chama `limparRestauracoes()` antes de navegar; o "Ver o catálogo" do `not-found.tsx` também
   limpa (F3). Teste de componente das três situações — **ui-dev** (teste: **test-writer**)
 - [ ] T077 `npm run check`; colar o output real — **júnior**
-- [ ] T078 **Humano confere no `preview`** (R4, só **[ISR]**): `curl -s -D - -o /dev/null
+- [X] T078 **Humano confere no `preview`** (R4, só **[ISR]**): `curl -s -D - -o /dev/null
   http://localhost:8787/` duas vezes com 25 s de intervalo mostra `x-nextjs-cache` (a página
-  inicial continua ISR com o `<Suspense>`). Entregar o output real — **humano**
+  inicial continua ISR com o `<Suspense>`). Entregar o output real — **humano** — **não se aplica (ramo FALLBACK, T008)**
 - [ ] T079 Commit (humano):
   ```text
   feat(catalogo): adiciona carregar mais, filtro e retorno à lista
@@ -815,7 +833,7 @@ entrega.
 | T002, T004 | descartáveis (apagadas na T010); `revalidate = 15`, `expireTime: 35` | descartáveis (apagadas na T010) |
 | T005 | P9 (só a repetição sai `no-store`, A1) e C1 conferidos | P9/C1 registrados como não aplicáveis ao ramo |
 | T012, T019 | ADR e commit do ISR (com a infra da T016 e o commit `docs` da T015b) | ADR e commit das páginas dinâmicas (só docs) |
-| T006 | populate provado com token temporário de mesmo escopo (sem decidir o ramo) | idem (a prova fica registrada para o ADR-011) |
+| T006 | populate provado com token temporário de mesmo escopo (sem decidir o ramo) | não se aplica: o `preview` falhou antes (opção A, 2026-10-15); prova do D16 não feita (research §5) |
 | T015–T015b, T016–T018 | buckets, token do CI com *Workers R2 Storage: Edit*, `docs/operacao.md` e infra definitiva | não se aplica (o token do CI não muda) |
 | T028 (`prazos.ts`) | `REVALIDATE_S` 15, `EXPIRE_S` 35, página 20 | página 60, sem `REVALIDATE_S`/`EXPIRE_S` |
 | T033/T035 | registro da config inválida por renderização | registro uma vez por isolate |
@@ -861,7 +879,7 @@ entrega.
 | SC-001 | SF12 (pendência de entrega) |
 | SC-002, SC-006 | SF11 |
 | SC-003, SC-004 | SF2, SF4, SF5, SF7 |
-| SC-008 | SF0 (ADR-011), SF11 (CPU) |
+| SC-008 | SF0 (ADR-011), SF8 (CPU antecipada, T072a/T072b), SF11 (CPU com fotos reais) |
 
 ## Pontos de atenção
 

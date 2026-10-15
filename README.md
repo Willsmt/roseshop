@@ -49,11 +49,13 @@ Avise o Willians. As administradoras têm todas o mesmo poder.
 
 Em `/painel/produtos` fica a lista dos produtos. Cada produto ganha um código (`#0001`, `#0002`…) que não se repete, nem depois de removido.
 
-- **Cadastrar**: toque em "Novo produto", escreva o nome, escolha a categoria e, se quiser, descrição e preço. O preço pode ser "12,90" ou "R$ 12,90"; marque "a partir de" quando o valor varia. Sem preço, o produto aparece como "Sem preço".
+- **Cadastrar**: toque em "Novo produto". Primeiro vêm as fotos: de 1 a 3, com "Tirar foto" ou "Escolher da galeria"; ajuste o recorte quadrado e, se quiser, mude a ordem (a primeira é a capa). Toque em "Continuar": o sistema sugere nome, categoria e descrição a partir das fotos e marca os campos com "Sugestão — confira". Confira, corrija o que precisar e coloque o preço, se quiser. O preço pode ser "12,90" ou "R$ 12,90"; marque "a partir de" quando o valor varia. Sem preço, o produto aparece como "Sem preço".
+- **Se a sugestão não vier**: preencha você mesma; o cadastro funciona do mesmo jeito. A sugestão tem um limite por dia e volta no dia seguinte.
+- **Fotos de um produto já cadastrado**: no detalhe do produto, toque em "Fotos". Lá dá para colocar, trocar, mudar a ordem e remover fotos; cada mudança é salva na hora. O produto fica sempre com pelo menos 1 foto e no máximo 3.
 - **Lista**: os mais novos aparecem primeiro. Use a busca (por nome ou pelo código, como "42" ou "#0042") e os filtros de categoria e de esgotado. "Ver mais produtos" mostra os próximos.
 - **Esgotado**: no detalhe do produto, toque em "Marcar como esgotado". Para voltar, "Marcar como disponível".
 - **Destaque**: no detalhe, "Destacar" põe o produto em destaque. O limite é de 8 destaques ao mesmo tempo; para destacar outro, tire um do destaque antes. Produto esgotado sai do destaque sozinho e não volta sozinho.
-- **Editar e remover**: no detalhe do produto. Remover pede a confirmação com o código e o nome.
+- **Editar e remover**: no detalhe do produto. Remover pede a confirmação com o código e o nome, e apaga também as fotos do produto.
 - **Se duas pessoas mexerem no mesmo produto**: quem agir depois vê o aviso "Outra pessoa mudou este produto…"; recarregue a página e faça de novo.
 - **Categoria com produtos** não pode ser removida: mude ou remova os produtos antes.
 
@@ -113,6 +115,48 @@ npm run test:perf      # popula 500 produtos, mede a lista, a próxima página, 
 O comando imprime média e máximo de cada consulta (meta: < 2 s) e **recria as categorias**
 do banco local, então não rode com dados que queira manter. A medição no `preview`
 (rede "Fast 4G") é manual, descrita em `specs/003-produtos/quickstart.md` §4.
+
+### Fotos e sugestão por IA (feature 004)
+
+Todo produto tem de 1 a 3 fotos. O celular trata a foto antes de enviar (recorte quadrado,
+sem localização nem dados da câmera, WebP ou JPEG de até 1 MiB) e envia direto ao R2 por uma
+URL assinada; o servidor confere o arquivo antes de aceitar. As fotos ficam nos buckets
+`roseshop-dev` e `roseshop-prod` e só aparecem para quem está logado no painel
+(`/painel/fotos/...`). Uma limpeza diária às 03:00 de Brasília (Cron Trigger) apaga fotos
+temporárias com 24 h ou mais e fotos que ficaram sem produto (ADR-009).
+
+A sugestão de nome, categoria e descrição usa a OpenAI só no servidor, com as fotos já
+conferidas, e não grava nada: a administradora confirma ou corrige. Limite de 30 sugestões por
+pessoa e 100 no total por dia (dia de Brasília). O modelo em uso é provisório até a medição com
+fotos reais (ADR-010).
+
+#### Configuração por ambiente
+
+Cada ambiente online precisa destes segredos (`npx wrangler secret put <NOME> --env <dev|production>`):
+
+- `R2_ACCESS_KEY_ID` e `R2_SECRET_ACCESS_KEY`: token R2 **Object Read & Write** só no bucket do ambiente.
+- `OPENAI_API_KEY`: chave do projeto OpenAI do ambiente (dev e produção em projetos separados, cada um com teto de gasto aplicado).
+- `CRON_SECRET`: gerado com `openssl rand -base64 32`; ninguém precisa saber o valor.
+
+Além disso: o `R2_S3_ENDPOINT` de cada ambiente fica no `wrangler.jsonc`, e o CORS de cada
+bucket fica em `infra/r2/cors.<ambiente>.json`, aplicado com
+`npx wrangler r2 bucket cors set <bucket> --file infra/r2/cors.<ambiente>.json`. Passo a passo
+em `specs/004-fotos-produto/quickstart.md` §1. No local, as chaves esperadas estão no
+`.dev.vars.example`.
+
+#### Medição manual da IA
+
+```bash
+npm run test:ia        # lê as fotos de ia-medicao/ (fora do git) e usa a chave de dev
+```
+
+Faz chamadas reais e **gasta dinheiro**; fica fora do `check`, do `test:int` e do CI. Serve
+para escolher modelo e esforço (SC-003 e SC-004 da 004).
+
+#### Dependências novas da feature 004
+
+- `aws4fetch@1.0.20` (versão exata): assinatura das URLs de envio ao R2.
+- `react-easy-crop@6.2.3` (versão exata): recorte da foto no aparelho.
 
 ### Dependências novas da feature 001
 

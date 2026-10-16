@@ -1,14 +1,8 @@
 # Copie para .seed-dev.vars (nunca commite o .seed-dev.vars). Lido só por `npm run seed:dev` e
 # `npm run seed:dev:limpar` (seed do catálogo no ambiente DEV; a trava recusa produção).
-# Preencha à mão; este arquivo não tem valores.
+# Preencha à mão; este arquivo não tem valores. As fotos vão ao bucket roseshop-dev pelo
+# `wrangler r2 object --remote`, com o login do wrangler (`npx wrangler login`): sem chave de R2 aqui.
 
 # String DIRETA (sem pooler) do branch dev do Neon, com ?sslmode=require. O host tem de ser
 # igual ao HOST_NEON_DEV de scripts/seed-catalogo-local/trava.ts.
 DATABASE_URL=
-
-# Exatamente o endpoint do bucket roseshop-dev (ver env.dev em wrangler.jsonc).
-R2_S3_ENDPOINT=https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-dev
-
-# Token S3 do R2 com acesso só ao bucket roseshop-dev (Object Read & Write).
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=

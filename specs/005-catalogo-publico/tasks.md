@@ -819,9 +819,10 @@ lenta ou falha ao tocar em Carregar mais".
 - [ ] T085a Seed do dev (decisão do humano, para os ≥ 24 produtos da T087): `scripts/seed-catalogo-local.ts`
   ganha a flag explícita `--dev` (`npm run seed:dev`) e `--limpar` (`npm run seed:dev:limpar`).
   Trava por igualdade exata em `trava.ts` (`validarAmbienteDev`): host direto do branch dev do
-  Neon (`HOST_NEON_DEV`, marcador até o mantenedor preencher), `sslmode=require`, endpoint
-  `roseshop-dev`; recusa produção, pooler, localhost, CI e `NODE_ENV=production`. Credenciais só de
-  `.seed-dev.vars` (no `.gitignore`; modelo em `.seed-dev.vars.example`, sem valores). Autor
+  Neon (`HOST_NEON_DEV`) e `sslmode=require`; bucket `roseshop-dev` fixo na trava; recusa produção,
+  pooler, localhost, CI e `NODE_ENV=production`. Sem credencial S3: as fotos vão e saem por
+  `wrangler r2 object put|delete roseshop-dev/<chave> --remote` (login do wrangler do humano).
+  `.seed-dev.vars` (no `.gitignore`; modelo sem valores) só tem `DATABASE_URL`. Autor
   `seed@dev`; a limpeza remove só o que tem esse autor (produtos, envios e objetos do R2).
   Testes da trava nos dois modos em `trava.test.ts` — **principal**
 - [ ] T086 Abrir o PR para `main` (deploy do dev pelo CI, `pull-request.yml`), mostrando antes o

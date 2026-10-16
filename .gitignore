@@ -67,3 +67,5 @@ references/
 
 # Medição da IA (fotos reais da loja; nunca versionar)
 ia-medicao/
+.seed-dev.vars*
+!.seed-dev.vars.example

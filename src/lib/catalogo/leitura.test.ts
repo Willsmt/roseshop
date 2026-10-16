@@ -58,7 +58,7 @@ function publicoDb(over: Partial<sql.ProdutoPublicoDb> = {}): sql.ProdutoPublico
 }
 
 const CHAVES_CARTAO = ["capa", "codigo", "esgotado", "href", "nome", "preco"];
-const CHAVES_PUBLICO = [...CHAVES_CARTAO, "categoria", "descricao", "fotos", "whatsapp"].sort();
+const CHAVES_PUBLICO = [...CHAVES_CARTAO, "categoria", "descricao", "fotos", "sacola", "whatsapp"].sort();
 
 let ctx: { roseshop: { causa: string | null } };
 
@@ -235,6 +235,36 @@ describe("lerProduto", () => {
   it("inexistente ⇒ nao_encontrado", async () => {
     db.obterPublico.mockResolvedValue(null);
     expect(await lerProduto("0999")).toBe("nao_encontrado");
+  });
+
+  // Feature 006, SF5, T042 (DM§8, CT§2): dados da ilha do detalhe. O código é o canônico, sem "#".
+  it("disponível: sacola com o código canônico sem # (0042), preço em centavos e aPartirDe", async () => {
+    db.obterPublico.mockResolvedValue(publicoDb({ precoCentavos: 600, aPartirDe: true }));
+    const p = await lerProduto("42");
+    if (p === "nao_encontrado") throw new Error("inesperado");
+    expect(p.sacola).toEqual({ codigo: "0042", precoCentavos: 600, aPartirDe: true });
+    expect(Object.keys(p.sacola!).sort()).toEqual(["aPartirDe", "codigo", "precoCentavos"]);
+    expect(p.codigo).toBe("#0042");
+  });
+
+  it("disponível sem preço: sacola com precoCentavos null", async () => {
+    db.obterPublico.mockResolvedValue(publicoDb({ precoCentavos: null }));
+    expect(await lerProduto("42")).toMatchObject({
+      sacola: { codigo: "0042", precoCentavos: null, aPartirDe: false },
+    });
+  });
+
+  it("id de 5 dígitos: sacola.codigo 12345, sem zeros nem #", async () => {
+    db.obterPublico.mockResolvedValue(publicoDb({ id: 12345 }));
+    const p = await lerProduto("12345");
+    if (p === "nao_encontrado") throw new Error("inesperado");
+    expect(p.sacola?.codigo).toBe("12345");
+    expect(p.codigo).toBe("#12345");
+  });
+
+  it("esgotado: sacola null", async () => {
+    db.obterPublico.mockResolvedValue(publicoDb({ esgotado: true }));
+    expect(await lerProduto("42")).toMatchObject({ esgotado: true, sacola: null });
   });
 });
 

@@ -420,24 +420,24 @@ e `page.test.tsx`.
 **Fecha**: US1.1–1.7, US4.4, US4.6 (detalhe), FR-002a, SC-005 (continua verde).
 **Revisão**: tech-lead revisa o diff do ui-dev.
 
-- [ ] T042 [US1] Teste primeiro — ampliar `src/lib/catalogo/leitura.test.ts`: `lerProduto`
+- [X] T042 [US1] Teste primeiro — ampliar `src/lib/catalogo/leitura.test.ts`: `lerProduto`
   devolve `sacola: { codigo, precoCentavos, aPartirDe }` para disponível e `sacola: null` para
   esgotado (DM§8); para o produto de id 42, **`sacola.codigo === "0042"` (sem "#")**, enquanto
   `codigo === "#0042"` continua como na 005; para id 12345, `sacola.codigo === "12345"`. Ampliar `src/test/conformance/catalogo-acesso.test.ts`: as props do detalhe
   só ganham as chaves `sacola`, `precoCentavos` e `aPartirDe` — **test-writer**
-- [ ] T043 [US1] `src/lib/catalogo/leitura.ts`: campo `sacola` em `ProdutoPublico` (`null` se
+- [X] T043 [US1] `src/lib/catalogo/leitura.ts`: campo `sacola` em `ProdutoPublico` (`null` se
   esgotado), com `codigo: codigoCanonico(id)` de `src/lib/catalogo/exibicao.ts` (**nunca** o
   `codigo` formatado com "#") — **tech-lead**
-- [ ] T044 [P] [US1] [US4] Teste primeiro — `src/app/(public)/_sacola/usar-sacola.test.tsx`
+- [X] T044 [P] [US1] [US4] Teste primeiro — `src/app/(public)/_sacola/usar-sacola.test.tsx`
   (jsdom, D9/D13): `renderToString` devolve o estado do servidor `null`; depois de hidratar,
   lê a sacola; `localStorage` que lança ⇒ continua `null` sem erro nem `console.error`; evento
   `storage` de outra aba re-renderiza **sem** chamar `setItem` — **test-writer**
-- [ ] T045 [P] [US1] Teste primeiro — `src/app/(public)/_sacola/acesso-sacola.test.tsx` (CT§1,
+- [X] T045 [P] [US1] Teste primeiro — `src/app/(public)/_sacola/acesso-sacola.test.tsx` (CT§1,
   US1.7, FR-004): HTML do servidor vazio; hidratado: `<a href="/sacola">` com "Sacola, 2
   produtos", "Sacola, 1 produto", "Sacola, 0 produtos"; número dentro de `aria-live="polite"`;
   armazenamento que lança ⇒ nada; muda quando outra aba adiciona (US1.6); axe sem violações
   graves — **test-writer**
-- [ ] T046 [P] [US1] Teste primeiro — `src/app/(public)/_sacola/botao-sacola.test.tsx` (CT§2):
+- [X] T046 [P] [US1] Teste primeiro — `src/app/(public)/_sacola/botao-sacola.test.tsx` (CT§2):
   fora da sacola ⇒ `<button>Adicionar à sacola</button>`; tocar chama `alterarSacola` com
   `adicionar({ codigo, precoCentavos, aPartirDe })` e vira `<a href="/sacola">Na sacola</a>`
   sem recarregar (US1.2); já na sacola ao abrir ⇒ "Na sacola" e tocar **não** muda a quantidade
@@ -445,22 +445,22 @@ e `page.test.tsx`.
   o clique não grava (US1.5); outra aba adiciona ⇒ vira "Na sacola" (US1.6); `setItem` que
   lança ⇒ "Não foi possível adicionar agora."; armazenamento indisponível ou antes de hidratar
   ⇒ nada; axe — **test-writer**
-- [ ] T047 [US1] [US4] Teste primeiro — `src/app/(public)/layout.test.tsx` (novo) e ampliar
+- [X] T047 [US1] [US4] Teste primeiro — `src/app/(public)/layout.test.tsx` (novo) e ampliar
   `src/app/(public)/p/[codigo]/page.test.tsx`: o layout tem `<div data-sacola="cabecalho"
   class="mx-auto flex h-12 max-w-xl justify-end px-4">` **vazio no HTML do servidor**; o detalhe
   disponível tem `<div data-sacola="detalhe" class="min-h-12">` **antes** do link "Perguntar no
   WhatsApp" (US1.1); esgotado **sem** o espaço e sem os dois botões (US1.4); nenhum texto
   "Adicionar à sacola" nem "Sacola," no HTML do servidor (FR-002a, US4.6) — **test-writer**
-- [ ] T048 [US1] [US4] `src/app/(public)/_sacola/usar-sacola.ts` (`useSyncExternalStore` com
+- [X] T048 [US1] [US4] `src/app/(public)/_sacola/usar-sacola.ts` (`useSyncExternalStore` com
   `getServerSnapshot = () => null`, `assinarSacola`, `lerSacola`), `acesso-sacola.tsx` e
   `botao-sacola.tsx` (`"use client"`), consumindo só `@/lib/sacola/*` — **ui-dev**
-- [ ] T049 [US1] `src/app/(public)/layout.tsx` (espaço do cabeçalho com `AcessoSacola`) e
+- [X] T049 [US1] `src/app/(public)/layout.tsx` (espaço do cabeçalho com `AcessoSacola`) e
   `src/app/(public)/p/[codigo]/page.tsx` (espaço do detalhe com `BotaoSacola`, só disponível,
   antes de `BotaoWhatsapp`). Nenhuma outra mudança de HTML: a T002 tem de continuar verde —
   **ui-dev**
-- [ ] T050 Revisão do diff do ui-dev (fronteira, sem lógica de negócio na tela, SC-005) —
+- [X] T050 Revisão do diff do ui-dev (fronteira, sem lógica de negócio na tela, SC-005) —
   **tech-lead**
-- [ ] T051 `npm run check` (com a T002 verde no output) e `npm run test:int` (em série); colar
+- [X] T051 `npm run check` (com a T002 verde no output) e `npm run test:int` (em série); colar
   o output real — **júnior**
 - [ ] T052 Commit (humano):
   ```text

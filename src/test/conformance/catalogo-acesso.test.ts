@@ -315,6 +315,7 @@ describe("catálogo público sem sessão (T041)", () => {
       href: true,
       nome: true,
       preco: true,
+      sacola: true,
       whatsapp: true,
     };
     const CHAVES_PRODUTO_PUBLICO = Object.keys(CHAVES);
@@ -346,6 +347,7 @@ describe("catálogo público sem sessão (T041)", () => {
         descricao: "d",
         fotos: [{ url: "/fotos/a.webp", alt: "Meia — foto 1 de 1" }],
         whatsapp: { href: "https://wa.me/5511999999999?text=x" },
+        sacola: { codigo: "0042", precoCentavos: 1290, aPartirDe: false },
       };
       expect(Object.keys(produto).sort()).toEqual([...CHAVES_PRODUTO_PUBLICO].sort());
       vi.doMock("@/lib/catalogo", () => ({
@@ -367,13 +369,21 @@ describe("catálogo público sem sessão (T041)", () => {
       visita(arvore);
 
       expect(fs.existsSync(path.join(process.cwd(), PAGINA_DETALHE))).toBe(true);
+      // Feature 006, T042: a ilha da sacola só acrescenta `sacola` (e o que vai dentro dela).
+      const CHAVES_SACOLA = ["aPartirDe", "codigo", "precoCentavos"];
+      const permitidas = [...CHAVES_PRODUTO_PUBLICO, ...CHAVES_SACOLA];
       for (const props of componentes) {
         const extras = Object.keys(props).filter(
           // `voltar` é a opção do LinkCatalogo (SF9), não um dado do produto.
-          (k) => k !== "children" && k !== "voltar" && !CHAVES_PRODUTO_PUBLICO.includes(k),
+          (k) => k !== "children" && k !== "voltar" && !permitidas.includes(k),
         );
         expect(extras).toEqual([]);
+        if ("sacola" in props) {
+          expect(Object.keys(props.sacola as object).sort()).toEqual(CHAVES_SACOLA);
+          expect(props.sacola).toEqual(produto.sacola);
+        }
       }
+      expect(componentes.some((p) => "sacola" in p)).toBe(true);
     });
   });
 });

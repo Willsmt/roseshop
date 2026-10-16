@@ -62,9 +62,16 @@ Chrome com a emulação de celular; DevTools → Application → Local Storage.
    abrir a sacola ⇒ marcação, aviso de removido com código, aviso de preço; recarregar ⇒ aviso
    de preço some (R2, aceito).
 9. **Envio barrado** (US3.5): com a sacola aberta, mudar um preço no painel e tocar em enviar ⇒
-   WhatsApp não abre, aviso aparece; tocar de novo ⇒ abre.
-10. **Observação** (US2.13): 15 produtos com nomes longos; digitar até o contador zerar; colar
-    texto com emoji; adicionar produto em outra aba ⇒ "Passou N" e envio desabilitado.
+   WhatsApp não abre, aviso aparece; tocar de novo ⇒ abre. **Falha no envio** (US3.7, A1): com a
+   sacola conferida na tela, `npm run db:down` e tocar em enviar ⇒ "Não consegui conferir agora,
+   tente de novo.", a lista continua, o WhatsApp não abre e `roseshop.sacola` não muda; `npm run
+   db:up` e tocar de novo no mesmo botão ⇒ abre.
+10. **Observação** (US2.13, A2): com poucos produtos, o campo mostra "N de 200"; com 15 produtos
+    de nomes longos, digitar até o medidor trocar para "Espaço da mensagem quase cheio" com a barra
+    (o leitor de tela anuncia uma vez) e depois até o campo parar de aceitar texto; nenhum número
+    de caracteres codificados na tela; colar texto com emoji; adicionar produto em outra aba ⇒ "A
+    observação não cabe mais na mensagem. Encurte para enviar." e envio desabilitado, texto
+    intacto.
 11. **Número inválido** (US2.12): parar o `preview`, apagar `WHATSAPP_NUMBER` do `.dev.vars`
     (humano), subir de novo ⇒ envio com o texto de indisponível, nenhum `wa.me` no HTML
     (DevTools → Elements → buscar `wa.me`), um log `catalogo.whatsapp_invalido` sem o valor.
@@ -88,8 +95,9 @@ Deploy pelo PR (`pull-request.yml`) e `npm run seed:dev`.
    consultar", observação após o rótulo, sem caracteres trocados. Voltar ⇒ confirmação, sacola
    intacta. Contar os toques da sacola (SC-001: ≤ 6).
 2. **Pior caso no aparelho** (R3): seed com 15 produtos de nomes de 40 caracteres acentuados e
-   emoji e preço "a partir de"; quantidade 10 em todos; observação até o contador zerar; enviar
-   e conferir que a mensagem chega inteira (última linha da observação presente). Registrar
+   emoji e preço "a partir de"; quantidade 10 em todos; observação até o campo parar de aceitar
+   texto (medidor em "Espaço da mensagem quase cheio" com a barra no fim); enviar e conferir que a
+   mensagem chega inteira (última linha da observação presente). Registrar
    modelo do aparelho, versão do Android, do Chrome e do WhatsApp em `rastreabilidade.md`.
 3. **CPU da conferência** (SC-004, ADR-010):
    ```bash

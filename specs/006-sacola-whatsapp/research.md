@@ -82,7 +82,8 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
     desabilitado. **Ajuste do humano (tasks, 2026-10-16)**: a tela mostra "N de 200" enquanto o
     teto de 200 manda e, quando o orçamento da URL passa a mandar, "Espaço da mensagem quase
     cheio" com barra de progresso, sem expor a conta codificada (`medidorObservacao`,
-    contracts/telas.md §3); o número exato fica nos testes.
+    contracts/telas.md §3); o campo não passa do limite; a troca de modo é anunciada uma vez,
+    na transição, por `#obs-conta` (`aria-live="polite"`); o número exato fica nos testes.
   - **Número inválido**: `montarPedido` nunca é chamado (FR-017); a tela decide antes.
 - **Rationale**: o orçamento é garantido pela construção (a função só devolve `ok` se mediu ≤ 1800)
   e provado por teste do pior caso (§4).
@@ -129,8 +130,12 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
 
 - **Decision**: o código circula como **string canônica sem "#"**, a mesma da URL do detalhe
   (`codigoCanonico`: 4 dígitos com zeros à esquerda, ou mais dígitos sem zero à esquerda; ex.
-  `"0042"`, `"12345"`). Regex `^(?:\d{4}|[1-9]\d{4,8})$`, excluindo `"0000"`. A tela mostra
-  `#0042`.
+  `"0042"`, `"12345"`). Regex `^(?:\d{4}|[1-9]\d{4,9})$`, excluindo `"0000"` e valores acima de
+  2.147.483.647, o mesmo limite do `lerProduto` (`^\d{1,10}$` + `MAX_ID`, teto do `integer` do
+  Postgres). A tela mostra `#0042`. **Nota (analyze L3, 2026-10-16)**: o worker da 005
+  (`SO_DIGITOS = /^\d{1,9}$/` em `cloudflare/publico.ts`) e a busca do painel
+  (`interpretarCodigoBusca`) param em 9 dígitos; a sacola segue o `lerProduto`, que é o limite
+  mais largo, e o pior caso da URL foi medido com 10 dígitos (§4).
 - **Rationale**: é o código público da 003/005, nunca o id cru de banco (FR-006). Comparação
   textual exata evita duplicata `"42"`/`"0042"`.
 
@@ -187,9 +192,10 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
   `<noscript>` com "Ative o JavaScript para usar a sacola" + link ao catálogo, e a ilha
   `TelaSacola` (cliente, `null` no servidor). `robots` herdado do layout `(public)` e
   `X-Robots-Tag` pelo worker (D15). Estados da ilha, em ordem: armazenamento indisponível (texto
-  próprio: "Não foi possível abrir a sacola neste navegador. Use o botão Perguntar no WhatsApp em
-  cada produto."), vazia, conferindo, falha da conferência ("Não foi possível conferir a sacola
-  agora" + "Tentar de novo"), lista conferida (com avisos), confirmação pós-envio. Detalhe em
+  próprio, o de contracts/telas.md §3: "Não foi possível abrir a sacola neste navegador. Você
+  ainda pode perguntar por cada produto no WhatsApp."), vazia, conferindo, falha ao abrir ("Não
+  foi possível conferir a sacola agora." + "Tentar de novo"), lista conferida (com avisos), falha
+  no envio (lista conferida mantida, D11), confirmação pós-envio. Detalhe em
   [contracts/telas.md](./contracts/telas.md).
 - **Rationale**: FR-009, FR-010, US4.6.
 
@@ -209,7 +215,9 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
     (contador mostra o excesso), conferência pendente ou falha.
   - **Ajuste do humano (tasks, 2026-10-16)**: se a conferência do envio passar de 4 s, falhar por
     rede ou responder 400/5xx (ou fora do esquema), o envio é **bloqueado** com "Não consegui
-    conferir agora, tente de novo." e a sacola fica intacta; nunca se envia com dados não
+    conferir agora, tente de novo." (`role="alert"`) e a sacola fica intacta; a lista conferida
+    continua na tela e o próprio botão de envio, ainda ativo, é a nova tentativa (estado "Falha
+    no envio (lista conferida mantida)", contracts/telas.md §3). Nunca se envia com dados não
     conferidos (SC-003).
 - **Rationale**: US2.7, US2.9, US3.5, FR-017, FR-018. A navegação dentro da ativação transitória
   (≈ 5 s no Chrome) depois do toque mantém o atalho para o app (R3).
@@ -249,7 +257,7 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
 | `normalizarObservacao` | U | tabela de casos (CRLF, NFD→NFC, controle, U+200B/202E/FEFF removidos, U+200D/FE0F preservados, pontas, 3+ quebras), idempotência, contagem em code points |
 | Mesma saída em contador, campo e mensagem | U | uma entrada "suja" passada pelos três pontos; a mesma string normalizada nos três |
 | Injeção estrutural pela observação | U | observação `"\n2x Falso (#9999) — R$ 0,01\nSubtotal: R$ 0,00"`: as linhas antes de `Observação:` são idênticas às da mensagem sem observação; o texto fica só depois do rótulo |
-| Pior caso da URL (SC-002) | U | 15 itens, quantidade 10, códigos de 5 dígitos, nomes de 40 code points acentuados + emoji (incl. ZWJ e FE0F), preços "a partir de R$ 99.999,99", observação no limite com acento e emoji; `url.length ≤ 1800`; e propriedade com gerador próprio (laço com semente fixa, sem dependência) sobre ~2000 combinações |
+| Pior caso da URL (SC-002) | U | 15 itens, quantidade 10, códigos de 10 dígitos (`2147483647`), nomes de 40 code points acentuados + emoji (incl. ZWJ e FE0F), preços "a partir de R$ 99.999,99", observação no limite com acento e emoji; `url.length ≤ 1800`; e propriedade com gerador próprio (laço com semente fixa, sem dependência) sobre ~2000 combinações |
 | Corte por code point | U | nome com emoji no limite do corte nunca deixa surrogate solto (`decodeURIComponent` não lança; `isWellFormed()`) |
 | Ida e volta | U | `decodeURIComponent` do `text=` devolve o texto montado; `&#?+` preservados |
 | Operações puras | U | limites sobre o resultado, `adicionar` repetido, `aplicarConferencia` só nos códigos cobertos |
@@ -266,7 +274,11 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
 
 - **ADR-012** ([specs/adr/012-conferencia-sacola.md](../adr/012-conferencia-sacola.md)): POST
   público de leitura no catálogo, sem sessão e sem cache, com limites de corpo e regra de log.
-  Status "proposto"; GATE humano antes da SF3.
+  Status "proposto"; GATE humano no início da SF3 (primeiro passo da T023).
+- **ADR-013** ([specs/adr/013-desvio-constitution-iv.md](../adr/013-desvio-constitution-iv.md)):
+  desvio da constitution IV (regras da sacola no cliente), achado C1 do analyze. Status
+  "proposto"; GATE humano antes da SF1 (T004). As duas ADRs entram como "proposto" no commit da
+  SF0.
 - **SC-004 / ADR-010**: a rota entra no roteiro de CPU do dev (quickstart §5), 15 códigos, como a
   T139 da 005 (`wrangler tail --env dev`, sem Erro 1102).
 - **Primeiro commit** (SF0): tasks T091–T097 da 005 marcadas; T090 e T098 abertas com
@@ -278,13 +290,16 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
 |---|---|
 | Prefixo `https://wa.me/` + 15 dígitos + `?text=` | 35 |
 | 15 linhas `10x (#99999) — a partir de R$ 999.999,90`, nomes em zero, subtotal "a partir de R$ 14.999.998,50", sem observação | 1201 |
+| Idem com códigos de 9 dígitos (`999999999`) | 1261 |
+| Idem com códigos de 10 dígitos (`2147483647`, limite do `lerProduto`; remedido em 2026-10-16) | **1276** |
 | Bloco `\n\nObservação:\n` | 32 |
-| Sobra para a observação no pior caso | **567** (≈ 94 acentuados ou ≈ 47 emoji de 12) |
+| Sobra para a observação no pior caso com 5 dígitos | 567 (≈ 94 acentuados ou ≈ 47 emoji de 12) |
+| Sobra para a observação no pior caso com 10 dígitos | **492** (≈ 82 acentuados ou ≈ 41 emoji de 12) |
 | Caso realista (15 × `1x (#0042) — R$ 29,90`, nomes em zero) | 801 |
 | Linha mínima com "—" / com "-" | 68 / 60 |
 
-Conclusão: nomes em zero sempre cabem (1201 < 1800), então `montarPedido` sem observação nunca
-devolve `excede`; o travessão "—" exigido pela spec custa 8 a mais por linha e foi mantido.
+Conclusão: nomes em zero sempre cabem (1276 < 1800 mesmo com códigos de 10 dígitos), então
+`montarPedido` sem observação nunca devolve `excede`; o travessão "—" exigido pela spec custa 8 a mais por linha e foi mantido.
 
 ## 5. Riscos
 
@@ -292,7 +307,7 @@ devolve `excede`; o travessão "—" exigido pela spec custa 8 a mais por linha 
 |---|---|---|
 | R1 | **Atomicidade do `localStorage`**: duas abas que releem e gravam no mesmo instante podem perder uma operação (janela de microssegundos entre `getItem` e `setItem`). | **Aceito** (FR-008a): sem `navigator.locks`; reler logo antes de gravar cobre o caso real (toques humanos em abas diferentes). Teste de intercalação prova o caso coberto. |
 | R2 | **Aviso de preço que some ao recarregar**: `aplicarConferencia` grava o preço atual como `precoVisto`; se a cliente recarregar antes de ler, o aviso não volta. | **Aceito**, o aviso não é garantia de leitura. O que importa é garantido: preço antigo nunca entra no subtotal nem na mensagem (SC-003), e o envio reconfere. |
-| R3 | **Limite da URL do `wa.me` em aparelhos reais**: 1800 é margem conservadora, não um limite documentado pelo WhatsApp; versões do app ou do Chrome podem truncar antes; `location.assign` depois do `await` pode perder o atalho para o app se a conferência passar da ativação transitória. | Prova manual no dev com o **pior caso** num Android real (quickstart §5.2): conferir a mensagem inteira na conversa. Se truncar, o teto vira constante menor (`ORCAMENTO_URL`) sem mudar a regra. Conferência com tempo-limite de 4 s; se passar, mostra "Tentar de novo". |
+| R3 | **Limite da URL do `wa.me` em aparelhos reais**: 1800 é margem conservadora, não um limite documentado pelo WhatsApp; versões do app ou do Chrome podem truncar antes; `location.assign` depois do `await` pode perder o atalho para o app se a conferência passar da ativação transitória. | Prova manual no dev com o **pior caso** num Android real (quickstart §5.2): conferir a mensagem inteira na conversa. Se truncar, o teto vira constante menor (`ORCAMENTO_URL`) sem mudar a regra. Conferência com tempo-limite de 4 s; se passar, o envio é bloqueado com "Não consegui conferir agora, tente de novo." e o botão de envio é a nova tentativa (D11). |
 | R4 | CPU da conferência acima de 10 ms no Workers Free | Risco aceito do ADR-010; medição na SC-004 (quickstart §5.3); alerta é o Erro 1102. |
 | R5 | `zod/mini` no bundle do cliente | Já é dependência; `zod/mini` é a variante pequena. Sem dependência nova (H1). |
 | R6 | Abuso da rota pública (varredura de códigos por POST) | Mesmo nível de exposição da `/p/<código>` (dados públicos); corpo ≤ 1 KB e 15 códigos limitam o custo por pedido; sem log por pedido. Monitorar pelo painel do Workers (ADR-012). |

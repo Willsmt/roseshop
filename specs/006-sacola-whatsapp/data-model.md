@@ -16,7 +16,7 @@ Formato gravado (JSON):
 | `v` | `1` | versão do formato; outro valor ⇒ vazia | FR-007 |
 | `t` | inteiro (ms UTC) | última alteração; `agora − t > 7 dias` ⇒ vazia; `t` no futuro além de 1 dia ⇒ vazia | FR-007 |
 | `i` | lista | 0 a 15 itens, códigos sem repetição | FR-003 |
-| `i[].c` | string | código canônico `^(?:\d{4}|[1-9]\d{4,8})$`, ≠ `"0000"` | FR-006, research D6 |
+| `i[].c` | string | código canônico `^(?:\d{4}|[1-9]\d{4,9})$`, ≠ `"0000"`, valor ≤ 2.147.483.647 (limite do `lerProduto`) | FR-006, research D6 |
 | `i[].q` | inteiro | 1 a 10 | FR-005 |
 | `i[].p` | inteiro ou `null` | preço visto em centavos, 1 a 9.999.999; `null` = sem preço | FR-006 |
 | `i[].a` | booleano | "a partir de" visto | FR-006 |
@@ -103,5 +103,7 @@ Booleano, sem dado do pedido; some ao "Limpar sacola" ou ao navegar para outra e
 - `conferirProdutos(db, ids)` em `src/lib/db/catalogo.ts`: leitura de `produtos` +
   `produto_fotos` (capa), uma consulta com `IN`. Sem escrita.
 - `ProdutoPublico` (005) ganha `sacola: { codigo: string; precoCentavos: number | null;
-  aPartirDe: boolean } | null` (`null` se esgotado), só para a ilha do detalhe.
+  aPartirDe: boolean } | null` (`null` se esgotado), só para a ilha do detalhe. `sacola.codigo` é
+  o código canônico **sem "#"** (`codigoCanonico(id)`, ex.: `"0042"`), diferente de
+  `ProdutoPublico.codigo`, que já vem formatado com "#" (`formatarCodigo`, ex.: `"#0042"`).
 - `EventoFalha`/`RotaFalha` (`falha.ts`) ganham a rota `"/api/catalogo/conferencia"`.

@@ -38,7 +38,8 @@ Estados (um por vez):
 | Armazenamento indisponível | `<h1>Sacola</h1>` + "Não foi possível abrir a sacola neste navegador. Você ainda pode perguntar por cada produto no WhatsApp." + link ao catálogo |
 | Vazia | `<h1 id="sacola-vazia" tabIndex=-1>Sua sacola está vazia</h1>` + link "Ver o catálogo"; sem envio |
 | Conferindo | lista com o que está guardado, sem preços, texto "Conferindo a sacola…" (`role="status"`) |
-| Falha da conferência | "Não foi possível conferir a sacola agora." + `<button>Tentar de novo</button>`; envio desabilitado; nada gravado |
+| Falha ao abrir | "Não foi possível conferir a sacola agora." + `<button>Tentar de novo</button>`; envio desabilitado; nada gravado |
+| Falha no envio (lista conferida mantida) | a lista conferida, o resumo e a observação continuam na tela; acima do botão de envio, `<p role="alert">Não consegui conferir agora, tente de novo.</p>`; o botão de envio continua **ativo** e é a nova tentativa (sem botão "Tentar de novo" à parte); nada gravado (nenhum `setItem`/`removeItem`); WhatsApp não abre. Sai deste estado no próximo toque em enviar |
 | Conferida | abaixo |
 | Confirmação (`history.state.sacolaEnviada`) | "Seu pedido foi aberto no WhatsApp." + `<button>Limpar sacola</button>` + `<a href="/">Voltar</a>`; a lista continua abaixo |
 
@@ -54,18 +55,20 @@ Estados (um por vez):
 - Resumo: "Subtotal: R$ 22,00" (ou "a partir de …" / "Consulte o valor") e "+ N itens a
   consultar"; região `aria-live="polite"`.
 - Observação: `<label for="obs">Observação (opcional)</label>` `<textarea id="obs"
-  aria-describedby="obs-conta">` sem `maxLength`; `<p id="obs-conta" aria-live="polite">` com o
-  medidor de `medidorObservacao` (contracts/sacola.md §4), em um de três modos:
-  - **teto de 200 manda** (`limite: "caracteres"`): "N de 200", N = code points do texto
-    normalizado (ex.: "37 de 200");
-  - **orçamento da URL manda** (`limite: "mensagem"`, sem excesso): "Espaço da mensagem quase
-    cheio" + `<progress max="100" value={fracao × 100} aria-label="Espaço da mensagem usado">`;
-    nunca mostra o número de caracteres codificados nem o que resta deles;
-  - **excesso** (`limite: "mensagem"`, `excede: true`): "A observação não cabe mais na mensagem.
-    Encurte para enviar." + a barra cheia; envio desabilitado.
+  aria-describedby="obs-medidor obs-conta">` sem `maxLength`. O modo vem de `medidorObservacao`
+  (contracts/sacola.md §4) e há dois elementos:
+  - `<p id="obs-medidor">` (**sem** `aria-live`, para não anunciar cada tecla): no modo
+    `"caracteres"`, "N de 200", N = code points do texto normalizado (ex.: "37 de 200"); nos modos
+    `"mensagem"`, `<progress max="100" value={fracao × 100} aria-label="Espaço da mensagem usado">`
+    (cheia no excesso). Nunca mostra o número de caracteres codificados nem o que resta deles;
+  - `<p id="obs-conta" aria-live="polite">`: texto que **só muda na transição de modo**, e por
+    isso é anunciado uma vez: vazio no modo `"caracteres"`; "Espaço da mensagem quase cheio"
+    quando o orçamento da URL passa a mandar (`limite: "mensagem"`, `excede: false`); "A
+    observação não cabe mais na mensagem. Encurte para enviar." no excesso (`excede: true`),
+    com o envio desabilitado. Digitar dentro do mesmo modo não altera o texto.
   O número exato do orçamento fica só nos testes (`restanteObservacao`). Ao digitar, entrada que
-  deixaria `restanteObservacao < 0` é desfeita (só quando o texto cresce); excesso causado por a
-  sacola crescer é exibido e não cortado.
+  deixaria `restanteObservacao < 0` é desfeita (só quando o texto cresce): o campo não passa do
+  limite. Excesso causado por a sacola crescer é exibido e não cortado.
 - `<button>Limpar sacola</button>` → `<dialog>` "Todos os produtos vão sair da sacola." com
   "Limpar" e "Cancelar".
 - `<button>Enviar pedido pelo WhatsApp</button>`:
@@ -76,10 +79,9 @@ Estados (um por vez):
   - todos esgotados ⇒ mesmo padrão com "Todos os produtos da sacola estão esgotados.";
   - observação com excesso, conferindo ou falha ⇒ mesmo padrão com o texto do caso.
   - **conferência do envio sem resposta válida** (mais de 4 s, erro de rede, resposta 400 ou
-    5xx, ou fora do esquema): o envio é **bloqueado**, nunca abre o WhatsApp com dados não
-    conferidos (SC-003). Mostra `<p role="status">Não consegui conferir agora, tente de
-    novo.</p>`; a sacola guardada fica intacta (nenhum `setItem`/`removeItem`), a lista e a
-    observação continuam na tela e o botão de envio segue ativo para nova tentativa.
+    5xx, ou fora do esquema): estado "Falha no envio (lista conferida mantida)" da tabela acima.
+    O envio é **bloqueado**, nunca abre o WhatsApp com dados não conferidos (SC-003); o botão de
+    envio continua ativo e é a nova tentativa.
 
 ### Foco e anúncios (research D12)
 
@@ -90,6 +92,7 @@ Estados (um por vez):
 | Cancelar o Limpar | botão "Limpar sacola" | — |
 | Quantidade | fica no botão | subtotal novo |
 | Envio barrado por mudança | `#sacola-titulo` | avisos |
-| Envio barrado por falha da conferência | fica no botão de envio | "Não consegui conferir agora, tente de novo." |
+| Falha no envio (conferência sem resposta válida) | fica no botão de envio | "Não consegui conferir agora, tente de novo." pelo `role="alert"` |
+| Troca de modo da observação | fica no campo | texto do `#obs-conta`, uma vez por transição |
 
 Mudança vinda de outra aba: só re-render e anúncio do contador; foco não se move.

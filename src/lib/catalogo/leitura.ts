@@ -19,6 +19,7 @@ import { configCatalogo } from "./config";
 import { codificarCursor, lerCursor } from "./cursor";
 import {
   altFoto,
+  codigoCanonico,
   hrefProduto,
   linkWhatsapp,
   mensagemWhatsapp,
@@ -42,11 +43,16 @@ export type ProdutoCartao = {
   capa: FotoPublica | null;
 };
 
+// `sacola` alimenta só a ilha do detalhe (feature 006, DM§8): `null` se esgotado. O `codigo` dela é
+// o canônico sem "#" ("0042"), diferente de `codigo` do cartão, que já vem formatado ("#0042").
+export type DadosSacola = { codigo: string; precoCentavos: number | null; aPartirDe: boolean };
+
 export type ProdutoPublico = ProdutoCartao & {
   categoria: string;
   descricao: string | null;
   fotos: FotoPublica[];
   whatsapp: { href: string } | null;
+  sacola: DadosSacola | null;
 };
 
 export type CategoriaFiltro = { slug: string; nome: string };
@@ -104,6 +110,9 @@ function publico(p: ProdutoPublicoDb): ProdutoPublico {
       whatsapp !== null && mostrarWhatsapp(p.esgotado, true)
         ? { href: linkWhatsapp(whatsapp, mensagemWhatsapp(p.nome, p.id, siteUrl)) }
         : null,
+    sacola: p.esgotado
+      ? null
+      : { codigo: codigoCanonico(p.id), precoCentavos: p.precoCentavos, aPartirDe: p.aPartirDe },
   };
 }
 

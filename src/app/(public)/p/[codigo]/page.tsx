@@ -8,6 +8,7 @@ import { BotaoWhatsapp } from "../../_catalogo/botao-whatsapp";
 import { Galeria } from "../../_catalogo/galeria";
 import { LinkCatalogo } from "../../_catalogo/link-catalogo";
 import { textos } from "../../_catalogo/textos";
+import { BotaoSacola } from "../../_sacola/botao-sacola";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,12 @@ export default async function Detalhe({ params }: Props) {
 						</h2>
 						<p className="whitespace-pre-line">{produto.descricao}</p>
 					</section>
+				) : null}
+				{produto.sacola ? (
+					// Espaço reservado da sacola (feature 006, CT§1): vazio no servidor, só para disponível.
+					<div data-sacola="detalhe" className="min-h-12">
+						<BotaoSacola sacola={produto.sacola} />
+					</div>
 				) : null}
 				<BotaoWhatsapp whatsapp={produto.whatsapp} esgotado={produto.esgotado} />
 			</article>

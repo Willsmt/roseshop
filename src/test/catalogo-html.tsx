@@ -46,6 +46,8 @@ const detalhe = (esgotado: boolean) => ({
   descricao: "Meia de algodão.\nCor rosa.",
   fotos,
   whatsapp: esgotado ? null : { href: "https://wa.me/5511999999999?text=Ol%C3%A1" },
+  // Feature 006 (DM§8): campo novo de ProdutoPublico; gera o espaço [data-sacola] que a T002 tira.
+  sacola: esgotado ? null : { codigo: "0042", precoCentavos: 600, aPartirDe: false },
 });
 
 const cartao = (n: number, esgotado = false) => {

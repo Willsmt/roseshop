@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { violacoesGraves } from "@/test/axe";
@@ -41,6 +42,7 @@ type Produto = {
   descricao: string | null;
   fotos: { url: string; alt: string }[];
   whatsapp: { href: string } | null;
+  sacola: { codigo: string; precoCentavos: number | null; aPartirDe: boolean } | null;
 };
 
 const foto = (n: number, nome = "Meia Rosa") => ({
@@ -61,6 +63,7 @@ function produto(sobre: Partial<Produto> = {}): Produto {
     descricao: "Linha 1\nLinha 2",
     fotos,
     whatsapp: { href: "https://wa.me/5511999999999?text=Ol%C3%A1" },
+    sacola: { codigo: "0042", precoCentavos: 1290, aPartirDe: false },
     ...sobre,
   };
 }
@@ -131,7 +134,7 @@ describe("detalhe do produto (T060)", () => {
   });
 
   it("esgotado: texto Esgotado e sem link do WhatsApp (US3)", async () => {
-    const { container } = await desenhar(produto({ esgotado: true, whatsapp: null }));
+    const { container } = await desenhar(produto({ esgotado: true, whatsapp: null, sacola: null }));
     expect(container.querySelector("strong")?.textContent).toBe("Esgotado");
     expect(container.querySelector('a[href*="wa.me"]')).toBeNull();
   });
@@ -159,8 +162,49 @@ describe("detalhe do produto (T060)", () => {
   });
 
   it("axe: esgotado e sem descrição, sem violações graves", async () => {
-    const { container } = await desenhar(produto({ esgotado: true, whatsapp: null, descricao: null }));
+    const { container } = await desenhar(produto({ esgotado: true, whatsapp: null, sacola: null, descricao: null }));
     expect(await violacoesGraves(container)).toEqual([]);
+  });
+});
+
+// Feature 006, SF5, T047 (CT§1, CT§2, US1.1, US1.4, FR-002a, US4.6): o espaço da ilha da sacola é o
+// único acréscimo ao HTML do servidor, vazio, antes de "Perguntar no WhatsApp".
+describe("espaço da sacola no HTML do servidor (T047)", () => {
+  const ESPACO = '<div data-sacola="detalhe" class="min-h-12"></div>';
+
+  async function htmlDoServidor(p: Produto) {
+    lerProduto.mockResolvedValue(p);
+    return renderToStaticMarkup(await Page({ params: params() }));
+  }
+
+  it("disponível: espaço vazio antes do link do WhatsApp (US1.1)", async () => {
+    const html = await htmlDoServidor(produto());
+    expect(html.split(ESPACO)).toHaveLength(2);
+    const espaco = html.indexOf(ESPACO);
+    const whatsapp = html.indexOf("Perguntar no WhatsApp");
+    expect(whatsapp).toBeGreaterThan(espaco);
+  });
+
+  it("disponível sem número: o espaço continua (a sacola não depende do WhatsApp)", async () => {
+    const html = await htmlDoServidor(produto({ whatsapp: null }));
+    expect(html).toContain(ESPACO);
+  });
+
+  it("esgotado: sem o espaço e sem os dois botões (US1.4)", async () => {
+    const html = await htmlDoServidor(produto({ esgotado: true, whatsapp: null, sacola: null }));
+    expect(html).not.toContain("data-sacola");
+    expect(html).not.toContain("wa.me");
+    expect(html).not.toContain("Adicionar à sacola");
+  });
+
+  it.each([
+    ["disponível", produto()],
+    ["esgotado", produto({ esgotado: true, whatsapp: null, sacola: null })],
+  ])("%s: nenhum texto da sacola no HTML do servidor (FR-002a, US4.6)", async (_nome, p) => {
+    const html = await htmlDoServidor(p);
+    expect(html).not.toContain("Adicionar à sacola");
+    expect(html).not.toContain("Na sacola");
+    expect(html).not.toContain("Sacola,");
   });
 });
 

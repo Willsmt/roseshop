@@ -48,25 +48,37 @@ export const ORCAMENTO_URL = 1800, NOME_MAX = 40;
 export function montarPedido(e: { numero: string; linhas: LinhaPedido[]; observacao: string })
   : { tipo: "ok"; url: string; texto: string } | { tipo: "excede"; excesso: number };
 export function restanteObservacao(e: { numero: string; linhas: LinhaPedido[]; observacao: string }): number;
+export function medidorObservacao(e: { numero: string; linhas: LinhaPedido[]; observacao: string })
+  : { limite: "caracteres"; usados: number; maximo: 200 }
+  | { limite: "mensagem"; fracao: number; excede: boolean };
 ```
 
 - `numero` é o E.164 já validado pelo servidor; a função usa só os dígitos.
 - `observacao` é **bruta**; a função chama `normalizarObservacao` (mesma regra do campo).
 - `restanteObservacao = min(200 − code points, 1800 − comprimento com nomes em 0)`; negativo é
   excesso.
+- `medidorObservacao` (o que a tela mostra, contracts/telas.md §3): `limite: "caracteres"` quando
+  `200 − code points ≤ 1800 − comprimento com nomes em 0` (o teto de 200 manda), com `usados` =
+  code points do texto normalizado; senão `limite: "mensagem"`, com `fracao` = parte do espaço da
+  observação já usada, em `[0, 1]` (1 quando passa), e `excede = restanteObservacao < 0`. Não
+  expõe o comprimento codificado; o número exato fica em `restanteObservacao` e nos testes.
 - Garantia: `tipo: "ok"` ⇒ `url.length ≤ ORCAMENTO_URL`.
 - Texto exato e corte dos nomes: research D3.
 
 ## 5. `conferencia.ts`
 
 ```ts
-export type ItemConferencia;                                   // data-model §2
+export type ItemConferencia;                                   // data-model §2; declarado em sacola.ts (SF1), reexportado aqui
 export function lerRespostaConferencia(json: unknown): ItemConferencia[] | null;  // zod/mini
 export async function conferir(codigos: string[], opcoes?: { fetch?: typeof fetch; timeoutMs?: number })
   : Promise<ItemConferencia[] | "falha">;                      // POST, 4 s
 export function juntar(sacola: Sacola, itens: ItemConferencia[]): ItemConferido[];
 export function houveMudanca(antes: Sacola, itens: ItemConferencia[]): boolean;  // US3.5
 ```
+
+- `conferir` devolve `"falha"` (nunca lança) quando: passa de 4 s (`AbortController`), o `fetch`
+  rejeita (rede), o status não é 200 (inclui 400, 413, 415 e 5xx) ou a resposta sai do esquema.
+  Quem chama não grava nada nesse caso; no envio, o WhatsApp não abre (contracts/telas.md §3).
 
 ## 6. `armazenamento.ts`
 

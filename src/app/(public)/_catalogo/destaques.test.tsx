@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { ProdutoCartao } from "@/lib/catalogo";
@@ -54,6 +54,15 @@ describe("Destaques (T067)", () => {
     const imgs = [...container.querySelectorAll("img")];
     expect(imgs).toHaveLength(8);
     expect(imgs.map((i) => i.getAttribute("loading"))).toEqual(Array(8).fill("eager"));
+  });
+
+  // Redesenho (Fase 5, ADR-005): fileira com rolagem lateral. Todos os itens vêm no HTML (o leitor
+  // de tela anuncia a lista inteira) e o teclado só encontra os links dos cartões, sem setas.
+  it("fileira: chamada da Rose, todos os itens na lista e nenhum botão", () => {
+    render(<Destaques itens={itens(8)} />);
+    expect(screen.getByText("Os que a Rose separou para você.")).toBeTruthy();
+    expect(within(screen.getByRole("list")).getAllByRole("listitem")).toHaveLength(8);
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("axe: sem violações graves", async () => {

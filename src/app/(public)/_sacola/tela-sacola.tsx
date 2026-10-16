@@ -21,8 +21,11 @@ import { armazenamento, useLeituraSacola } from "./usar-sacola";
 // número E.164 possível (15 dígitos), o caso mais apertado.
 const NUMERO_MEDIDA = "+999999999999999";
 
-const titulo = "text-2xl font-bold focus:outline-none";
-const link = "inline-flex min-h-12 items-center underline";
+const titulo = "text-4xl focus:outline-none";
+// Volta à loja com cara de ação (pílula), igual ao primário do sistema.
+const link =
+	"inline-flex min-h-12 w-full items-center justify-center rounded-pilula bg-acao px-6 py-3 font-bold text-white hover:bg-acao-forte sm:w-auto sm:self-start";
+const linkDiscreto = "inline-flex min-h-12 items-center self-start font-bold underline underline-offset-4";
 
 // Marca do histórico posta antes de abrir o WhatsApp (research D11); a volta, inclusive pelo
 // bfcache, chega com `pageshow`.
@@ -119,7 +122,7 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 
 	if (!leitura.disponivel) {
 		return (
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-5">
 				<h1 className={titulo}>{textos.sacola}</h1>
 				<p>{textos.armazenamentoIndisponivel}</p>
 				<Link href="/" className={link}>
@@ -157,7 +160,7 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 
 	if (atual.itens.length === 0) {
 		return (
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-5">
 				{regiaoAnuncio}
 				{regiaoAvisos}
 				<h1 id="sacola-vazia" tabIndex={-1} className={titulo}>
@@ -181,7 +184,7 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 		const conferindo = abertura === "conferindo";
 		const idMotivo = conferindo ? "sacola-conferindo" : "sacola-falha";
 		return (
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-5">
 				{regiaoAnuncio}
 				{cabecalho}
 				{conferindo ? (
@@ -205,7 +208,7 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 				)}
 				<ul>
 					{atual.itens.map((i) => (
-						<li key={i.codigo} className="py-2">
+						<li key={i.codigo} className="border-b border-linha py-3 text-texto-suave">
 							#{i.codigo}
 						</li>
 					))}
@@ -256,13 +259,13 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-5">
 			{regiaoAnuncio}
 			{enviado ? (
-				<section className="flex flex-col gap-2 rounded-lg border-2 p-4">
-					<p className="font-semibold">{textos.enviado}</p>
+				<section className="flex flex-col gap-3 rounded-suave border-l-[6px] border-sucesso bg-sucesso-fundo p-4">
+					<p className="font-bold">{textos.enviado}</p>
 					<ConfirmarLimpar aoConfirmar={limparTudo} />
-					<Link href="/" className={link}>
+					<Link href="/" className={linkDiscreto}>
 						{textos.voltar}
 					</Link>
 				</section>
@@ -281,12 +284,12 @@ export function TelaSacola({ whatsapp }: { whatsapp: string | null }) {
 					/>
 				))}
 				{pendentes.map((i) => (
-					<li key={i.codigo} className="py-2">
+					<li key={i.codigo} className="border-b border-linha py-3 text-texto-suave">
 						#{i.codigo}
 					</li>
 				))}
 			</ul>
-			<div id="sacola-resumo" aria-live="polite" className="flex flex-col gap-1 text-lg font-semibold">
+			<div id="sacola-resumo" aria-live="polite" className="flex flex-col gap-1 rounded-suave bg-superficie-2 px-4 py-4 font-titulo text-2xl">
 				<p>
 					{textos.subtotal} {subtotal}
 				</p>

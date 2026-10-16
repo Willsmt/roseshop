@@ -811,12 +811,15 @@ lenta ou falha ao tocar em Carregar mais".
 **Fecha**: US3.1/3.4 (número do dev), US5.1–5.3/SC-006, SC-002, SC-008 (CPU), R5.
 **Revisão TL**: —.
 
-- [ ] T085 **Humano executa** Q§1.2–1.3 no dev: `npx wrangler secret put WHATSAPP_NUMBER --env dev`
+- [X] T085 **Humano executa** Q§1.2–1.3 no dev: `npx wrangler secret put WHATSAPP_NUMBER --env dev`
   (número de teste do mantenedor) e `npx wrangler secret list --env dev`; **[ISR]** conferir
   `roseshop-cache-dev` em `npx wrangler r2 bucket list`; Q§1.5 (`npx wrangler r2 bucket dev-url
   get roseshop-dev` e `npx wrangler r2 bucket domain list roseshop-dev`: acesso público desligado,
-  nenhum domínio, US6.5). Entregar o output real — **humano**
-- [ ] T085a Seed do dev (decisão do humano, para os ≥ 24 produtos da T087): `scripts/seed-catalogo-local.ts`
+  nenhum domínio, US6.5). Entregar o output real — **humano**.
+  **Feita:** `secret list --env dev` com `WHATSAPP_NUMBER` entre os 8 secrets; `dev-url get`:
+  "Public access via the r2.dev URL is disabled."; `domain list`: "There are no custom domains
+  connected to this bucket." (US6.5). Sem bucket de cache (ramo FALLBACK)
+- [X] T085a Seed do dev (decisão do humano, para os ≥ 24 produtos da T087): `scripts/seed-catalogo-local.ts`
   ganha a flag explícita `--dev` (`npm run seed:dev`) e `--limpar` (`npm run seed:dev:limpar`).
   Trava por igualdade exata em `trava.ts` (`validarAmbienteDev`): host direto do branch dev do
   Neon (`HOST_NEON_DEV`) e `sslmode=require`; bucket `roseshop-dev` fixo na trava; recusa produção,
@@ -825,19 +828,24 @@ lenta ou falha ao tocar em Carregar mais".
   `.seed-dev.vars` (no `.gitignore`; modelo sem valores) só tem `DATABASE_URL`. Autor
   `seed@dev`; a limpeza remove só o que tem esse autor (produtos, envios e objetos do R2).
   Testes da trava nos dois modos em `trava.test.ts` — **principal**
-- [ ] T086 Abrir o PR para `main` (deploy do dev pelo CI, `pull-request.yml`), mostrando antes o
+- [X] T086 Abrir o PR para `main` (deploy do dev pelo CI, `pull-request.yml`), mostrando antes o
   comando e o corpo completo, **sem** `--force`; só com confirmação do humano. **[ISR]** O log
   do passo de deploy mostra "Populating remote R2 incremental cache" e "Successfully populated
   cache" (prova ponta a ponta da D16 com o token do CI) —
-  **principal** + **humano**
-- [ ] T087 **Humano executa** Q§5.1 a 5.4 num Chrome Android: botão do WhatsApp (US3), prévia do
+  **principal** + **humano**.
+  **Feita (FALLBACK):** PR #20, 4 checks verdes (lint/typecheck/unitários, gitleaks/auditoria,
+  integração Postgres 18, deploy no dev); `/api/health` do dev = 200; versão no ar b842bfbf
+- [X] T087 **Humano executa** Q§5.1 a 5.4 num Chrome Android: botão do WhatsApp (US3), prévia do
   link de produto, da página inicial e de `/p/9999` (US5, SC-006), SC-002 com throttling 4G e
   ≥ 24 produtos com fotos reais, e `cpuTime` de `/` (repetição da medição da T072a, que usou 1 produto só e ficou otimista; mínimo de 24 produtos, junto do SC-002), `/p/<código>`, GET da lista e `/fotos/<arquivo>`
-  pelo `wrangler tail --env dev` (alerta = Erro 1102). Entregar o output real — **humano**
-- [ ] T088 Registrar os resultados (CPU como risco aceito da T139 se passar de 10 ms sem falha;
+  pelo `wrangler tail --env dev` (alerta = Erro 1102). Entregar o output real — **humano**.
+  **Feita:** CPU medida no dev (versão b842bfbf, seed de 41 produtos); no Android, US3 e US5/SC-006
+  passaram; SC-002 passou em `/` (PageSpeed, Moto G Power, 4G lento). Os tempos do detalhe
+  `/p/<código>` (FCP e LCP) chegaram sem valor: ficam sem número no registro (quickstart)
+- [X] T088 Registrar os resultados (CPU como risco aceito da T139 se passar de 10 ms sem falha;
   SC-002 falho por peso das fotos ⇒ registrar como feature própria, conforme Assumptions) —
   **principal**
-- [ ] T089 Commit (humano):
+- [X] T089 Commit (humano):
   ```text
   docs(specs): registra a prova da 005 no dev
   ```

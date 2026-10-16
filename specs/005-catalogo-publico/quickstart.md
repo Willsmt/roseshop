@@ -158,4 +158,37 @@ Desvios do roteiro:
 - T082b: o registro de FR-019 estava correto e os "eventos duplicados" são a repetição do stderr
   pelo wrangler. Sem mudança de código.
 
-Pendente fora do `preview`: roteiro do dev em celular Android (SF11).
+## Resultado do roteiro no dev (SF11)
+
+CPU medida pelo `wrangler tail --env dev` no `roseshop-dev`, versão b842bfbf, seed de 41
+produtos (`npm run seed:dev`, T085a). Resultados relatados pelo mantenedor. Todos `outcome: ok`,
+sem `exceededCpu` e sem Erro 1102.
+
+| Rota | CPU | Wall |
+|---|---|---|
+| `/` | 1º pedido 337 ms (isolate novo após o deploy); demais 14–18 ms | 32–37 ms |
+| `/p/0059` | 13–19 ms (um pico de 43 ms) | 20–45 ms |
+| GET da lista (2º bloco) | 5–8 ms | 21–41 ms |
+| `/fotos/*` (fotos de seed, ~4 KB) | 4–7 ms | 162–325 ms |
+
+Conclusão: a CPU de `/` com 41 produtos é igual à da T072a, que usou 1 produto. Veredito mantido:
+aprovado com o risco aceito da T139 (passa dos 10 ms do Workers Free sem falha; alerta = Erro
+1102; contingência = Workers Paid, ADR-010). Ressalva: as fotos do seed pesam ~4 KB, então o
+tempo de `/fotos/*` e o SC-002 com fotos reais seguem dependendo do celular.
+
+Celular Android (Chrome), dev, 41 produtos. Resultados relatados pelo mantenedor.
+
+| Item | Resultado |
+|---|---|
+| 1 (US3) | "Perguntar no WhatsApp" em `/p/0059` abriu a conversa com o número de teste, com nome, "#0059" e link. Passou |
+| 2 (US5, SC-006) | Prévia no WhatsApp: `/p/0059` com nome e capa; `/` com "Roseshop"; `/p/9999` sem dados de produto. Passou |
+| 3 (SC-002) | PageSpeed Insights, Moto G Power, 4G lento. `/`: FCP 0,8 s, LCP 2,0 s, TBT 20 ms, CLS 0, Desempenho 95, Acessibilidade 100, Speed Index 5,5 s (fotos abaixo da dobra; medido com as fotos do seed no topo). Detalhe `/p/<código>` (capa com foto real): **FCP e LCP não informados**. Passou, segundo o mantenedor |
+| SEO | 58, esperado pelo `noindex` (FR-004) |
+
+Sinal para depois: o Speed Index de 5,5 s em `/` vem das fotos; registrar para a futura versão
+reduzida das fotos (Assumptions da spec). Não é falha do SC-002 (conteúdo útil ≤ 3 s).
+
+Pendente de entrega, como a T143 da 004: SC-001 (observação com pessoa real).
+
+Manutenção (fora da 005): a trava do seed dev deve aceitar `sslmode=verify-full` (aviso do `pg`
+sobre o `require`).

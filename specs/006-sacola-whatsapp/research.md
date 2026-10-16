@@ -38,7 +38,9 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
 
 ### D2. Normalização da observação: `normalizarObservacao`
 
-- **Decision**: função única em `observacao.ts`, na ordem: CRLF/CR → LF; `normalize("NFC")`;
+- **Decision**: função única em `observacao.ts`, na ordem: CRLF/CR → LF; remover surrogate sem
+  par (`/[\uD800-\uDFFF]/gu`: com a flag `u` um par válido é um só code point e não casa, então
+  emoji, U+200D e U+FE0E/U+FE0F ficam); `normalize("NFC")`;
   remover `[\u0000-\u0009\u000B-\u001F\u007F-\u009F]` (controle, exceto LF) e
   `[\u200B\u200C\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]` (preserva U+200D, U+FE0E,
   U+FE0F); `trim()`; `\n{3,}` → `\n\n`. `contarCaracteres(s) = [...s].length` (code points).
@@ -46,7 +48,9 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
   bloqueio do campo e a mensagem usam **sempre** `normalizarObservacao(bruto)`. O campo não usa
   `maxLength` (conta UTF-16).
 - **Rationale**: FR-015a exige resultado idêntico nos três pontos; idempotência
-  (`n(n(x)) === n(x)`) é testada.
+  (`n(n(x)) === n(x)`) é testada. O passo do surrogate sem par (2026-10-16) vem antes do NFC e
+  do `trim()` porque um surrogate solto faz o `encodeURIComponent` da mensagem lançar
+  `URIError`, e removido depois do `trim()` deixaria espaço nas pontas.
 - **Alternatives**: normalizar no `onChange` reescrevendo o campo (pula o cursor e apaga espaços
   no meio da digitação).
 

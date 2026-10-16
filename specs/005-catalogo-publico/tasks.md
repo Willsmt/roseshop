@@ -866,28 +866,28 @@ entrega.
   --env production` (número da Rose); `npx wrangler secret list --env production` e, **[ISR]**,
   `npx wrangler r2 bucket list` com o `roseshop-cache-prod` criado na T015; `npx wrangler r2 bucket dev-url get
   roseshop-prod` e `npx wrangler r2 bucket domain list roseshop-prod` (US6.5). Entregar o output
-  real — **humano**
-- [ ] T091 Revisão pelo tech-lead: `wrangler.jsonc` de produção (bucket de cache e DO
+  real — **humano** — **adiada para a entrega final** (número da mãe)
+- [x] T091 Revisão pelo tech-lead: `wrangler.jsonc` de produção (bucket de cache e DO
   **[ISR]**, `SITE_URL`), segredos listados, nada de dev apontando para produção — **tech-lead**
-- [ ] T092 [P] `README.md`: `WHATSAPP_NUMBER`, `SITE_URL`, **[ISR]** bucket de cache por ambiente e
+- [x] T092 [P] `README.md`: `WHATSAPP_NUMBER`, `SITE_URL`, **[ISR]** bucket de cache por ambiente e
   a permissão de R2 do token do CI, `axe-core` — **redator**
-- [ ] T093 [P] `specs/005-catalogo-publico/rastreabilidade.md` (critério de sucesso → prova, com
+- [x] T093 [P] `specs/005-catalogo-publico/rastreabilidade.md` (critério de sucesso → prova, com
   os pendentes de entrega) — **principal**
-- [ ] T094 Acionar o `doc-sync-onboarding` (feature fechada, rotas e binding novos, zona protegida
+- [x] T094 Acionar o `doc-sync-onboarding` (feature fechada, rotas e binding novos, zona protegida
   alterada): `docs/` (incluindo `docs/operacao.md`: sinais de R2 Class A e compute do Neon, e a
   contingência do R3; logs do Workers Free retidos por 3 dias; **[ISR]** conferir que a permissão de R2
   do token do CI registrada na T015b continua correta; **[FALLBACK]** registro da config inválida uma vez por isolate) e as seções "Estrutura" e
   "Estado atual" do `CLAUDE.md` — **doc-sync**
-- [ ] T095 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
-- [ ] T096 Commits (humano): `docs(readme): …` (T092), `docs(specs): …` (T093) e `docs(onboarding):
+- [x] T095 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
+- [x] T096 Commits (humano): `docs(readme): …` (T092), `docs(specs): …` (T093) e `docs(onboarding):
   …` (T094), mensagens propostas pelo redator — **humano**
-- [ ] T097 Merge em `main` (humano) e conferência pós-deploy: `/api/health` 200,
+- [x] T097 Merge em `main` (humano) e conferência pós-deploy: `/api/health` 200,
   `curl -sI https://roseshop.willsmt.workers.dev/` com `X-Robots-Tag`, e um detalhe com foto em
   produção. **[ISR]** O log do deploy de produção mostra o populate do cache com sucesso, e
   dois `curl -sI` em `/` com 20 s de intervalo mostram `x-nextjs-cache`. **[FALLBACK]** `/` com
   `Cache-Control: public, max-age=60` — **humano**
 - [ ] T098 Pendências de entrega (não bloqueiam o merge): SC-001 (observação com uma cliente real,
-  junto da T143 da 004) — **humano**
+  junto da T143 da 004) — **humano** — **adiada para a entrega final**
 
 ---
 

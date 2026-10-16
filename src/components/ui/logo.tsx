@@ -2,9 +2,19 @@
 // parapeito, traço único, uma cor (currentColor). Decorativo por padrão: quem dá nome ao link é o
 // `aria-label` de quem o usa. Sem <title> nem <text>: a /sacola sem JavaScript não pode ter texto
 // no HTML do servidor (catalogo-html-005.test.tsx).
-export function LogoMarca({ className, traco = 4 }: { className?: string; traco?: number }) {
+export function LogoMarca({
+	className,
+	traco = 4,
+	estilo,
+}: {
+	className?: string;
+	traco?: number;
+	/** Estilo em linha (ex.: o esmaecimento quando o logo 3D assume o lugar). */
+	estilo?: React.CSSProperties;
+}) {
 	return (
 		<svg
+			style={estilo}
 			viewBox="0 0 64 64"
 			fill="none"
 			stroke="currentColor"

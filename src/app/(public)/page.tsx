@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
-import { LogoMarca } from "@/components/ui/logo";
 import { configCatalogo, lerVitrine } from "@/lib/catalogo";
 
 import { Destaques } from "./_catalogo/destaques";
 import { ListaCatalogo } from "./_catalogo/lista-catalogo";
+import { LogoJanela } from "./_catalogo/logo-janela";
 import { textos } from "./_catalogo/textos";
 
 export const dynamic = "force-dynamic";
@@ -23,15 +23,13 @@ export default async function Home({ searchParams }: Props) {
 
 	return (
 		<>
-			{/* A janela (design/DIRECOES.md): o único lugar com luz. O espaço do símbolo tem tamanho
-			    fixo, para o logo 3D (Fase 7) entrar depois no mesmo lugar sem mover nada. */}
+			{/* A janela (design/DIRECOES.md): o único lugar com luz. O símbolo tem espaço fixo; o logo
+			    3D (LogoJanela) entra por cima dele depois, sem mover nada. */}
 			{/* pt-16: a faixa do topo, onde o acesso à sacola aparece (espaço do layout), como nas
 			    outras páginas; a janela começa abaixo dela e nada a cobre. */}
 			<header className="mx-auto w-full max-w-5xl px-4 pt-16">
 				<div className="janela relative isolate overflow-hidden rounded-arco bg-ceu px-6 pt-12 pb-7 text-center">
-					<div data-logo="janela" className="mx-auto size-14 text-acao">
-						<LogoMarca className="size-14" traco={3.5} />
-					</div>
+					<LogoJanela />
 					<h1 className="mt-2 text-5xl lowercase sm:text-6xl">{textos.nomeSite}</h1>
 					<p className="mx-auto mt-2 max-w-[30ch] text-texto-suave">{textos.chamada}</p>
 				</div>

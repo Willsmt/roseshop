@@ -48,6 +48,50 @@ por rota descartado, depois 10 pedidos por rota com `wrangler tail` aberto.
   trabalho no servidor.
 - Nenhum Erro 1102 nem `exceededCpu`.
 
-## Depois da Fase 7 (logo 3D)
+## Depois da Fase 7 (logo 3D) — 2026-10-16
 
-A medir. O 3D roda só no navegador; a expectativa é não mudar a CPU do servidor.
+### Worker (servidor)
+
+O 3D é só do navegador: o servidor continua entregando o mesmo SVG (o fixture `inicio-005.html`
+não mudou). Código da Fase 7 (sem commit) publicado no `roseshop-dev` (versão
+`6d47cf5d-f7ca-44bb-935f-41acb661d85e`); 20 pedidos por rota e uma segunda rodada de 25 para
+`/p/0015` e `/sacola`.
+
+| Rota | Amostras (ms de CPU, ordenadas) | Mediana | Fase 5 | Linha de base | Outcome |
+|---|---|---|---|---|---|
+| `/` | 6, 9, 9, 10, 11, 11, 11, 12, 12, 12, 12, 13, 14, 14, 15, 18, 19 | **12** | 12 | 17 | todas `ok` |
+| `/p/0015` | 7, 8, 8, 9, 9, 12 | **8,5** | 10 | 12,5 | todas `ok` |
+| `/sacola` | 5, 6, 7, 9, 12 | **7** | 7 | 10 | todas `ok` |
+
+- `/` não mudou (12 ms, 17 amostras). Sem bloqueio.
+- **Limitação, de novo:** o `wrangler tail` entregou só 6 eventos de `/p/0015` e 5 de `/sacola` em
+  45 pedidos de cada; a segunda rodada não trouxe nenhum evento (o tail conectou e ficou mudo). As
+  medianas dessas duas rotas seguem indicativas.
+
+### Navegador (o que o 3D custa)
+
+Medido com `design/validacao/medir-logo-3d.mjs` (resultado bruto em
+`design/validacao/medicao-logo-3d-fase7.json`): Chrome 155 headless à parte, 360×780, DPR 2, CPU
+4x mais lenta, WebGL por **SwiftShader** (desenho na CPU, porque o WSL não tem GPU). Comparação
+entre "SVG" (movimento reduzido: o 3D nem baixa) e "3D".
+
+| Medida | SVG | 3D |
+|---|---|---|
+| Peso a mais (chunk do three, só por `import()`) | 0 | **131,2 KB gzip** (532,3 KB sem compressão) |
+| JS inicial da página | 197,9 KB gzip | 197,9 KB gzip (o three não está nele) |
+| LCP (uma carga cada, sem cache) | 1032 ms | 824 ms |
+| CLS | 0 | 0 |
+| Caixa do logo antes/depois do 3D | 56×56 no topo 112 | 56×56 no topo 112 |
+| CPU da página com o logo visível | 0 ms/s | **64 ms/s** (cerca de 6% de um núcleo já 4x mais lento) |
+| CPU com o logo fora da tela | 0 ms/s | 1 ms/s (pausado) |
+
+- O 3D entra depois do `load` e de um momento ocioso: o LCP é de uma foto e não piora (a diferença
+  entre 1032 e 824 ms é variação entre cargas; não a atribuo ao 3D). CLS 0 nos dois.
+- A animação desenha a no máximo 30 quadros por segundo. O custo de 64 ms/s é pessimista: no
+  SwiftShader a GPU é emulada na CPU; num celular com GPU, a maior parte sai do processador.
+- Pausa comprovada: fora da tela cai para 1 ms/s. Com a aba em segundo plano o laço também para
+  (`visibilitychange`, coberto por teste).
+- 131 KB gzip é muito para um enfeite: por isso o 3D só baixa em aparelho com 5 núcleos ou mais,
+  sem economia de dados, sem movimento reduzido, com WebGL e (quando o navegador informa) com 3 GB
+  de memória ou mais, e só depois que a página e as fotos da primeira tela apareceram.
+- Não medido: celular real (Fase 8) e a aba Performance do DevTools com GPU de verdade.

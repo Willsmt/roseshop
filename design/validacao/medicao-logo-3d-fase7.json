@@ -1,0 +1,44 @@
+{
+  "svg": {
+    "estado": {
+      "canvas": false,
+      "visivel3D": false,
+      "caixa": [
+        56,
+        56,
+        112
+      ],
+      "webgl": "webgl2",
+      "nucleos": 12
+    },
+    "vitais": {
+      "lcp": 1032,
+      "cls": 0
+    },
+    "cpuMsPorSegundo": {
+      "logoVisivel": 0,
+      "logoForaDaTela": 0
+    }
+  },
+  "3d": {
+    "estado": {
+      "canvas": true,
+      "visivel3D": true,
+      "caixa": [
+        56,
+        56,
+        112
+      ],
+      "webgl": "webgl2",
+      "nucleos": 12
+    },
+    "vitais": {
+      "lcp": 824,
+      "cls": 0
+    },
+    "cpuMsPorSegundo": {
+      "logoVisivel": 64,
+      "logoForaDaTela": 1
+    }
+  }
+}

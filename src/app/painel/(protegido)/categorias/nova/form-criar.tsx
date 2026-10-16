@@ -35,7 +35,7 @@ export function FormCriar() {
 	return (
 		<form onSubmit={aoEnviar} className="flex flex-col gap-4">
 			<div className="flex flex-col gap-2">
-				<label htmlFor="nome" className="text-base font-semibold">
+				<label htmlFor="nome" className="text-base font-bold">
 					Nome da categoria
 				</label>
 				<input
@@ -46,10 +46,10 @@ export function FormCriar() {
 					onChange={(e) => setNome(e.target.value)}
 					aria-invalid={erro ? "true" : undefined}
 					aria-describedby={erro ? "nome-erro" : undefined}
-					className="min-h-12 w-full rounded-lg border-2 border-neutral-900 px-4 py-3 text-base"
+					className="min-h-12 w-full rounded-suave border-2 border-texto-suave bg-white px-4 py-3 text-base text-texto aria-[invalid=true]:border-erro aria-[invalid=true]:bg-erro-fundo"
 				/>
 				{erro ? (
-					<p id="nome-erro" role="alert" className="text-base font-semibold text-red-700">
+					<p id="nome-erro" role="alert" className="text-base font-bold text-erro">
 						{erro}
 					</p>
 				) : null}

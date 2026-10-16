@@ -53,7 +53,7 @@ function CampoPreco({ inicial, erro }: { inicial: string; erro?: string }) {
 	const [valor, setValor] = useState(() => mascararPreco(inicial));
 	return (
 		<div className="flex flex-col gap-2">
-			<label htmlFor={id} className="text-base font-semibold">
+			<label htmlFor={id} className="text-base font-bold">
 				Preço
 			</label>
 			<input
@@ -79,7 +79,7 @@ function mensagemDoNome(mensagem: string, codigoExistente?: number): React.React
 	return (
 		<>
 			{partes[1]}
-			<Link href={`${LISTA}/${codigoExistente}`} className="underline">
+			<Link href={`${LISTA}/${codigoExistente}`} className="font-bold underline underline-offset-4">
 				{partes[2]}
 			</Link>
 			{partes[3]}

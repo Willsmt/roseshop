@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { LogoMarca } from "@/components/ui/logo";
 import {
   entrarComGoogle,
   getAdminSession,
@@ -35,11 +36,12 @@ export default async function EntrarPage({
         : null;
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900">
+    <div className="min-h-screen bg-superficie text-texto">
       <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center gap-6 px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold">Painel da loja</h1>
+        <LogoMarca className="size-16 text-acao" traco={3.5} />
+        <h1 className="text-3xl">Painel da loja</h1>
         {mensagem !== null && (
-          <p role="alert" className="text-base font-medium text-red-800">
+          <p role="alert" className="w-full rounded-suave border-l-[6px] border-erro bg-erro-fundo px-4 py-3 text-left text-base font-bold text-texto">
             {mensagem}
           </p>
         )}

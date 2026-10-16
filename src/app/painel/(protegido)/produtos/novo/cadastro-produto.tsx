@@ -70,7 +70,7 @@ export function CadastroProduto({ categorias }: Props) {
 	return (
 		<>
 			<section hidden={passo !== "fotos"} className="flex flex-col gap-6">
-				<h2 ref={tituloFotos} tabIndex={-1} className="text-xl font-bold focus:outline-none">
+				<h2 ref={tituloFotos} tabIndex={-1} className="text-2xl focus:outline-none">
 					Fotos
 				</h2>
 				{aviso ? <Aviso tipo="erro">{aviso}</Aviso> : null}
@@ -100,7 +100,7 @@ export function CadastroProduto({ categorias }: Props) {
 							Continuar
 						</Button>
 						{temNaoEnviada ? (
-							<p id={idNaoEnviada} className="text-base text-red-800">
+							<p id={idNaoEnviada} className="text-base text-erro">
 								{CONTINUAR_COM_NAO_ENVIADA}
 							</p>
 						) : null}
@@ -111,7 +111,7 @@ export function CadastroProduto({ categorias }: Props) {
 			    ao abrir o passo Dados é anunciado como mudança (dentro da seção não seria). */}
 			<div className="flex flex-col gap-6">
 				<div hidden={passo !== "dados"}>
-					<h2 ref={tituloDados} tabIndex={-1} className="text-xl font-bold focus:outline-none">
+					<h2 ref={tituloDados} tabIndex={-1} className="text-2xl focus:outline-none">
 						Dados do produto
 					</h2>
 				</div>

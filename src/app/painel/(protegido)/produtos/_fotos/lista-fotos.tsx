@@ -134,8 +134,8 @@ export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirma
 						aria-label={`Foto ${numero}`}
 						data-destino={destino ? "true" : undefined}
 						className={
-							"flex gap-3 rounded-lg border-2 bg-white p-2 " +
-							(destino ? "border-blue-700 ring-2 ring-blue-700" : origem ? "border-blue-700 bg-blue-50" : "border-neutral-300")
+							"flex gap-3 rounded-suave border-2 bg-white p-2 " +
+							(destino ? "border-acao ring-2 ring-acao" : origem ? "border-acao bg-superficie-2" : "border-linha")
 						}
 					>
 						<div
@@ -155,24 +155,24 @@ export function ListaFotos({ fotos, onRemover, onMover, onTentarDeNovo, confirma
 									width={160}
 									height={160}
 									draggable={false}
-									className="aspect-square h-auto w-full rounded-md object-cover"
+									className="aspect-square h-auto w-full rounded-arco object-cover"
 								/>
 							) : (
 								// Espaço reservado do mesmo tamanho até existir a miniatura.
-								<div aria-hidden="true" className="aspect-square w-full rounded-md bg-neutral-200" />
+								<div aria-hidden="true" className="aspect-square w-full rounded-arco bg-superficie-2" />
 							)}
 							{i === 0 ? (
-								<span className="self-start rounded bg-neutral-900 px-2 py-1 text-base font-semibold text-white">Capa</span>
+								<span className="self-start rounded-pilula bg-texto px-3 py-1 text-base font-bold text-superficie">Capa</span>
 							) : null}
 						</div>
 						<div className="flex min-w-0 flex-1 flex-col gap-2">
 							<div role="status">
-								{estado.tipo === "enviando" ? <p className="text-base text-neutral-700">Enviando…</p> : null}
+								{estado.tipo === "enviando" ? <p className="text-base text-texto-suave">Enviando…</p> : null}
 								{estado.tipo === "nao_enviada" ? (
 									<>
-										<p className="text-base font-semibold text-red-800">{NAO_ENVIADA}</p>
+										<p className="text-base font-bold text-erro">{NAO_ENVIADA}</p>
 										{estado.mensagem !== NAO_ENVIADA ? (
-											<p className="text-base text-red-800">{estado.mensagem}</p>
+											<p className="text-base text-erro">{estado.mensagem}</p>
 										) : null}
 									</>
 								) : null}

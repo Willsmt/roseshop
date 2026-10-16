@@ -154,6 +154,8 @@
 	h3,
 	.font-titulo {
 		font-variant-numeric: lining-nums;
+		/* A Young Serif tem um peso só: nada de negrito falso desenhado pelo navegador. */
+		font-synthesis-weight: none;
 	}
 
 	/* Foco sempre visível, com recuo para não sumir sobre foto nem sobre botão escuro. */

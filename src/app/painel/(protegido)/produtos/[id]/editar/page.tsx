@@ -14,10 +14,10 @@ export default async function EditarProdutoPage({ params }: { params: Promise<{ 
 	if (p === null) {
 		return (
 			<div className="flex flex-col gap-4">
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					Produto não encontrado
 				</p>
-				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-semibold underline">
+				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4">
 					Voltar à lista
 				</Link>
 			</div>
@@ -27,7 +27,7 @@ export default async function EditarProdutoPage({ params }: { params: Promise<{ 
 	const categorias = await listarCategorias();
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-bold">{`Editar ${p.codigo}`}</h1>
+			<h1 className="text-3xl">{`Editar ${p.codigo}`}</h1>
 			<FormProduto
 				modo="edicao"
 				categorias={categorias}

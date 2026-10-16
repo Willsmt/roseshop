@@ -13,10 +13,10 @@ export default async function RemoverProdutoPage({ params }: { params: Promise<{
 	if (p === null) {
 		return (
 			<div className="flex flex-col gap-4">
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					Produto não encontrado
 				</p>
-				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-semibold underline">
+				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4">
 					Voltar à lista
 				</Link>
 			</div>
@@ -25,7 +25,7 @@ export default async function RemoverProdutoPage({ params }: { params: Promise<{
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-bold">Remover produto</h1>
+			<h1 className="text-3xl">Remover produto</h1>
 			<ConfirmarRemocao id={p.id} versao={p.versao} codigo={p.codigo} nome={p.nome} />
 		</div>
 	);

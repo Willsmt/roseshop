@@ -169,7 +169,7 @@ export function GerenciarFotos({ produtoId, inicial }: Props) {
 						<Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>
 					</div>
 				) : null}
-				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-semibold underline">
+				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4">
 					Voltar à lista
 				</Link>
 			</div>
@@ -208,26 +208,26 @@ export function GerenciarFotos({ produtoId, inicial }: Props) {
 						desabilitado={ocupada || trocando}
 					/>
 					{salvando ? (
-						<p role="status" className="text-base text-neutral-700">
+						<p role="status" className="text-base text-texto-suave">
 							{SALVANDO}
 						</p>
 					) : null}
 					{conjunto.fotos.length === 1 ? <p className="text-base">{mensagemFoto("ultima")}</p> : null}
 					{trocando ? (
-						<p ref={pedidoRef} tabIndex={-1} className="text-base font-semibold">
+						<p ref={pedidoRef} tabIndex={-1} className="text-base font-bold">
 							{PEDIDO_TROCA(posicaoTroca)}
 						</p>
 					) : null}
 					{fotoEnvio && estadoEnvio?.tipo === "enviando" ? (
-						<p role="status" className="text-base text-neutral-700">
+						<p role="status" className="text-base text-texto-suave">
 							Enviando…
 						</p>
 					) : null}
 					{fotoEnvio && estadoEnvio?.tipo === "nao_enviada" ? (
 						<div className="flex flex-col gap-3">
-							<p className="text-base font-semibold text-red-800">{mensagemFoto("nao_enviada")}</p>
+							<p className="text-base font-bold text-erro">{mensagemFoto("nao_enviada")}</p>
 							{estadoEnvio.mensagem !== mensagemFoto("nao_enviada") ? (
-								<p className="text-base text-red-800">{telaFotos(estadoEnvio.mensagem)}</p>
+								<p className="text-base text-erro">{telaFotos(estadoEnvio.mensagem)}</p>
 							) : null}
 							<div className="flex flex-col gap-3 sm:flex-row">
 								{estadoEnvio.podeTentar ? (

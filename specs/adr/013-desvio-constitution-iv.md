@@ -1,6 +1,6 @@
 # ADR-013 — Regras da sacola no cliente: desvio da constitution IV (feature 006)
 
-**Status:** proposto (aguarda aprovação humana; GATE antes da SF1 da 006)
+**Status:** aceito (2026-10-16, humano)
 **Data:** 2026-10-16
 **Origem:** `specs/006-sacola-whatsapp/`: spec FR-006, FR-008a, FR-015a, FR-016, FR-019, SC-007;
 plan "Constitution Check" (IV ⚠️) e "Complexity Tracking"; research D1–D5; achado C1 do

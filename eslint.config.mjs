@@ -49,6 +49,23 @@ const proibirSubmoduloCatalogo = {
   message: 'Catálogo fora da fronteira (contracts/publico.md §6). Importe só o barrel "@/lib/catalogo".',
 };
 
+// Feature 006 (contracts/sacola.md, introdução; research D1): o núcleo da sacola é importado por
+// componentes cliente. Segunda camada de src/lib/sacola/fronteira.test.ts.
+const MSG_SACOLA =
+  "Sacola fora da fronteira (contracts/sacola.md): só @/lib/produtos/preco, @/lib/catalogo/exibicao e zod/mini.";
+const proibirServidorNaSacola = {
+  group: ["server-only", "next", "next/*", "@/lib/db", "@/lib/db/*", "@/lib/auth", "@/lib/auth/*", "@/lib/r2", "@/lib/r2/*"],
+  message: MSG_SACOLA,
+};
+// Os submódulos do catálogo seguem a regra geral, mas só `exibicao` fica liberado. O barrel vai em
+// `paths` (nome exato): como padrão, "@/lib/catalogo" excluiria o diretório e anularia a exceção.
+const proibirCatalogoNaSacola = {
+  ...proibirSubmoduloCatalogo,
+  group: ["@/lib/catalogo/*", "**/lib/catalogo/*", "!@/lib/catalogo/exibicao", "!**/lib/catalogo/exibicao"],
+  message: MSG_SACOLA,
+};
+const proibirBarrelCatalogo = { name: "@/lib/catalogo", message: MSG_SACOLA };
+
 const restringir = (...patterns) => ({
   "no-restricted-imports": ["error", { patterns }],
 });
@@ -96,6 +113,26 @@ export default defineConfig([
     // proibições valem como no resto do src/.
     files: ["src/lib/catalogo/**/*.{ts,tsx,js,jsx,mjs}"],
     rules: restringir(proibirDbCategorias, proibirSchemaCategorias, proibirActions, proibirPainel, proibirSubmoduloR2),
+  },
+  {
+    files: ["src/lib/sacola/**/*.{ts,tsx,js,jsx,mjs}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [proibirBarrelCatalogo, { ...proibirBarrelCatalogo, name: "../catalogo" }],
+          patterns: [
+            proibirDbCategorias,
+            proibirSchemaCategorias,
+            proibirActions,
+            proibirPainel,
+            proibirSubmoduloR2,
+            proibirServidorNaSacola,
+            proibirCatalogoNaSacola,
+          ],
+        },
+      ],
+    },
   },
   {
     // Mesma exceção, por arquivo, do teste de conformidade: os testes unitários das

@@ -1,6 +1,6 @@
 # ADR-012 — Conferência pública da sacola por POST (feature 006)
 
-**Status:** proposto (aguarda aprovação humana; GATE antes da SF3 da 006)
+**Status:** aceito (2026-10-16, humano)
 **Data:** 2026-10-16
 **Origem:** `specs/006-sacola-whatsapp/`: spec FR-011, FR-013, SC-004, SC-007 e Clarifications
 (2026-10-16); research D6–D8; contracts/conferencia.md.

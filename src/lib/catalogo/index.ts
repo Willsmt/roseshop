@@ -5,14 +5,18 @@ import "server-only";
 export { configCatalogo, type ConfigCatalogo } from "./config";
 export { codificarCursor, lerCursor } from "./cursor";
 export {
+  BancoIndisponivel,
   type BlocoLista,
   type CategoriaFiltro,
   type FotoPublica,
+  type ItemConferencia,
   lerBloco,
+  lerConferencia,
   lerFoto,
   lerProduto,
   lerVitrine,
   type ProdutoCartao,
+  type ProdutoConferido,
   type ProdutoPublico,
   type Vitrine,
 } from "./leitura";

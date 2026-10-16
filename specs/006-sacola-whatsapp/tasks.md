@@ -282,23 +282,23 @@ SC-007.
 **Fecha**: US3.8, FR-013, FR-010 (worker), SC-007 (rota); parte de US3.1–3.4 (servidor).
 **Revisão**: ✅ humano revisa o diff (zonas protegidas).
 
-- [ ] T023 **GATE do ADR-012 — primeiro passo da SF3.** (1) O **humano** lê e aprova
+- [X] T023 **GATE do ADR-012 — primeiro passo da SF3.** (1) O **humano** lê e aprova
   `specs/adr/012-conferencia-sacola.md`; (2) depois da aprovação, o tech-lead troca
   `**Status:** proposto` por `**Status:** aceito (AAAA-MM-DD, humano)` (a mudança entra no commit
   T034); (3) o tech-lead confere o status no arquivo. Sem aprovação, **parar e avisar o humano**;
   nenhuma task abaixo começa — **humano** (aprova) + **tech-lead** (registra e confere)
-- [ ] T024 [US3] Teste primeiro — ampliar `src/lib/db/catalogo.int.test.ts` (banco local, em
+- [X] T024 [US3] Teste primeiro — ampliar `src/lib/db/catalogo.int.test.ts` (banco local, em
   série) com `conferirProdutos(db, ids)`: produto disponível com capa, esgotado, sem capa, id
   inexistente (fica fora do resultado); colunas `id`, `nome`, `preco_centavos`, `a_partir_de`,
   `esgotado`, `capa_chave` (subselect `CAPA` da 005); **uma única chamada** ao banco (spy em
   `db.execute`) para 15 ids. Fixtures novos em `src/test/db/catalogo-fixtures.ts` — **test-writer**
-- [ ] T025 [P] [US3] Teste primeiro — ampliar `src/lib/catalogo/leitura.test.ts` com
+- [X] T025 [P] [US3] Teste primeiro — ampliar `src/lib/catalogo/leitura.test.ts` com
   `lerConferencia(codigos)`: código canônico → id; resposta **na ordem pedida**, um item por
   código; ausente ⇒ `{ codigo, estado: "inexistente" }` sem `produto`; esgotado ⇒
   `estado: "esgotado"` com `produto`; `produto` = `{ nome, href, precoCentavos, aPartirDe, capa }`
   (capa pela rota pública `/fotos/<arquivo>`); falha do banco marca a causa `"banco"` e propaga —
   **test-writer**
-- [ ] T026 [P] [US3] Teste primeiro — `src/app/api/catalogo/conferencia/route.test.ts` (CC§1–§4):
+- [X] T026 [P] [US3] Teste primeiro — `src/app/api/catalogo/conferencia/route.test.ts` (CC§1–§4):
   `Content-Type: text/plain` ⇒ **415** `{}`; `application/json; charset=utf-8` aceito (mídia antes
   do `;`, sem diferenciar maiúsculas); `Content-Length: 2000` ⇒ **413** `{}` **sem ler o corpo**
   (spy no `body`); corpo de 2000 bytes **sem** `Content-Length` (stream) ⇒ **413** e leitura
@@ -309,7 +309,7 @@ SC-007.
   "/api/catalogo/conferencia", causa: "banco" }`; 200 com um item por código na ordem pedida;
   **todas** as respostas com `Cache-Control: no-store` e `X-Content-Type-Options: nosniff`; só
   `POST` exportado — **test-writer**
-- [ ] T027 [P] [US3] Teste primeiro — `src/test/conformance/conferencia-acesso.test.ts` (no molde
+- [X] T027 [P] [US3] Teste primeiro — `src/test/conformance/conferencia-acesso.test.ts` (no molde
   de `catalogo-acesso.test.ts`): o arquivo da rota não importa `@/lib/auth`, `next/headers`
   (`cookies`, `headers`) nem submódulos do catálogo (só o barrel); exporta `dynamic =
   "force-dynamic"`; a resposta 200 só tem as chaves `itens`, `codigo`, `estado`, `produto`,
@@ -317,26 +317,26 @@ SC-007.
   `{}`; **`console.log/info/warn/error/debug` espionados em todos os casos** (415, 413, 400, 503,
   200) nunca contêm nenhum código pedido, trecho do corpo nem o `Content-Length` (SC-007) —
   **test-writer**
-- [ ] T028 [P] [US4] Teste primeiro — ampliar `cloudflare/publico.test.ts` (D15): `/sacola` é
+- [X] T028 [P] [US4] Teste primeiro — ampliar `cloudflare/publico.test.ts` (D15): `/sacola` é
   `"pagina"` (200 ⇒ `X-Robots-Tag: noindex, nofollow` e `Cache-Control: public, max-age=60`;
   500 ⇒ 503 `no-store` com `Retry-After` e `registrarFalha` com `rota: "/sacola"`);
   `POST /api/catalogo/conferencia` passa **sem alteração** de status nem de cabeçalhos;
   `/sacolas` e `/sacola/x` **não** viram página — **test-writer**
-- [ ] T029 [TL✅] [US3] `src/lib/db/catalogo.ts`: `conferirProdutos(db, ids: number[])` com
+- [X] T029 [TL✅] [US3] `src/lib/db/catalogo.ts`: `conferirProdutos(db, ids: number[])` com
   `WHERE p.id IN (${sql.join(ids)})`, reaproveitando o subselect `CAPA`; sem `ORDER BY`; sem
   escrita, sem índice novo, sem migration (CC§5, D8) — **tech-lead**
-- [ ] T030 [US3] `src/lib/catalogo/falha.ts` (`RotaFalha` += `"/api/catalogo/conferencia"` e
+- [X] T030 [US3] `src/lib/catalogo/falha.ts` (`RotaFalha` += `"/api/catalogo/conferencia"` e
   `"/sacola"`), `src/lib/catalogo/leitura.ts` (`lerConferencia`, único ponto que chama
   `dbDoContexto`) e `src/lib/catalogo/index.ts` (exporta `lerConferencia` e os tipos) —
   **tech-lead**
-- [ ] T031 [US3] `src/app/api/catalogo/conferencia/route.ts` (D7, ordem exata: 415 → 413 pelo
+- [X] T031 [US3] `src/app/api/catalogo/conferencia/route.ts` (D7, ordem exata: 415 → 413 pelo
   cabeçalho → 413 pela leitura com `getReader()` e teto de 1024 bytes → `JSON.parse` + Zod
   (`{ codigos: string[] }` estrito, 1 a 15, regex `^(?:\d{4}|[1-9]\d{4,9})$`, ≠ `"0000"`, valor
   ≤ 2.147.483.647 como o `lerProduto`, sem repetição) ⇒ 400 → `lerConferencia` → 200; 503 só com a causa `"banco"`, demais exceções
   relançadas; nenhum outro `console.*`) — **tech-lead**
-- [ ] T032 [TL✅] [US4] `cloudflare/publico.ts`: `classificar` trata `caminho === "/sacola"` como
+- [X] T032 [TL✅] [US4] `cloudflare/publico.ts`: `classificar` trata `caminho === "/sacola"` como
   `"pagina"` e o 503 usa `rota: "/sacola"`; `POST` segue intocado (D15) — **tech-lead**
-- [ ] T033 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
+- [X] T033 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
 - [ ] T034 Revisão do diff pelo humano (zonas protegidas `src/lib/db/` e `cloudflare/`) e commit,
   incluindo o status "aceito" do ADR-012 registrado na T023:
   ```text

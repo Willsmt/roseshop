@@ -38,7 +38,7 @@ export function prepararPedido(url: URL, metodo: string): Pedido {
 type Classe = "pagina" | "fotos" | "api" | "fora";
 
 function classificar(caminho: string): Classe {
-  if (caminho === "/" || caminho.startsWith("/p/")) return "pagina";
+  if (caminho === "/" || caminho === "/sacola" || caminho.startsWith("/p/")) return "pagina";
   if (caminho.startsWith("/fotos/")) return "fotos";
   if (caminho.startsWith("/api/catalogo/")) return "api";
   return "fora";
@@ -76,7 +76,7 @@ export function ajustarResposta(
 
   if (resposta.status === 500) {
     const banco = causa === "banco";
-    const rota: RotaFalha = caminho === "/" ? "/" : "/p/[codigo]";
+    const rota: RotaFalha = caminho === "/" || caminho === "/sacola" ? caminho : "/p/[codigo]";
     registrarFalha({
       evento: banco ? "catalogo.banco_indisponivel" : "catalogo.erro_inesperado",
       rota,

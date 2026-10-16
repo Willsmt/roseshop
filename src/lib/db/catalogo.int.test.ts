@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { listar as listarCategoriasDoPainel } from "@/lib/db/categorias";
 import { createDb } from "@/lib/db/client";
@@ -11,6 +11,7 @@ import {
 
 import {
   categoriasComProdutos,
+  conferirProdutos,
   fotoPublica,
   listarBloco,
   listarDestaques,
@@ -249,5 +250,97 @@ describe("fotoPublica", () => {
     const chave = fx.guardaChuva.chaves[0];
     await db.execute(sql`DELETE FROM produto_fotos WHERE chave_objeto = ${chave}`);
     expect(await fotoPublica(db, chave)).toBe(false);
+  });
+});
+
+// Feature 006, SF3 (T024): conferência da sacola. `conferirProdutos(db, ids)` devolve só os
+// produtos que existem (id inexistente fica de fora), em ordem NÃO garantida, com uma só consulta.
+describe("conferirProdutos (T024, CC§5)", () => {
+  const porId = <T extends { id: number }>(itens: T[]) => [...itens].sort((a, b) => a.id - b.id);
+
+  it("produto disponível com capa: campos em camelCase e capaChave da posição 1", async () => {
+    const [a] = fx.meias.filter((m) => m.nome === "Meia antiga C");
+    const r = await conferirProdutos(db, [a.id]);
+    expect(r).toEqual([
+      {
+        id: a.id,
+        nome: "Meia antiga C",
+        precoCentavos: null,
+        aPartirDe: false,
+        esgotado: false,
+        capaChave: a.chaves[0],
+      },
+    ]);
+  });
+
+  it("preço e a_partir_de vêm do banco; a capa é a da posição 1 entre várias fotos", async () => {
+    const preco = fx.meias.find((m) => m.nome === "Meia empatada A")!;
+    const aPartir = fx.meias.find((m) => m.nome === "Meia empatada B")!;
+    const r = porId(await conferirProdutos(db, [preco.id, aPartir.id]));
+    const a = r.find((i) => i.id === preco.id)!;
+    const b = r.find((i) => i.id === aPartir.id)!;
+    expect(a).toMatchObject({ precoCentavos: 1290, aPartirDe: false, capaChave: preco.chaves[0] });
+    expect(b).toMatchObject({ precoCentavos: 1590, aPartirDe: true, capaChave: aPartir.chaves[0] });
+  });
+
+  it("produto esgotado: esgotado true", async () => {
+    const r = await conferirProdutos(db, [fx.esgotado.id]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ id: fx.esgotado.id, nome: "Produto esgotado G", esgotado: true });
+  });
+
+  it("produto sem foto: capaChave null", async () => {
+    const r = await conferirProdutos(db, [fx.semFoto.id]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ id: fx.semFoto.id, capaChave: null });
+  });
+
+  it("id inexistente fica fora do resultado; os existentes voltam", async () => {
+    const inexistente = 2_000_000_000;
+    const r = await conferirProdutos(db, [fx.guardaChuva.id, inexistente, fx.semFoto.id]);
+    expect(porId(r).map((i) => i.id)).toEqual([fx.guardaChuva.id, fx.semFoto.id].sort((x, y) => x - y));
+    expect(r.map((i) => i.id)).not.toContain(inexistente);
+  });
+
+  it("só inexistentes ⇒ []", async () => {
+    expect(await conferirProdutos(db, [2_000_000_000, 1_999_999_999])).toEqual([]);
+  });
+
+  it("ids vazio ⇒ [] sem chamar o banco", async () => {
+    const execute = vi.spyOn(db, "execute");
+    try {
+      expect(await conferirProdutos(db, [])).toEqual([]);
+      expect(execute).not.toHaveBeenCalled();
+    } finally {
+      execute.mockRestore();
+    }
+  });
+
+  it("15 ids ⇒ UMA única chamada a db.execute", async () => {
+    // `semFoto` é a "Meia muito antiga E", que já está em `meias`: sem repetição, como a rota manda.
+    const reais = [
+      ...new Set([
+        fx.guardaChuva.id, fx.esgotado.id, fx.semFoto.id, fx.bolsa.id, fx.garrafa.id,
+        ...fx.meias.map((m) => m.id),
+      ]),
+    ];
+    const pedidos = [...reais, ...Array.from({ length: 15 - reais.length }, (_, i) => 2_000_000_000 + i)];
+    expect(pedidos).toHaveLength(15);
+    const execute = vi.spyOn(db, "execute");
+    try {
+      const r = await conferirProdutos(db, pedidos);
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(porId(r).map((i) => i.id)).toEqual([...reais].sort((x, y) => x - y));
+    } finally {
+      execute.mockRestore();
+    }
+  });
+
+  it("não expõe campos internos (categoria, versão, auditoria)", async () => {
+    const r = await conferirProdutos(db, [fx.guardaChuva.id]);
+    expect(Object.keys(r[0]).sort()).toEqual(
+      ["aPartirDe", "capaChave", "esgotado", "id", "nome", "precoCentavos"],
+    );
+    semCampoProibido(r);
   });
 });

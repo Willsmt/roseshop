@@ -24,6 +24,9 @@ const EXCECOES_PUBLICAS: readonly string[] = [
   "src/app/fotos/[arquivo]/route.ts#GET",
   // Bloco da lista do catálogo (005 SF5): sem sessão por desenho; só leitura pública.
   "src/app/api/catalogo/produtos/route.ts#GET",
+  // Conferência da sacola (006 SF3, ADR-012): POST público de leitura, sem sessão por desenho;
+  // conferencia-acesso.test.ts prova que a rota não importa auth nem lê cookies/headers.
+  "src/app/api/catalogo/conferencia/route.ts#POST",
   "src/app/api/interno/limpeza/route.ts#HEAD",
   "src/app/api/interno/limpeza/route.ts#PUT",
   "src/app/api/interno/limpeza/route.ts#PATCH",

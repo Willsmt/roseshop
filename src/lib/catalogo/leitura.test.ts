@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as sql from "@/lib/db/catalogo";
 
 import { codificarCursor } from "./cursor";
-import { lerBloco, lerFoto, lerProduto, lerVitrine } from "./leitura";
+import { BancoIndisponivel, lerBloco, lerConferencia, lerFoto, lerProduto, lerVitrine } from "./leitura";
 
 // T034 (ramo FALLBACK, T008): leitura pública sobre o SQL de src/lib/db/catalogo.ts, com o
 // contexto mockado. Os trechos [ISR] (NEXT_PHASE de build, D13) não se aplicam.
@@ -18,6 +18,7 @@ vi.mock("@/lib/db/catalogo", () => ({
   categoriasComProdutos: vi.fn(),
   obterPublico: vi.fn(),
   fotoPublica: vi.fn(),
+  conferirProdutos: vi.fn(),
 }));
 
 const ARQ1 = "11111111-1111-4111-8111-111111111111.webp";
@@ -71,6 +72,7 @@ beforeEach(() => {
   db.categoriasComProdutos.mockReset().mockResolvedValue(CATEGORIAS);
   db.obterPublico.mockReset().mockResolvedValue(publicoDb());
   db.fotoPublica.mockReset().mockResolvedValue(true);
+  db.conferirProdutos.mockReset().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -284,5 +286,123 @@ describe("falha do banco (FR-024)", () => {
     vi.mocked(getCloudflareContext).mockResolvedValue({ ctx: {} } as never);
     db.obterPublico.mockRejectedValue(falha);
     await expect(lerProduto("42")).rejects.toBe(falha);
+  });
+});
+
+// Feature 006, SF3 (T025): conferência da sacola (CC§2, data-model §2). Códigos já validados pela
+// rota; a leitura converte para id, consulta UMA vez e responde um item por código, na ordem pedida.
+describe("lerConferencia (T025)", () => {
+  it("converte o código canônico em id e chama conferirProdutos uma vez, na ordem pedida", async () => {
+    await lerConferencia(["0042", "12345", "0007"]);
+    expect(db.conferirProdutos).toHaveBeenCalledTimes(1);
+    expect(db.conferirProdutos).toHaveBeenCalledWith(expect.anything(), [42, 12345, 7]);
+  });
+
+  it("um item por código, NA ORDEM PEDIDA (mesmo que o banco devolva outra ordem)", async () => {
+    db.conferirProdutos.mockResolvedValue([cartaoDb(12345), cartaoDb(7), cartaoDb(42)]);
+    const r = await lerConferencia(["0042", "0007", "12345"]);
+    expect(r.map((i) => i.codigo)).toEqual(["0042", "0007", "12345"]);
+  });
+
+  it("disponível ⇒ estado ok com produto { nome, href, precoCentavos, aPartirDe, capa }", async () => {
+    db.conferirProdutos.mockResolvedValue([cartaoDb(42, { nome: "Meia", precoCentavos: 600 })]);
+    const [item] = await lerConferencia(["0042"]);
+    expect(item).toEqual({
+      codigo: "0042",
+      estado: "ok",
+      produto: {
+        nome: "Meia",
+        href: "/p/0042",
+        precoCentavos: 600,
+        aPartirDe: false,
+        capa: { url: `/fotos/${ARQ1}`, alt: "Meia" },
+      },
+    });
+  });
+
+  it("esgotado ⇒ estado esgotado com produto; sem preço e sem capa vira null", async () => {
+    db.conferirProdutos.mockResolvedValue([
+      cartaoDb(7, { nome: "Guarda-chuva", esgotado: true, precoCentavos: null, capaChave: null }),
+    ]);
+    const [item] = await lerConferencia(["0007"]);
+    expect(item).toEqual({
+      codigo: "0007",
+      estado: "esgotado",
+      produto: {
+        nome: "Guarda-chuva",
+        href: "/p/0007",
+        precoCentavos: null,
+        aPartirDe: false,
+        capa: null,
+      },
+    });
+  });
+
+  it("ausente ⇒ { codigo, estado: 'inexistente' } sem a chave produto", async () => {
+    db.conferirProdutos.mockResolvedValue([]);
+    const [item] = await lerConferencia(["12345"]);
+    expect(item).toEqual({ codigo: "12345", estado: "inexistente" });
+    expect("produto" in item).toBe(false);
+  });
+
+  it("misto: ok, esgotado e inexistente nas posições pedidas; codigo é a string pedida", async () => {
+    db.conferirProdutos.mockResolvedValue([
+      cartaoDb(7, { esgotado: true, precoCentavos: null }),
+      cartaoDb(42, { aPartirDe: true }),
+    ]);
+    const r = await lerConferencia(["12345", "0042", "0007"]);
+    expect(r.map((i) => [i.codigo, i.estado])).toEqual([
+      ["12345", "inexistente"],
+      ["0042", "ok"],
+      ["0007", "esgotado"],
+    ]);
+    expect(r[1]).toMatchObject({ produto: { aPartirDe: true } });
+  });
+
+  it("só as chaves do contrato: nenhum id, categoria, versão ou chave de objeto vaza", async () => {
+    db.conferirProdutos.mockResolvedValue([
+      { ...cartaoDb(42), categoriaId: 7, versao: 3, destaqueVaga: 1, criadoPor: "a@x.com" } as sql.CartaoDb,
+    ]);
+    const [item] = await lerConferencia(["0042"]);
+    if (item.estado === "inexistente") throw new Error("inesperado");
+    expect(Object.keys(item).sort()).toEqual(["codigo", "estado", "produto"]);
+    expect(Object.keys(item.produto).sort()).toEqual(["aPartirDe", "capa", "href", "nome", "precoCentavos"]);
+    const texto = JSON.stringify(item);
+    for (const proibido of ['"id"', "categoriaId", "versao", "destaqueVaga", "a@x.com", '"fotos/']) {
+      expect(texto).not.toContain(proibido);
+    }
+  });
+
+  it("chave de foto fora do padrão ⇒ capa null (como o cartão da 005)", async () => {
+    db.conferirProdutos.mockResolvedValue([cartaoDb(42, { capaChave: "fora-do-padrao" })]);
+    const [item] = await lerConferencia(["0042"]);
+    expect(item).toMatchObject({ estado: "ok", produto: { capa: null } });
+  });
+
+  describe("falha do banco", () => {
+    const falha = new Error("connection refused host=secreto");
+
+    it("conferirProdutos rejeita ⇒ marca causa banco e lança BancoIndisponivel com cause", async () => {
+      db.conferirProdutos.mockRejectedValue(falha);
+      const erro = await lerConferencia(["0042"]).catch((e: unknown) => e);
+      expect(erro).toBeInstanceOf(BancoIndisponivel);
+      expect(erro).toBeInstanceOf(Error);
+      expect((erro as Error).cause).toBe(falha);
+      expect(ctx.roseshop.causa).toBe("banco");
+    });
+
+    it("dbDoContexto rejeita ⇒ também BancoIndisponivel", async () => {
+      const { dbDoContexto } = await import("@/lib/db/contexto");
+      vi.mocked(dbDoContexto).mockRejectedValueOnce(falha);
+      const erro = await lerConferencia(["0042"]).catch((e: unknown) => e);
+      expect(erro).toBeInstanceOf(BancoIndisponivel);
+      expect((erro as Error).cause).toBe(falha);
+      expect(ctx.roseshop.causa).toBe("banco");
+    });
+
+    it("nunca devolve 'inexistente' por causa de falha", async () => {
+      db.conferirProdutos.mockRejectedValue(falha);
+      await expect(lerConferencia(["0042"])).rejects.toBeInstanceOf(BancoIndisponivel);
+    });
   });
 });

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   categoriasComProdutos,
+  conferirProdutos,
   fotoPublica,
   listarBloco,
   listarDestaques,
@@ -171,6 +172,52 @@ export async function lerProduto(codigo: string): Promise<ProdutoPublico | "nao_
   if (id < 1 || id > MAX_ID) return "nao_encontrado";
   const p = await comBanco((db) => obterPublico(db, id));
   return p ? publico(p) : "nao_encontrado";
+}
+
+// Conferência da sacola (feature 006, contracts/conferencia.md §2, research D8). A rota já validou
+// os códigos (canônicos, sem "#"). Falha do banco vira `BancoIndisponivel` para a rota responder
+// 503 só nesse caso; qualquer outra exceção segue como está.
+export type ProdutoConferido = {
+  nome: string;
+  href: string;
+  precoCentavos: number | null;
+  aPartirDe: boolean;
+  capa: FotoPublica | null;
+};
+
+export type ItemConferencia =
+  | { codigo: string; estado: "ok"; produto: ProdutoConferido }
+  | { codigo: string; estado: "esgotado"; produto: ProdutoConferido }
+  | { codigo: string; estado: "inexistente" };
+
+export class BancoIndisponivel extends Error {
+  constructor(options?: { cause?: unknown }) {
+    super("banco indisponível", options);
+    this.name = "BancoIndisponivel";
+  }
+}
+
+export async function lerConferencia(codigos: string[]): Promise<ItemConferencia[]> {
+  let linhas: CartaoDb[];
+  try {
+    linhas = await comBanco((db) => conferirProdutos(db, codigos.map(Number)));
+  } catch (erro) {
+    throw new BancoIndisponivel({ cause: erro });
+  }
+  const porId = new Map(linhas.map((l) => [l.id, l]));
+  return codigos.map((codigo): ItemConferencia => {
+    const l = porId.get(Number(codigo));
+    if (!l) return { codigo, estado: "inexistente" };
+    const url = urlFoto(l.capaChave);
+    const produto: ProdutoConferido = {
+      nome: l.nome,
+      href: hrefProduto(l.id),
+      precoCentavos: l.precoCentavos,
+      aPartirDe: l.aPartirDe,
+      capa: url ? { url, alt: l.nome } : null,
+    };
+    return { codigo, estado: l.esgotado ? "esgotado" : "ok", produto };
+  });
 }
 
 // Devolve a chave do objeto só para foto vinculada a produto (US6); o resto é 404 na rota.

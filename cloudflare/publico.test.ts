@@ -360,3 +360,96 @@ describe("criarFetch (T052: fluxo completo com handler falso)", () => {
     expect(r.status).toBe(503);
   });
 });
+
+// T028 (feature 006, SF3, research D15): `/sacola` é página pública sem JS de dados (US4); a
+// conferência por POST passa sem alteração; prefixos parecidos continuam fora do catálogo.
+describe("/sacola e a conferência (T028)", () => {
+  const cc = (r: Response) => r.headers.get("cache-control");
+
+  it("/sacola 200 ⇒ X-Robots-Tag noindex, nofollow e Cache-Control public, max-age=60", () => {
+    const r = ajustarResposta("/sacola", new Response("ok", { status: 200 }), null);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(cc(r)).toBe("public, max-age=60");
+    expect(cc(r)).toBe(`public, max-age=${NAVEGADOR_PAGINA_S}`);
+  });
+
+  it("/sacola 500 com causa banco ⇒ 503 no-store, Retry-After e registro com rota /sacola", async () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = ajustarResposta(
+      "/sacola",
+      new Response("erro", { status: 500, headers: { "content-type": "text/html" } }),
+      "banco",
+    );
+    expect(r.status).toBe(503);
+    expect(cc(r)).toBe("no-store");
+    expect(r.headers.get("retry-after")).toBe("30");
+    expect(r.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(await r.text()).toBe("erro");
+    expect(erro).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(erro.mock.calls[0][0] as string)).toEqual({
+      evento: "catalogo.banco_indisponivel",
+      rota: "/sacola",
+      causa: "banco",
+      resultado: "503",
+    });
+  });
+
+  it("/sacola 500 sem causa ⇒ 503 e erro_inesperado com rota /sacola", () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = ajustarResposta("/sacola", new Response(null, { status: 500 }), null);
+    expect(r.status).toBe(503);
+    expect(JSON.parse(erro.mock.calls[0][0] as string)).toEqual({
+      evento: "catalogo.erro_inesperado",
+      rota: "/sacola",
+      causa: "inesperado",
+      resultado: "503",
+    });
+  });
+
+  it.each(["/sacolas", "/sacola/x"])("%s continua fora: devolve a MESMA resposta, inclusive 500", (caminho) => {
+    for (const status of [200, 404, 500]) {
+      const original = new Response("corpo", { status, headers: { "cache-control": "private" } });
+      expect(ajustarResposta(caminho, original, "banco")).toBe(original);
+    }
+  });
+
+  it("exceção do handler em /sacola vira 503 (como as demais páginas públicas)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const handler = vi.fn(async () => {
+      throw new Error("x");
+    });
+    const r = await criarFetch(handler)(new Request(`${BASE}/sacola`), env, ctxFalso());
+    expect(r.status).toBe(503);
+  });
+
+  it("POST /api/catalogo/conferencia: o handler recebe o MESMO pedido e ctx; a resposta volta sem alteração", async () => {
+    for (const status of [200, 400, 413, 415, 500, 503]) {
+      const resposta = new Response("{}", {
+        status,
+        headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" },
+      });
+      const handler = vi.fn(async () => resposta);
+      const pedido = new Request(`${BASE}/api/catalogo/conferencia`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: '{"codigos":["0042"]}',
+      });
+      const ctx = ctxFalso();
+      const r = await criarFetch(handler)(pedido, env, ctx);
+      expect(r).toBe(resposta);
+      expect(r.status).toBe(status);
+      expect(cc(r)).toBe("no-store");
+      expect(r.headers.get("x-robots-tag")).toBeNull();
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler.mock.calls[0] as unknown[]).toEqual([pedido, env, ctx]);
+    }
+  });
+
+  it("GET /sacola passa pelo handler e ganha os cabeçalhos de página", async () => {
+    const handler = vi.fn(async () => new Response("ok"));
+    const r = await criarFetch(handler)(new Request(`${BASE}/sacola`), env, ctxFalso());
+    expect(r.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+    expect(cc(r)).toBe("public, max-age=60");
+  });
+});

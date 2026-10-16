@@ -16,6 +16,8 @@ export type RotaFalha =
   | "/p/[codigo]"
   | "/api/catalogo/produtos"
   | "/fotos/[arquivo]"
+  | "/api/catalogo/conferencia"
+  | "/sacola"
   | "configuracao";
 
 export type CausaFalha = "banco" | "r2" | "config" | "inesperado";

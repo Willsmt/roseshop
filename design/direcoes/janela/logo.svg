@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Roseshop">
+	<!-- Rosa de arcos: a janela da manhã (arco externo) e as pétalas (arcos internos, alternando o centro). -->
+	<path d="M9 57V31a23 23 0 0 1 46 0v26" />
+	<path d="M19 57V37a14 14 0 0 1 28 0v20" />
+	<path d="M25 57V44a7.5 7.5 0 0 1 15 0v13" />
+	<path d="M5 57h54" />
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Roseshop">
+	<!-- Rosa de um traço só, como quem rabisca na margem do caderno: espiral, cálice e cabo. -->
+	<path d="M32 27c-2.5 0-3.5-2.6-1.6-4.2 2.6-2.2 7 .2 6.6 3.8-.4 4.2-6 6.2-10 4-4.4-2.4-4.6-9.4.2-12.6 5.4-3.6 13.4-.6 14.6 6 1.2 6.6-4.6 12-11.4 11.6-6.6-.4-11.4-6-10.4-12.4" />
+	<path d="M20 34c3 6 7.6 8.4 12 8.4S41 40 44 34" />
+	<path d="M32 42.4V58" />
+	<path d="M32 51c-3.6-3.4-8-3.4-10.4-1.6 2.4 2.4 6.6 3 10.4 1.6Z" />
+</svg>

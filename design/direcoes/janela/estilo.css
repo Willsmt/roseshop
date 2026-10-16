@@ -1,0 +1,69 @@
+/* Direção 1 — Janela. Esboço estático em 390px; dados fictícios. */
+:root {
+	--fundo: #fffbf8;
+	--fundo-2: #f6ece8;
+	--tinta: #3b1f2b;
+	--tinta-suave: #6b4a57;
+	--rosa: #a8325a;
+	--rosa-forte: #8a2549;
+	--ceu: #dce8f2;
+	--luz: #f8ddb6;
+	--folha: #3d6b4f;
+	--linha: #ead8d3;
+	--display: "Young Serif", Georgia, serif;
+	--texto: "Atkinson Hyperlegible Next", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--fundo); color: var(--tinta); font: 400 17px/1.5 var(--texto); }
+a { color: inherit; }
+.pagina { max-width: 390px; margin: 0 auto; padding: 0 16px 48px; }
+
+.topo { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.topo .marca { display: inline-flex; align-items: center; min-height: 48px; min-width: 48px; color: var(--rosa); }
+.sacola { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 24px; background: var(--fundo-2); text-decoration: none; font-weight: 700; }
+.sacola .n { display: inline-grid; place-items: center; min-width: 24px; height: 24px; border-radius: 12px; background: var(--rosa); color: #fff; font-size: 14px; }
+
+/* A janela: o único lugar com "luz". O arco recorta um céu de manhã. */
+.janela { position: relative; margin: 8px 0 28px; padding: 64px 24px 28px; border-radius: 999px 999px 20px 20px; background:
+	radial-gradient(120% 70% at 70% 8%, var(--luz) 0 30%, transparent 62%), linear-gradient(180deg, var(--ceu), #f3e9ea 85%);
+	text-align: center; overflow: hidden; }
+.janela::after { content: ""; position: absolute; inset: auto 0 0; height: 10px; background: var(--fundo-2); }
+.janela svg { color: var(--rosa); }
+.janela h1 { font: 400 44px/1.05 var(--display); letter-spacing: -0.01em; margin-top: 10px; }
+.janela p { max-width: 26ch; margin: 10px auto 18px; color: var(--tinta-suave); }
+
+h2 { font: 400 26px/1.15 var(--display); margin: 0 0 14px; }
+.secao { margin-bottom: 36px; }
+
+.grade { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; list-style: none; padding: 0; }
+.cartao { display: flex; flex-direction: column; gap: 4px; text-decoration: none; }
+.arco { display: block; border-radius: 999px 999px 10px 10px; padding: 6px; background: var(--fundo-2); }
+.arco img { width: 100%; aspect-ratio: 1; height: auto; object-fit: cover; border-radius: 999px 999px 6px 6px; display: block; }
+.cartao .nome { font-weight: 700; line-height: 1.3; margin-top: 6px; }
+.cartao .preco { color: var(--rosa); font-weight: 700; }
+.cartao .esgotado { color: var(--tinta-suave); font-weight: 700; }
+.cartao.fora .arco img { filter: grayscale(0.6) opacity(0.75); }
+
+.filtro { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; margin: 0 -16px 8px; padding-inline: 16px; scrollbar-width: none; }
+.filtro a { flex: none; display: inline-flex; align-items: center; min-height: 48px; padding: 0 18px; border-radius: 24px 24px 8px 8px; border: 1.5px solid var(--linha); text-decoration: none; font-weight: 700; }
+.filtro a[aria-current="page"] { background: var(--tinta); border-color: var(--tinta); color: var(--fundo); }
+.mostrando { color: var(--tinta-suave); margin-bottom: 14px; }
+
+.botao { display: flex; width: 100%; align-items: center; justify-content: center; min-height: 52px; padding: 0 20px; border-radius: 26px; border: 0; font: 700 17px var(--texto); text-decoration: none; cursor: pointer; }
+.botao.primario { background: var(--rosa); color: #fff; }
+.botao.secundario { background: transparent; color: var(--tinta); box-shadow: inset 0 0 0 1.5px var(--tinta); }
+.rodape { border-top: 1px solid var(--linha); padding-top: 20px; color: var(--tinta-suave); text-align: center; }
+
+/* Detalhe */
+.voltar { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; font-weight: 700; text-decoration: none; }
+.galeria { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 6px -16px 10px; padding: 0 16px; scrollbar-width: none; }
+.galeria li { flex: 0 0 88%; scroll-snap-align: center; list-style: none; }
+.galeria .arco { padding: 8px; }
+.pontos { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; }
+.pontos span { width: 8px; height: 8px; border-radius: 4px; background: var(--linha); }
+.pontos span:first-child { width: 22px; background: var(--rosa); }
+.detalhe h1 { font: 400 32px/1.1 var(--display); }
+.detalhe .meta { color: var(--tinta-suave); margin: 6px 0 14px; }
+.detalhe .preco { font: 400 30px var(--display); color: var(--rosa); margin-bottom: 18px; }
+.acoes { display: grid; gap: 10px; margin-bottom: 28px; }
+.descricao h2 { font-size: 20px; margin-bottom: 6px; }

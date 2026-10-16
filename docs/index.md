@@ -17,10 +17,11 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > actions de envio e do conjunto, rota de exibição, cadastro com fotos, pipeline da foto no
 > aparelho, telas do cadastro e da tela Fotos, limpeza diária e sugestão por IA (servidor e
 > tela). A **feature 005 (catálogo público)** está construída (ramo FALLBACK: páginas
-> dinâmicas, sem ISR) e pronta para o merge (PR #20), também **não em produção**: página
+> dinâmicas, sem ISR) e já em `main` (deploy de produção não verificado aqui): página
 > inicial com destaques, filtro e "Carregar mais", detalhe com botão do WhatsApp, rota pública
-> de fotos e `noindex`. A sacola ainda não existe; por isso este índice é deliberadamente
-> curto: só existem documentos para o que já tem código real por trás.
+> de fotos e `noindex`. A **feature 006 (sacola e envio pelo WhatsApp)** está construída e pronta
+> para o merge, também **não em produção**: sacola no aparelho, `/sacola` e conferência pública
+> por `POST`. Este índice só tem documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
 
@@ -56,13 +57,20 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    trocar, remover, mover), rota de exibição, limpeza diária (cron e worker próprio), sugestão por IA (servidor e tela do cadastro), cadastro com fotos, fronteira de acesso e pegadinhas.
 
 9. **[features/F05-catalogo-publico.md](./features/F05-catalogo-publico.md)** — catálogo
-   público (construída, pronta para o merge; ainda não em produção): rotas `/`, `/p/[codigo]`,
+   público (construída, já em `main`): rotas `/`, `/p/[codigo]`,
    `/fotos/[arquivo]` e `GET /api/catalogo/produtos`, módulo `src/lib/catalogo/`, restauração
    da lista ao voltar, seed de teste (`seed:local` e `seed:dev`) e pegadinhas. Cache, 503 e
    `noindex` em [architecture.md](./architecture.md#catálogo-público-feature-005); sinais de R2/Neon,
    CPU e troca do `WHATSAPP_NUMBER` em [operacao.md](./operacao.md#catálogo-público-sinais-e-contingências).
 
+10. **[features/F06-sacola-whatsapp.md](./features/F06-sacola-whatsapp.md)** — sacola e envio
+   pelo WhatsApp (construída, pronta para o merge; ainda não em produção): `/sacola` e
+   `POST /api/catalogo/conferencia`, módulo `src/lib/sacola/` (regras puras no navegador, ADR-013),
+   fluxo de conferência e envio, fronteira travada por teste e lint e pegadinhas. Cabeçalhos do
+   worker em [architecture.md](./architecture.md#sacola-e-conferência-feature-006); sinais e
+   pendências de entrega em [operacao.md](./operacao.md#sacola-sinais-e-pendências-de-entrega).
+
 ## O que ainda não existe aqui
 
-Só há doc de feature para a F01 a F05 (a F04 e a F05 construídas, ainda não em produção); a
-próxima será criada ao ser fechada (sacola).
+Só há doc de feature para a F01 a F06 (F04, F05 e F06 construídas, ainda não em produção); a
+próxima feature terá o seu doc criado ao ser fechada.

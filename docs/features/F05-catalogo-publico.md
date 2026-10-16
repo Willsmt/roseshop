@@ -1,7 +1,7 @@
 # F05 — Catálogo público
 
-> Estado: **construída (SF1 a SF12, ramo FALLBACK), pronta para o merge (PR #20), ainda não em
-> produção.** Spec: [`specs/005-catalogo-publico/spec.md`](../../specs/005-catalogo-publico/spec.md);
+> Estado: **construída (SF1 a SF12, ramo FALLBACK), já em `main` (commits da 005 no histórico;
+> deploy de produção não verificado aqui).** Spec: [`specs/005-catalogo-publico/spec.md`](../../specs/005-catalogo-publico/spec.md);
 > decisão de cache: [ADR-011](../../specs/adr/011-cache-catalogo-workers-dev.md);
 > critérios de sucesso: [`rastreabilidade.md`](../../specs/005-catalogo-publico/rastreabilidade.md).
 
@@ -15,7 +15,7 @@ fotos, preço, descrição e o botão "Perguntar no WhatsApp", que abre uma conv
 com o nome do produto, o código e o link. Produto esgotado aparece com a marca "Esgotado" e sem
 o botão.
 
-Não há conta, sacola, busca nem pagamento. O catálogo **não aparece em buscadores** de
+Não há conta, busca nem pagamento; a sacola é a [F06](./F06-sacola-whatsapp.md). O catálogo **não aparece em buscadores** de
 propósito (`noindex`): o endereço circula por link direto. Se o banco estiver fora do ar, a
 pessoa vê "Não foi possível carregar agora" com o botão "Tentar de novo", nunca um "produto não
 encontrado" falso. O que a administradora muda no painel (preço, esgotado, foto, remoção)

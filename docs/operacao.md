@@ -10,9 +10,10 @@
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
 > `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); a sugestão por IA
 > existe no servidor (SF13) e na tela do cadastro (SF14), com `OPENAI_API_KEY`. O catálogo
-> público (feature 005, ramo FALLBACK, pronta para o merge no PR #20, ainda não em produção)
+> público (feature 005, ramo FALLBACK, já em `main`)
 > acrescenta `SITE_URL`, `WHATSAPP_NUMBER`, os scripts `seed:*` e a seção "Catálogo público:
-> sinais e contingências".
+> sinais e contingências". A sacola (feature 006, pronta para o merge, ainda não em produção) não
+> traz variável, binding nem script novo; ver "Sacola: sinais e pendências de entrega".
 
 ## Visão leiga
 
@@ -896,6 +897,54 @@ produto disponível>` e toque em "Perguntar no WhatsApp": a conversa deve abrir 
 o nome do produto, o `#código` e o link; (3) o evento `catalogo.whatsapp_invalido` não deve aparecer no
 `wrangler tail --env production`. Se o botão sumiu, o valor gravado não passou na validação
 E.164: regrave. Para o dev, é o mesmo comando com `--env dev` (número de teste do mantenedor).
+
+## Sacola: sinais e pendências de entrega
+
+**Visão leiga.** A sacola (`/sacola`) guarda o pedido no aparelho da cliente; o servidor só
+confere preço e disponibilidade quando ela abre a sacola e quando toca em enviar. Não há nada
+novo para configurar. Fluxo e arquivos: [F06](./features/F06-sacola-whatsapp.md); decisões:
+[ADR-012](../specs/adr/012-conferencia-sacola.md) e [ADR-013](../specs/adr/013-desvio-constitution-iv.md).
+
+**Técnico.**
+
+- **Sem variável, binding, migration ou script novos.** Usa `WHATSAPP_NUMBER` e `SITE_URL` da 005.
+  Número inválido: a sacola abre, mas "Enviar pedido pelo WhatsApp" fica desabilitado com "O envio
+  pelo WhatsApp está indisponível no momento" (e `catalogo.whatsapp_invalido` é registrado uma vez
+  por isolate).
+- **CPU (risco aceito, ADR-010).** Medida no dev (T070, `wrangler tail --env dev`, relato do
+  mantenedor): `POST /api/catalogo/conferencia` com **4 ms e 12 ms** (o de 12 ms provavelmente de
+  isolate novo, wall 39 ms), `/fotos/*` 3 a 5 ms, prefetch da página 5 ms; todos `outcome` `ok`,
+  sem Erro 1102. Ressalva: amostra menor que as 10 aberturas pedidas e sem registro de quantos
+  produtos a sacola tinha. O sinal de alerta continua sendo o **Erro 1102** (ver "Limite de CPU
+  do plano gratuito do Workers"); passar de 10 ms sem falhar não aciona a contingência.
+- **Logs sem dado do pedido.** A conferência só registra (via `console.error` JSON, como o resto
+  do catálogo):
+
+| Evento | Rota | Significa | O que fazer |
+|---|---|---|---|
+| `catalogo.banco_indisponivel` | `/api/catalogo/conferencia` | Consulta ao Neon falhou; a rota respondeu 503 `{}`. A tela diz "Não foi possível conferir" e **não abre o WhatsApp**. | Ver o estado do Neon (como no catálogo). Volta sozinho; a cliente tenta de novo. |
+| `catalogo.erro_inesperado` | `/api/catalogo/conferencia` | Qualquer outro erro da rota (500 `{}`), com o campo `classe` (nome do construtor do erro). | Procurar a exceção no código; a mensagem não é registrada de propósito. |
+
+  Os registros **nunca** têm códigos, quantidades, observação, corpo do pedido nem mensagem de
+  exceção (SC-007); `/sacola` também aparece como `rota` nos 503 da página. Se um código aparecer
+  num log, trate como incidente.
+- **Sem cache nem limite de taxa na conferência.** Cada abertura da sacola e cada envio fazem um
+  `POST` e uma consulta ao Neon (volume esperado baixo). O corpo é limitado a 1024 bytes e a 15
+  códigos por pedido. Se o painel do Workers ou do Neon mostrar abuso, a contingência é a mesma
+  da varredura do catálogo (domínio próprio com rate limiting; decisão do humano).
+- **Teste em `preview`, não em `next dev`.** Cabeçalhos de `/sacola` (`noindex`, `max-age=60`)
+  vêm do worker; `curl -sI localhost:8787/sacola` confere.
+
+### Pendências de entrega da 006
+
+Nenhuma bloqueia o merge; ficam para a entrega final, com o humano (detalhes em
+[`rastreabilidade.md`](../specs/006-sacola-whatsapp/rastreabilidade.md)).
+
+| Pendência | Situação |
+|---|---|
+| Número da Rose no `WHATSAPP_NUMBER` de produção | Aberta. Produção usa o número de **teste** do mantenedor: os pedidos da sacola vão para ele até a troca (ver "Trocar o `WHATSAPP_NUMBER` de produção"). É a T090 da 005. |
+| SC-001 com cliente real | Aberta. Aprovado no `preview` e no Android real, mas por quem construiu; falta observar uma cliente real, na mesma sessão da T143 da 004 e da T098 da 005. |
+| Trava do `seed:dev` com `sslmode=verify-full` | Aberta, manutenção fora da 006: `scripts/seed-catalogo-local/trava.ts` exige `sslmode=require` (ver Troubleshooting). Só afeta o `seed:dev`. |
 
 ## Troubleshooting
 

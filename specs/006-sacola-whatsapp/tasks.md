@@ -655,21 +655,38 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
 **Fecha**: SC-001, SC-002 (aparelho), SC-004, SC-007 (logs).
 **Revisão**: tech-lead.
 
-- [ ] T067 Deploy do dev pelo PR (`pull-request.yml`) e `npm run seed:dev` — **humano**
-- [ ] T068 Q§5.1 mensagem real num Android com Chrome (3 produtos: com preço, "a partir de", sem
+- [X] T067 Deploy do dev pelo PR (`pull-request.yml`) e `npm run seed:dev` — **humano**
+  > **Resultado (humano)**: PR #22 com 4 checks verdes; `seed:dev` com 41 produtos.
+- [X] T068 Q§5.1 mensagem real num Android com Chrome (3 produtos: com preço, "a partir de", sem
   preço; observação com acento, emoji e quebra); conferir a conversa e a confirmação na volta;
   **SC-001**: registrar toque a toque (1º, 2º e 3º "Adicionar à sacola", abrir a sacola, enviar;
   a navegação entre produtos fica fora da contagem), 5 esperados, aprovado se ≤ 6; anotar o total
   e qualquer toque extra com o motivo — **humano**
-- [ ] T069 Q§5.2 pior caso no aparelho (R3): 15 produtos de nomes longos, quantidade 10,
+  > **Resultado (confirmação do humano: "passou tudo, conforme o esperado")**: **5 toques** da
+  > sacola, aprovado (≤ 6). Mensagem conforme o esperado (ordem, preços, "a partir de", "Consulte
+  > o valor", observação com acento, emoji e quebra); confirmação na volta com "Limpar sacola" e
+  > "Voltar". Aparelho em `rastreabilidade.md`.
+- [X] T069 Q§5.2 pior caso no aparelho (R3): 15 produtos de nomes longos, quantidade 10,
   observação até o medidor marcar o limite; a mensagem chega inteira. Registrar modelo, Android,
   Chrome e WhatsApp. Se truncar, parar e levar ao tech-lead (reduzir `ORCAMENTO_URL` sem mudar a
   regra) — **humano**
-- [ ] T070 Q§5.3 e Q§5.4: `npx wrangler tail --env dev --format json`, 10 aberturas da sacola com
+  > **Resultado (confirmação do humano: "passou tudo, conforme o esperado")**: 15 produtos de
+  > nomes longos, quantidade 10; a mensagem chegou inteira e o medidor passou para "Espaço da
+  > mensagem quase cheio". `ORCAMENTO_URL` mantido. Aparelho: Xiaomi Poco F7 Pro, HyperOS,
+  > Android e WhatsApp na última versão da data (números não registrados), Chrome 155.
+- [X] T070 Q§5.3 e Q§5.4: `npx wrangler tail --env dev --format json`, 10 aberturas da sacola com
   15 produtos (5 com isolate novo); `cpuTime`, `outcome` e ausência de Erro 1102 (SC-004,
   ADR-010); nenhum código, quantidade ou observação no `tail` (SC-007) — **humano**
-- [ ] T071 Registrar T068–T070 em `specs/006-sacola-whatsapp/rastreabilidade.md` (como a T139 da
+  > **Resultado (humano, `roseshop-dev`, script ce32087c)**: conferência `POST` 200 com `cpuTime`
+  > 4 ms e 12 ms (o de 12 ms provavelmente de isolate novo, `wallTime` 39 ms); fotos 3 a 5 ms;
+  > prefetch da página 5 ms; `outcome` `ok` em todos, sem exceções e sem Erro 1102; logs vazios.
+  > Total de aberturas, quantas com isolate novo e produtos na sacola durante o `tail`: não
+  > registrados. **Amostra menor que as 10 aberturas pedidas.** Veredito em `rastreabilidade.md`.
+- [X] T071 Registrar T068–T070 em `specs/006-sacola-whatsapp/rastreabilidade.md` (como a T139 da
   005) e revisar a coerência com SC-001/SC-002/SC-004/SC-007 — **tech-lead**
+  > **Resultado**: registrado em `rastreabilidade.md` ("Provas no dev (SF8)"). SC-001, SC-002 e
+  > SC-007 fechados no dev. SC-004 passa pelo critério do ADR-010 (sem Erro 1102), com ressalva:
+  > amostra menor que as 10 aberturas e sem registro de 15 produtos na sacola durante o `tail`.
 - [ ] T072 Commit (humano):
   ```text
   docs(specs): registra a prova da sacola no preview e no dev

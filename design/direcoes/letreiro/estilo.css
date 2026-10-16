@@ -1,0 +1,63 @@
+/* Direção 3 — Letreiro. Esboço estático em 390px; dados fictícios. */
+:root {
+	--branco: #ffffff;
+	--tinta: #1e1b2e;
+	--rosa: #c2255c;
+	--rosa-claro: #fbd3e0;
+	--amarelo: #f2b705;
+	--verde: #0e6e66;
+	--anil: #2d479b;
+	--letra: "Archivo", "Arial Narrow", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--branco); color: var(--tinta); font: 400 17px/1.45 var(--letra); font-variation-settings: "wdth" 100; }
+a { color: inherit; }
+.pagina { max-width: 390px; margin: 0 auto; }
+
+.faixa { background: var(--rosa); color: var(--branco); padding: 0 16px; }
+.topo { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+.logo { display: inline-flex; align-items: center; min-height: 48px; text-decoration: none; font-weight: 900; font-size: 26px; font-variation-settings: "wdth" 125; letter-spacing: -0.02em; }
+.logo i { display: inline-block; width: 12px; height: 12px; margin: 0 2px 0 3px; border-radius: 50%; background: var(--amarelo); }
+.sacola { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; background: var(--branco); color: var(--tinta); border-radius: 8px; font-weight: 800; text-decoration: none; }
+.chamada { padding: 18px 0 26px; }
+.chamada h1 { font-weight: 900; font-size: 40px; line-height: 0.98; font-variation-settings: "wdth" 115; letter-spacing: -0.02em; }
+.chamada p { margin-top: 10px; max-width: 30ch; }
+
+.cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px; }
+.cats a { display: flex; align-items: flex-end; min-height: 72px; padding: 10px 12px; border-radius: 10px; text-decoration: none; color: var(--branco); font-weight: 800; font-size: 19px; font-variation-settings: "wdth" 110; }
+.cats a:nth-child(1) { background: var(--tinta); }
+.cats a:nth-child(2) { background: var(--anil); }
+.cats a:nth-child(3) { background: var(--verde); }
+.cats a:nth-child(4) { background: var(--amarelo); color: var(--tinta); }
+.cats a:nth-child(5) { background: var(--rosa); }
+.cats a:nth-child(6) { background: var(--rosa-claro); color: var(--tinta); }
+
+h2 { font-weight: 900; font-size: 28px; line-height: 1; font-variation-settings: "wdth" 115; padding: 18px 16px 12px; }
+.grade { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 10px; list-style: none; padding: 0 16px; }
+.cartao { display: block; text-decoration: none; }
+.ladrilho { display: block; padding: 10px; border-radius: 10px; }
+.ladrilho img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+li:nth-child(4n+1) .ladrilho { background: var(--rosa-claro); }
+li:nth-child(4n+2) .ladrilho { background: #d7e3f7; }
+li:nth-child(4n+3) .ladrilho { background: #fde7a6; }
+li:nth-child(4n+4) .ladrilho { background: #cbe7e2; }
+.nome { display: block; font-weight: 600; margin-top: 8px; line-height: 1.25; }
+.preco { display: block; font-weight: 900; font-size: 22px; font-variation-settings: "wdth" 120; }
+.esgotado { display: inline-block; margin-top: 4px; padding: 2px 8px; background: var(--tinta); color: var(--branco); font-weight: 800; border-radius: 4px; }
+
+.botao { display: flex; width: 100%; align-items: center; justify-content: center; min-height: 54px; border: 0; border-radius: 10px; font: 800 18px var(--letra); text-decoration: none; cursor: pointer; }
+.botao.primario { background: var(--rosa); color: var(--branco); }
+.botao.secundario { background: var(--branco); color: var(--tinta); box-shadow: inset 0 0 0 2.5px var(--tinta); }
+.mais { padding: 20px 16px 40px; }
+
+.voltar { display: inline-flex; align-items: center; min-height: 48px; font-weight: 800; text-decoration: none; }
+.palco { background: #d7e3f7; padding: 16px; }
+.palco img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.miniaturas { display: flex; gap: 8px; list-style: none; padding: 12px 0 0; }
+.miniaturas img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; outline: 3px solid var(--branco); }
+.info { padding: 18px 16px 40px; }
+.info h1 { font-weight: 900; font-size: 32px; line-height: 1; font-variation-settings: "wdth" 115; }
+.info .meta { margin: 8px 0 10px; }
+.info .preco { font-size: 36px; margin-bottom: 18px; }
+.acoes { display: grid; gap: 10px; margin-bottom: 24px; }
+.info h2 { padding: 0 0 6px; font-size: 22px; }

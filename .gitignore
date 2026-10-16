@@ -69,3 +69,7 @@ references/
 ia-medicao/
 .seed-dev.vars*
 !.seed-dev.vars.example
+
+# Fotos de terceiros dos esboços de design: só os créditos são versionados
+design/direcoes/_fotos/*
+!design/direcoes/_fotos/CREDITOS.md

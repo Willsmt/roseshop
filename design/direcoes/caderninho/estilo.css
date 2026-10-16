@@ -1,0 +1,60 @@
+/* Direção 2 — Caderninho. Esboço estático em 390px; dados fictícios. */
+:root {
+	--papel: #fffef9;
+	--pauta: #d5e0f1;
+	--margem: #c8364a;
+	--caneta: #1f3a8f;
+	--grafite: #2e2e33;
+	--marca-texto: #ffe76a;
+	--etiqueta: #f6ebd9;
+	--mao: "Shantell Sans", "Comic Sans MS", cursive;
+	--texto: "Atkinson Hyperlegible Next", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+/* Pauta de caderno: linhas a cada 32px e a margem vermelha à esquerda. */
+body { color: var(--grafite); font: 400 17px/32px var(--texto);
+	background:
+		linear-gradient(90deg, transparent 27px, var(--margem) 27px 28.5px, transparent 28.5px),
+		repeating-linear-gradient(180deg, var(--papel) 0 31px, var(--pauta) 31px 32px);
+	background-color: var(--papel); }
+a { color: var(--caneta); }
+.pagina { max-width: 390px; margin: 0 auto; padding: 0 16px 48px 40px; }
+
+.topo { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.logo { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; color: var(--caneta); text-decoration: none; font: 700 26px/1 var(--mao); font-variation-settings: "INFM" 60; }
+.sacola { min-height: 48px; display: inline-flex; align-items: center; padding: 0 12px; font: 600 18px var(--mao); color: var(--caneta); text-decoration: none; border: 2px solid var(--caneta); border-radius: 14px 18px 12px 16px; }
+
+h1 { font: 600 30px/1.1 var(--mao); color: var(--caneta); margin: 12px 0 4px; }
+.lead { margin-bottom: 24px; }
+h2 { display: inline; font: 700 22px/32px var(--mao); color: var(--grafite);
+	background: linear-gradient(100deg, transparent 2%, var(--marca-texto) 3% 96%, transparent 97%) 0 70% / 100% 60% no-repeat; padding: 0 6px; }
+.secao { margin-bottom: 32px; }
+.secao > h2 { display: inline-block; margin-bottom: 16px; }
+
+.grade { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 14px; list-style: none; padding: 0; }
+.cartao { display: block; text-decoration: none; color: var(--grafite); position: relative; }
+.foto { display: block; background: #fff; padding: 6px 6px 22px; box-shadow: 0 1px 2px rgba(46,46,51,.25); transform: rotate(-1.2deg); }
+li:nth-child(even) .foto { transform: rotate(1deg); }
+.foto img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.fita { position: absolute; top: -8px; left: 50%; width: 46px; height: 16px; margin-left: -23px; background: rgba(255,231,106,.75); transform: rotate(-4deg); }
+.nome { display: block; font: 600 17px/24px var(--texto); margin-top: 10px; }
+.tag { display: inline-block; margin-top: 4px; padding: 0 10px 0 16px; font: 700 17px/28px var(--mao); background: var(--etiqueta); border-radius: 4px; position: relative; clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%); }
+.tag::before { content: ""; position: absolute; left: 8px; top: 11px; width: 6px; height: 6px; border-radius: 3px; background: var(--papel); }
+.esgotado .foto img { filter: grayscale(1) opacity(.7); }
+.risco { font: 700 17px var(--mao); color: var(--margem); }
+
+.abas { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 12px -40px; padding: 0 16px 0 40px; scrollbar-width: none; }
+.abas a { flex: none; display: inline-flex; align-items: center; min-height: 48px; padding: 0 16px; font: 600 17px var(--mao); text-decoration: none; color: var(--grafite); background: #fff; border: 1.5px solid var(--pauta); border-bottom: 0; border-radius: 10px 10px 0 0; }
+.abas a[aria-current="page"] { background: var(--caneta); color: #fff; border-color: var(--caneta); }
+
+.botao { display: flex; width: 100%; align-items: center; justify-content: center; min-height: 52px; border: 0; border-radius: 12px 16px 12px 14px; font: 700 19px var(--mao); text-decoration: none; cursor: pointer; }
+.botao.primario { background: var(--caneta); color: #fff; }
+.botao.secundario { background: #fff; color: var(--caneta); box-shadow: inset 0 0 0 2px var(--caneta); }
+
+.voltar { display: inline-flex; align-items: center; min-height: 48px; font: 600 18px var(--mao); text-decoration: none; }
+.detalhe .foto { transform: rotate(-0.8deg); margin: 10px 0 8px; padding: 8px 8px 30px; }
+.miniaturas { display: flex; gap: 8px; margin-bottom: 16px; list-style: none; padding: 0; }
+.miniaturas img { width: 64px; height: 64px; object-fit: cover; border: 3px solid #fff; box-shadow: 0 1px 2px rgba(46,46,51,.25); }
+.detalhe h1 { margin-top: 8px; }
+.detalhe .tag { font-size: 24px; line-height: 40px; padding: 0 14px 0 22px; margin: 6px 0 20px; }
+.acoes { display: grid; gap: 12px; margin-bottom: 24px; }

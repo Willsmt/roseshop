@@ -6,10 +6,14 @@ export const OBSERVACAO_MAX = 200;
 const CONTROLE = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/g;
 // Invisíveis e de direção. U+200D (ZWJ), U+FE0E e U+FE0F ficam: compõem emoji.
 const INVISIVEIS = /[​‌‎‏‪-‮⁠⁦-⁩﻿]/g;
+// Surrogate sem par (com a flag u, um par válido é um só code point e não casa): sem isto o
+// encodeURIComponent da mensagem lança URIError.
+const SURROGATE_SOLTO = /[\uD800-\uDFFF]/gu;
 
 export function normalizarObservacao(bruto: string): string {
   return bruto
     .replace(/\r\n?/g, "\n")
+    .replace(SURROGATE_SOLTO, "")
     .normalize("NFC")
     .replace(CONTROLE, "")
     .replace(INVISIVEIS, "")

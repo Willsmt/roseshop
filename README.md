@@ -154,6 +154,43 @@ Duas variáveis novas, sem dependência de runtime nova:
 
 O ramo é o FALLBACK (páginas dinâmicas com `Cache-Control: public, max-age=60`, ADR-011): não há bucket de cache, Durable Object nem permissão nova no token do CI. A verificação de acessibilidade automática usa `axe-core@4.13.0` (devDependency, versão exata) no `npm run check`. Para popular um catálogo de teste: `npm run seed:local` (banco local) e `npm run seed:dev` (`roseshop-dev`, com `.seed-dev.vars`); `npm run seed:dev:limpar` remove o que o seed criou.
 
+#### Sacola e pedido pelo WhatsApp (feature 006)
+
+A sacola fica guardada só no aparelho da cliente (localStorage), sem login e sem nada gravado no
+servidor. Regras: até 15 produtos diferentes, quantidade de 1 a 10 por produto e validade de 7 dias
+desde a última alteração. Sacola vencida, corrompida ou de formato antigo abre vazia, sem erro. Por
+produto, guarda só o código, a quantidade, o preço visto e a marcação "a partir de"; nunca nome,
+observação ou outro dado pessoal.
+
+Rotas novas:
+
+- `/sacola`: a página da sacola. Ao abrir e ao tocar em "Enviar pedido pelo WhatsApp", confere os
+  produtos com o catálogo atual. Esgotado sai do subtotal e da mensagem; produto removido sai com
+  aviso; preço alterado passa a usar o preço atual, com aviso. Se a conferência falhar (sem resposta
+  em 4 s, erro de rede ou resposta fora do formato), o WhatsApp não abre e a sacola guardada não muda.
+  A página leva `X-Robots-Tag: noindex, nofollow`. Sem JavaScript, mostra só "Ative o JavaScript para
+  usar a sacola", com link ao catálogo.
+- `POST /api/catalogo/conferencia`: recebe `{"codigos":["0042","0007"]}` no corpo, em JSON, com de 1 a
+  15 códigos sem repetição (sem "#"). Devolve um item por código, na ordem pedida, com estado `ok`
+  (nome, `href`, preço, "a partir de" e capa), `esgotado` (com os mesmos dados) ou `inexistente`. Não
+  lê sessão. Os códigos ficam fora do endereço, para não aparecerem nos registros da plataforma.
+  Todas as respostas levam `Cache-Control: no-store` e `X-Content-Type-Options: nosniff`, e os erros
+  têm corpo `{}`:
+  - 415: `Content-Type` que não é JSON;
+  - 413: corpo com mais de 1 KB (pelo `Content-Length` ou durante a leitura);
+  - 400: pedido inválido (JSON inválido, chave diferente de `codigos`, código fora do formato, `0000`,
+    acima de 2.147.483.647 ou repetido);
+  - 503: banco indisponível;
+  - 500: qualquer outro erro.
+
+  Nem o corpo nem os códigos vão para o log; no 503 e no 500 só se registra a causa (e, no 500, o nome
+  da classe do erro).
+
+Sem variável nem binding novos: a 006 usa o `WHATSAPP_NUMBER` e o `SITE_URL` da 005. Sem
+`WHATSAPP_NUMBER` válido, a sacola continua funcionando, mas "Enviar pedido pelo WhatsApp" fica
+desabilitado com o texto "O envio pelo WhatsApp está indisponível no momento. Tente mais tarde.", e a
+falha é registrada uma vez por carregamento do servidor, sem o valor configurado.
+
 #### Medição manual da IA
 
 ```bash

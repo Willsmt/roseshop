@@ -123,9 +123,11 @@ export function ListaCatalogo({ categorias, inicial }: Props) {
 					onClick={guardar}
 					className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4"
 				>
-					{itens.map((p, i) => (
+					{/* No layout novo a lista fica abaixo dos destaques e do filtro: nenhuma foto dela está na
+					    primeira tela, então todas esperam chegar perto (FR-008; design/VALIDACAO.md). */}
+					{itens.map((p) => (
 						<li key={p.href}>
-							<CartaoProduto produto={p} eager={i < 4} />
+							<CartaoProduto produto={p} eager={false} />
 						</li>
 					))}
 				</ul>

@@ -49,11 +49,18 @@ describe("Destaques (T067)", () => {
     );
   });
 
-  it("FR-008: todas as fotos dos destaques são eager", () => {
+  it("FR-008: só as 2 primeiras fotos dos destaques são eager; as outras, lazy", () => {
     const { container } = render(<Destaques itens={itens(8)} />);
     const imgs = [...container.querySelectorAll("img")];
     expect(imgs).toHaveLength(8);
-    expect(imgs.map((i) => i.getAttribute("loading"))).toEqual(Array(8).fill("eager"));
+    expect(imgs.map((i) => i.getAttribute("loading"))).toEqual([...Array(2).fill("eager"), ...Array(6).fill("lazy")]);
+  });
+
+  // LCP (Fase 8, design/VALIDACAO.md): a primeira foto da fileira tem prioridade alta de rede.
+  it("só a primeira foto dos destaques tem fetchpriority=high", () => {
+    const { container } = render(<Destaques itens={itens(8)} />);
+    const prioridades = [...container.querySelectorAll("img")].map((i) => i.getAttribute("fetchpriority"));
+    expect(prioridades).toEqual(["high", ...Array(7).fill(null)]);
   });
 
   // Redesenho (Fase 5, ADR-005): fileira com rolagem lateral. Todos os itens vêm no HTML (o leitor

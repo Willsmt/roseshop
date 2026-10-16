@@ -20,7 +20,16 @@ export function PrecoInteiro({ preco }: { preco: string }) {
 	);
 }
 
-export function CartaoProduto({ produto, eager }: { produto: ProdutoCartao; eager: boolean }) {
+export function CartaoProduto({
+	produto,
+	eager,
+	prioridade = false,
+}: {
+	produto: ProdutoCartao;
+	eager: boolean;
+	/** fetchpriority="high": só a foto que costuma ser o LCP da página inicial. */
+	prioridade?: boolean;
+}) {
 	return (
 		<a href={produto.href} className="group flex min-h-12 flex-col gap-1 rounded-suave">
 			<span className={classesMoldura}>
@@ -32,6 +41,7 @@ export function CartaoProduto({ produto, eager }: { produto: ProdutoCartao; eage
 						width={400}
 						height={400}
 						loading={eager ? "eager" : "lazy"}
+						fetchPriority={prioridade ? "high" : undefined}
 						className={
 							"block aspect-square h-auto w-full rounded-arco bg-linha object-cover" +
 							(produto.esgotado ? " opacity-70 grayscale-[0.6]" : "")

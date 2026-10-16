@@ -148,20 +148,20 @@ describe("página inicial: conteúdo (T068)", () => {
     expect(com.container.querySelector("section[aria-labelledby='destaques'] h2")?.textContent).toBe("Destaques");
   });
 
-  it("FR-008: destaques todos eager; na lista, os 4 primeiros eager e o resto lazy", async () => {
+  it("FR-008: só os 2 primeiros destaques eager; o resto dos destaques e toda a lista lazy", async () => {
     const destaques = [cartao(21, "Destaque"), cartao(22, "Destaque"), cartao(23, "Destaque")];
     const itens = Array.from({ length: 6 }, (_, i) => cartao(i + 1));
     const { container } = await desenhar(vitrine({ destaques, bloco: { itens, proximo: null, categoria: null } }));
     expect(loading(container.querySelector("section[aria-labelledby='destaques']"))).toEqual([
       "eager",
       "eager",
-      "eager",
+      "lazy",
     ]);
     expect(loading(container.querySelector("section[aria-labelledby='produtos']"))).toEqual([
-      "eager",
-      "eager",
-      "eager",
-      "eager",
+      "lazy",
+      "lazy",
+      "lazy",
+      "lazy",
       "lazy",
       "lazy",
     ]);

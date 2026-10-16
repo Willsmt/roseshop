@@ -27,8 +27,8 @@ export function ConfirmarLimpar({ aoConfirmar }: { aoConfirmar: () => void }) {
 			<Button ref={botao} type="button" variant="secondary" onClick={() => dialogo.current?.showModal()}>
 				{textos.limparSacola}
 			</Button>
-			<dialog ref={dialogo} aria-labelledby={idTexto} className="m-auto max-w-sm rounded-lg p-4 backdrop:bg-black/50">
-				<p id={idTexto} className="mb-4">
+			<dialog ref={dialogo} aria-labelledby={idTexto} className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-t-[2rem] rounded-b-suave bg-superficie p-6 text-texto backdrop:bg-texto/50">
+				<p id={idTexto} className="mb-5 font-titulo text-2xl">
 					{textos.confirmarLimpar}
 				</p>
 				<div className="flex flex-col gap-2 sm:flex-row">

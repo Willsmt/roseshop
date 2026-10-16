@@ -34,7 +34,7 @@ export function Observacao({
 
 	return (
 		<div className="flex flex-col gap-2">
-			<label htmlFor="obs" className="text-base font-semibold">
+			<label htmlFor="obs" className="text-base font-bold">
 				{textos.rotuloObservacao}
 			</label>
 			<textarea
@@ -45,7 +45,7 @@ export function Observacao({
 				aria-describedby="obs-medidor obs-conta"
 				className={classesControle}
 			/>
-			<p id="obs-medidor" className="text-base text-neutral-700">
+			<p id="obs-medidor" className="text-base text-texto-suave">
 				{medida.limite === "caracteres" ? (
 					textos.caracteresUsados(medida.usados)
 				) : (
@@ -53,11 +53,11 @@ export function Observacao({
 						max={100}
 						value={medida.excede ? 100 : Math.round(medida.fracao * 100)}
 						aria-label={textos.espacoUsado}
-						className="w-full"
+						className="medidor w-full"
 					/>
 				)}
 			</p>
-			<p id="obs-conta" aria-live="polite" className="text-base">
+			<p id="obs-conta" aria-live="polite" className="text-base font-bold">
 				{conta}
 			</p>
 		</div>

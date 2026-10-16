@@ -35,8 +35,21 @@ export function BotaoSacola({ sacola: produto }: { sacola: NonNullable<ProdutoPu
 			<a
 				ref={link}
 				href="/sacola"
-				className="inline-flex min-h-12 items-center rounded-lg border-2 border-neutral-900 px-6 font-semibold"
+				className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-pilula bg-sucesso-fundo px-6 py-3 sm:w-auto font-bold text-sucesso shadow-[inset_0_0_0_2px_var(--cor-sucesso)]"
 			>
+				<svg
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth={2.5}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					aria-hidden="true"
+					focusable="false"
+					className="size-5"
+				>
+					<path d="M5 12.5l4.5 4.5L19 7.5" />
+				</svg>
 				{textos.naSacola}
 			</a>
 		);
@@ -63,8 +76,16 @@ export function BotaoSacola({ sacola: produto }: { sacola: NonNullable<ProdutoPu
 			>
 				{textos.adicionarASacola}
 			</Button>
-			{noLimite ? <p id={idLimite}>{textos.limiteProdutos}</p> : null}
-			{falhou ? <p role="status">{textos.falhaAoAdicionar}</p> : null}
+			{noLimite ? (
+				<p id={idLimite} className="text-texto-suave">
+					{textos.limiteProdutos}
+				</p>
+			) : null}
+			{falhou ? (
+				<p role="status" className="font-bold text-erro">
+					{textos.falhaAoAdicionar}
+				</p>
+			) : null}
 		</div>
 	);
 }

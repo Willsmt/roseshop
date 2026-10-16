@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BlocoLista, CategoriaFiltro, ProdutoCartao } from "@/lib/catalogo";
 import { acrescentarSemRepetir } from "@/lib/catalogo/exibicao";
 import { lerRestauracao, salvarRestauracao } from "@/lib/catalogo/restauracao";
+import { Button } from "@/components/ui/button";
 
 import { CartaoProduto } from "./cartao-produto";
 import { Filtro } from "./filtro";
@@ -111,11 +112,17 @@ export function ListaCatalogo({ categorias, inicial }: Props) {
 	return (
 		<>
 			<Filtro categorias={categorias} escolhida={slug} />
-			<p aria-live="polite">{nome ? `${textos.mostrandoDe} ${nome}` : textos.mostrandoTodos}</p>
+			<p aria-live="polite" className="text-texto-suave">
+				{nome ? `${textos.mostrandoDe} ${nome}` : textos.mostrandoTodos}
+			</p>
 			{itens.length === 0 ? (
-				<p>{textos.semProdutos}</p>
+				<p className="rounded-arco bg-superficie-2 px-6 pt-10 pb-8 text-center font-bold">{textos.semProdutos}</p>
 			) : (
-				<ul ref={lista} onClick={guardar} className="grid grid-cols-2 gap-3">
+				<ul
+					ref={lista}
+					onClick={guardar}
+					className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4"
+				>
 					{itens.map((p, i) => (
 						<li key={p.href}>
 							<CartaoProduto produto={p} eager={i < 4} />
@@ -124,17 +131,17 @@ export function ListaCatalogo({ categorias, inicial }: Props) {
 				</ul>
 			)}
 			{falhou ? (
-				<p role="alert">
-					{textos.erroCarregarMais}{" "}
-					<button ref={tentarDeNovo} type="button" onClick={carregarMais} className="min-h-12 underline">
+				<div role="alert" className="flex flex-col items-start gap-3 rounded-suave border-l-[6px] border-erro bg-erro-fundo px-4 py-3">
+					<p className="font-bold">{textos.erroCarregarMais}</p>
+					<Button ref={tentarDeNovo} type="button" variant="secondary" onClick={carregarMais}>
 						{textos.tentarDeNovo}
-					</button>
-				</p>
+					</Button>
+				</div>
 			) : null}
 			{cursor !== null && !falhou ? (
-				<button type="button" onClick={carregarMais} disabled={carregando} className="min-h-12 border px-4">
+				<Button type="button" variant="secondary" onClick={carregarMais} disabled={carregando} className="sm:self-center">
 					{carregando ? textos.carregandoMais : textos.carregarMais}
-				</button>
+				</Button>
 			) : null}
 		</>
 	);

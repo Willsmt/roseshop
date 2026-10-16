@@ -7,9 +7,10 @@ import { CHAVE } from "@/lib/sacola/armazenamento";
 import LayoutPublico from "./layout";
 
 // Feature 006, SF5, T047 (CT§1, FR-002a, US4.6, SC-005): o único acréscimo do layout é o espaço
-// reservado do cabeçalho, vazio no HTML do servidor. A altura fixa (h-12) evita o salto da tela.
+// reservado do cabeçalho, vazio no HTML do servidor. A altura fixa (h-16) evita o salto da tela.
 
-const ESPACO = '<div data-sacola="cabecalho" class="mx-auto flex h-12 max-w-xl justify-end px-4"></div>';
+const ESPACO =
+  '<div data-sacola="cabecalho" class="pointer-events-none absolute inset-x-0 top-0 z-10 mx-auto flex h-16 max-w-5xl items-center justify-end px-4"></div>';
 
 describe("layout público com o espaço da sacola", () => {
   it("tem o espaço do cabeçalho vazio, antes do conteúdo", () => {

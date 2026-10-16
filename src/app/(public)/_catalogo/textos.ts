@@ -1,5 +1,8 @@
 // Textos das telas públicas do catálogo (contracts/telas.md). Sem dependências.
+// Os do bloco "contrato" estão na spec da 005 e nos testes; os do bloco "identidade" são da
+// direção Janela (design/DIRECOES.md) e não substituem nenhum texto de contrato.
 export const textos = {
+	// Contrato (005).
 	nomeSite: "Roseshop",
 	voltarAoCatalogo: "Voltar ao catálogo",
 	verOCatalogo: "Ver o catálogo",
@@ -22,4 +25,13 @@ export const textos = {
 	carregandoMais: "Carregando…",
 	erroCarregarMais: "Não foi possível carregar mais produtos.",
 	semProdutos: "Ainda não há produtos.",
+
+	// Identidade (Janela).
+	inicio: "Roseshop, página inicial",
+	chamada: "Coisas para a casa e para o dia a dia, escolhidas pela Rose.",
+	destaquesChamada: "Os que a Rose separou para você.",
+	produtosChamada: "Escolha uma categoria ou veja tudo.",
+	rodape: "Escolha com calma. O pedido vai pelo WhatsApp, direto para a Rose.",
+	naoEncontradoTexto: "Este produto saiu do catálogo ou o endereço mudou.",
+	fotoDe: (n: number, total: number) => `Ver foto ${n} de ${total}`,
 } as const;

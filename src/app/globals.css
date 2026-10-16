@@ -147,6 +147,15 @@
 		text-wrap: balance;
 	}
 
+	/* Números alinhados na fonte de título: no estilo antigo, o "1" da Young Serif parece um "I"
+	   ("R$ 12,00" lido como "R$ I2,00"). */
+	h1,
+	h2,
+	h3,
+	.font-titulo {
+		font-variant-numeric: lining-nums;
+	}
+
 	/* Foco sempre visível, com recuo para não sumir sobre foto nem sobre botão escuro. */
 	:focus-visible {
 		outline: 3px solid var(--cor-acao);
@@ -156,6 +165,69 @@
 	::selection {
 		background: var(--cor-luz);
 		color: var(--cor-texto);
+	}
+}
+
+@layer components {
+	/* A janela do topo: um céu de manhã recortado em arco, com a luz que "amanhece" uma vez ao
+	   abrir e um parapeito embaixo. É o único degradê do sistema. */
+	.janela::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background:
+			radial-gradient(120% 75% at 72% 6%, var(--cor-luz) 0 28%, transparent 64%),
+			linear-gradient(180deg, transparent 40%, var(--cor-superficie-2) 100%);
+		animation: amanhecer 1.4s ease-out both;
+	}
+
+	/* Barra do espaço da mensagem (observação da sacola): trilho claro, valor na cor de ação. */
+	.medidor {
+		appearance: none;
+		height: 0.75rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--cor-superficie-2);
+		overflow: hidden;
+	}
+
+	.medidor::-webkit-progress-bar {
+		background: var(--cor-superficie-2);
+		border-radius: 999px;
+	}
+
+	.medidor::-webkit-progress-value {
+		background: var(--cor-acao);
+		border-radius: 999px;
+	}
+
+	.medidor::-moz-progress-bar {
+		background: var(--cor-acao);
+		border-radius: 999px;
+	}
+
+	.janela::after {
+		content: "";
+		position: absolute;
+		inset: auto 0 0;
+		height: 10px;
+		background: var(--cor-superficie-2);
+	}
+}
+
+@keyframes amanhecer {
+	from {
+		opacity: 0;
+		transform: translateY(-12%);
+	}
+}
+
+/* Troca de página com um esmaecer curto onde o navegador suporta (View Transitions entre
+   documentos). Sem suporte ou com movimento reduzido, a página só troca. */
+@media (prefers-reduced-motion: no-preference) {
+	@view-transition {
+		navigation: auto;
 	}
 }
 

@@ -6,8 +6,8 @@ import { textos } from "@/lib/sacola/textos";
 import { valorLinha } from "@/lib/sacola/total";
 
 const botaoQtd =
-	"inline-flex min-h-12 min-w-12 items-center justify-center rounded-lg border-2 border-neutral-900 text-xl font-semibold " +
-	"disabled:cursor-not-allowed disabled:opacity-40";
+	"inline-flex min-h-12 min-w-12 items-center justify-center rounded-pilula bg-superficie-2 text-2xl font-bold text-texto " +
+	"hover:bg-linha disabled:cursor-not-allowed disabled:opacity-40";
 
 // Linha da sacola conferida (CT§3). Disponível: quantidade de 1 a 10 e "Remover". Esgotado: só o
 // texto e "Remover" (US3.1). As regras vêm de @/lib/sacola; aqui só a apresentação.
@@ -25,7 +25,7 @@ export function ItemSacola({
 	const { produto, quantidade, codigo } = item;
 	const disponivel = item.estado === "ok";
 	return (
-		<li className="flex gap-3 border-b py-3">
+		<li className="flex gap-4 border-b border-linha py-4">
 			{produto.capa ? (
 				// eslint-disable-next-line @next/next/no-img-element
 				<img
@@ -33,17 +33,19 @@ export function ItemSacola({
 					alt={produto.capa.alt}
 					width={96}
 					height={96}
-					className="size-24 shrink-0 object-cover"
+					className="size-24 shrink-0 rounded-arco border-4 border-superficie-2 bg-linha object-cover"
 				/>
 			) : (
-				<span className="flex size-24 shrink-0 items-center justify-center border">{textos.semFoto}</span>
+				<span className="flex size-24 shrink-0 items-center justify-center rounded-arco bg-superficie-2 text-center text-[1rem] font-bold text-texto-suave">
+					{textos.semFoto}
+				</span>
 			)}
-			<div className="flex flex-col gap-1">
-				<a href={produto.href} className="inline-flex min-h-12 items-center font-bold underline">
+			<div className="flex min-w-0 flex-col gap-1">
+				<a href={produto.href} className="inline-flex min-h-12 items-center font-bold underline underline-offset-4">
 					{produto.nome}
 				</a>
-				<span>#{codigo}</span>
-				<span>{item.precoUnitario}</span>
+				<span className="text-[1rem] text-texto-suave">#{codigo}</span>
+				<span className="text-texto-suave">{item.precoUnitario}</span>
 				{precoMudou ? <p role="status">{textos.precoMudou}</p> : null}
 				{disponivel ? (
 					<>
@@ -57,7 +59,7 @@ export function ItemSacola({
 							>
 								−
 							</button>
-							<output className="min-w-6 text-center">{quantidade}</output>
+							<output className="min-w-6 text-center text-xl font-bold">{quantidade}</output>
 							<button
 								type="button"
 								className={botaoQtd}
@@ -68,7 +70,7 @@ export function ItemSacola({
 								+
 							</button>
 						</div>
-						<span className="font-semibold">
+						<span className="font-titulo text-xl text-acao">
 							{valorLinha({
 								quantidade,
 								nome: produto.nome,
@@ -79,9 +81,12 @@ export function ItemSacola({
 						</span>
 					</>
 				) : (
-					<strong>{textos.esgotado}</strong>
+					<strong className="self-start rounded-pilula bg-texto px-3 py-0.5 text-[1rem] font-bold text-superficie">
+						{textos.esgotado}
+					</strong>
 				)}
-				<button type="button" className="inline-flex min-h-12 items-center self-start underline" onClick={aoRemover}>
+				<button type="button" className="inline-flex min-h-12 items-center self-start font-bold text-acao underline underline-offset-4"
+					onClick={aoRemover}>
 					{textos.remover}
 				</button>
 			</div>

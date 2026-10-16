@@ -8,8 +8,16 @@ import { describe, expect, it } from "vitest";
 
 const DIR = dirname(fileURLToPath(import.meta.url));
 
-// As SFs seguintes acrescentam conferencia.ts e armazenamento.ts a esta lista.
-const ESPERADOS = ["observacao.ts", "sacola.ts", "total.ts", "textos.ts", "mensagem.ts"];
+// A SF4 acrescentou conferencia.ts e armazenamento.ts.
+const ESPERADOS = [
+  "observacao.ts",
+  "sacola.ts",
+  "total.ts",
+  "textos.ts",
+  "mensagem.ts",
+  "conferencia.ts",
+  "armazenamento.ts",
+];
 
 const PERMITIDOS_EXATOS = new Set(["@/lib/produtos/preco", "@/lib/catalogo/exibicao", "zod/mini"]);
 

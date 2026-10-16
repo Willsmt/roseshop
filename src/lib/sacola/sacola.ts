@@ -6,7 +6,15 @@ export const MAX_PRODUTOS = 15,
   QTD_MAX = 10,
   VALIDADE_MS = 7 * 24 * 3600 * 1000;
 
-export type Item = { codigo: string; quantidade: number; precoVisto: number | null; aPartirDe: boolean };
+// Código canônico sem "#" (research D6), no mesmo limite do `lerProduto` e da rota da conferência.
+const CODIGO = /^(?:\d{4}|[1-9]\d{4,9})$/;
+const MAX_ID = 2_147_483_647;
+
+export function codigoValido(c: string): boolean {
+  return CODIGO.test(c) && c !== "0000" && Number(c) <= MAX_ID;
+}
+
+export type Item ={ codigo: string; quantidade: number; precoVisto: number | null; aPartirDe: boolean };
 export type Sacola = { versao: 1; alteradaEm: number; itens: Item[] };
 
 // Resultado da conferência (data-model §2). Declarado aqui para conferencia.ts (SF4) reexportar

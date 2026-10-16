@@ -360,7 +360,7 @@ FR-008, FR-008a, FR-011, US3.5, US3.7, US4.1–4.5; riscos R1, R2.
 **Fecha**: US4.1–4.3, US4.5, FR-008a, US3.7 (cliente), US3.5 (`houveMudanca`).
 **Revisão**: humano revisa o diff.
 
-- [ ] T035 [P] [US3] Teste primeiro — `src/lib/sacola/conferencia.test.ts` (CS§5, A1):
+- [X] T035 [P] [US3] Teste primeiro — `src/lib/sacola/conferencia.test.ts` (CS§5, A1):
   `conferir` faz `POST /api/catalogo/conferencia` com `Content-Type: application/json` e corpo
   `{"codigos":[…]}`; 200 válido ⇒ lista. Devolve **`"falha"` sem lançar** em cada um destes
   casos, cada um num `it` próprio: **tempo-limite** (`fetch` que nunca resolve, `vi.useFakeTimers`,
@@ -370,7 +370,7 @@ FR-008, FR-008a, FR-011, US3.5, US3.7, US4.1–4.5; riscos R1, R2.
   foi pedido). `lerRespostaConferencia` valida com `zod/mini`. `juntar` marca `precoAlterado`
   quando valor, `aPartirDe` ou ausência de preço diferem do visto. `houveMudanca` ⇒ `true` com
   inexistente, esgotado novo ou preço alterado; `false` sem mudança (US3.5) — **test-writer**
-- [ ] T036 [P] [US4] Teste primeiro — `src/lib/sacola/armazenamento.test.ts` (CS§6, DM§1, D5):
+- [X] T036 [P] [US4] Teste primeiro — `src/lib/sacola/armazenamento.test.ts` (CS§6, DM§1, D5):
   `lerSacola` devolve vazia (sem gravar: spy em `setItem`/`removeItem`) para chave ausente, JSON
   corrompido, `v: 0`, `t` com mais de 7 dias, `t` mais de 1 dia no futuro, quantidade 11, código
   `"42"`, `"0000"`, `"2147483648"` ou `"12345678901"`, código repetido (e aceita `"2147483647"`), 16 itens, `p` 0 ou 10.000.000, chave extra em qualquer
@@ -381,21 +381,21 @@ FR-008, FR-008a, FR-011, US3.5, US3.7, US4.1–4.5; riscos R1, R2.
   `i[].c/q/p/a` (US4.5, FR-006); `assinarSacola` reage a `storage` só com `key ===
   "roseshop.sacola"` ou `key === null` e a `roseshop:sacola`, **nunca grava** (spy) e devolve a
   função de cancelar — **test-writer**
-- [ ] T037 [P] [US1] [US4] Teste primeiro — `src/lib/sacola/concorrencia.test.ts` (FR-008a, R1):
+- [X] T037 [P] [US1] [US4] Teste primeiro — `src/lib/sacola/concorrencia.test.ts` (FR-008a, R1):
   `Storage` falso compartilhado por duas "abas" intercaladas: A lê, B lê, A grava `adicionar(X)`,
   B grava `adicionar(Y)` ⇒ **X e Y presentes**; mesmo produto com `mudarQuantidade` em A (3) e
   B (5) ⇒ vale a última (5); sacola com 14, A e B adicionam códigos diferentes ⇒ a segunda é
   recusada com `limite_produtos` sobre a relida; `aplicarConferencia` de A cobrindo só X não
   apaga Y adicionado por B no meio — **test-writer**
-- [ ] T038 [P] `src/lib/sacola/conferencia.ts`: `conferir` (`AbortController`, 4000 ms padrão,
+- [X] T038 [P] `src/lib/sacola/conferencia.ts`: `conferir` (`AbortController`, 4000 ms padrão,
   `fetch` injetável, **qualquer** não-200, rejeição ou esquema inválido ⇒ `"falha"`, nunca
   lança), `lerRespostaConferencia` (`zod/mini`), `juntar`, `houveMudanca`; reexporta
   `ItemConferencia` de `./sacola` — **tech-lead**
-- [ ] T039 [P] `src/lib/sacola/armazenamento.ts`: `CHAVE = "roseshop.sacola"`,
+- [X] T039 [P] `src/lib/sacola/armazenamento.ts`: `CHAVE = "roseshop.sacola"`,
   `EVENTO_LOCAL = "roseshop:sacola"`, `lerSacola`, `alterarSacola`, `assinarSacola`; validação
   `zod/mini` do formato fechado de DM§1; todo `getItem`/`setItem`/`removeItem` e o próprio
   `storage()` dentro de `try/catch`; sem `navigator.locks` — **tech-lead**
-- [ ] T040 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T040 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T041 Commit (humano):
   ```text
   feat(sacola): guarda a sacola no aparelho e confere pelo catálogo

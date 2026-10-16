@@ -601,19 +601,50 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
 **Fecha**: provas manuais M da Cobertura do plan (local); SC-005 (roteiro da 005).
 **Revisão**: —. Sem commit próprio: o registro entra no commit da SF8.
 
-- [ ] T064 Subir `npm run db:up`, `npm run db:migrate`, `npm run preview` e `npm run seed:local`;
+- [X] T064 Subir `npm run db:up`, `npm run db:migrate`, `npm run preview` e `npm run seed:local`;
   rodar os `curl` de Q§2 e colar o output real (200 na ordem, 415, 413 com e sem
   `Content-Length`, 400, 405, `no-store`; com `npm run db:down`, 503 `{}` e um único log
   fechado; nenhum código nos logs do `preview`) — **júnior**
-- [ ] T065 Roteiro de telas Q§3 (itens 1 a 12; no **item 2**, registrar toque a toque os toques
+  > **Resultado (2026-10-16, `preview` local, seed com 41 produtos de `0002` a `0042`; o `0001`
+  > não existe no seed):
+  > - `{"codigos":["0001","0002","9999"]}` ⇒ 200, `Cache-Control: no-store`,
+  >   `x-content-type-options: nosniff`; itens na ordem pedida: `0001` inexistente, `0002` ok,
+  >   `9999` inexistente. Extra, para cobrir o esgotado: `["0016","9999","0003","0005"]` ⇒ 200 na
+  >   ordem pedida: esgotado, inexistente, ok, esgotado.
+  > - `text/plain` ⇒ 415 `{}`; 2000 bytes com `Content-Length: 2000` ⇒ 413 `{}`; 2000 bytes com
+  >   `transfer-encoding: chunked` (sem `Content-Length`) ⇒ 413 `{}`; `{"codigos":["42"]}` ⇒ 400
+  >   `{}`. Todos com `no-store` e `nosniff` (cabeçalhos do pedido conferidos com `curl -v`).
+  > - `GET` ⇒ 405, mas **sem** `Cache-Control: no-store` e sem `nosniff` (vem só
+  >   `X-Robots-Tag: noindex, nofollow`): é o 405 padrão do Next (contrato §1), que contradiz o
+  >   "todas as respostas" do §3. **Desvio pendente**: emendar o §3 do
+  >   `contracts/conferencia.md` ou responder o 405 pela rota (decisão do tech-lead/humano).
+  > - `npm run db:down` ⇒ 503 `{}` com `no-store` e `nosniff`; exatamente **um** registro
+  >   `{"evento":"catalogo.banco_indisponivel","rota":"/api/catalogo/conferencia","causa":"banco"}`
+  >   (nível `error`). Banco de volta com `npm run db:up`, `/api/health` 200, 41 produtos.
+  > - Logs: o terminal do `preview` mostrou só as linhas `[wrangler:info] <método> <rota>
+  >   <status>`. O wrangler 4.147.0, quando detecta um agente, manda o `console.*` do worker para
+  >   a observabilidade local, e não para o terminal; o registro do 503 foi lido de lá, em
+  >   `POST /cdn-cgi/local/explorer/api/local/observability/query` (tabela `logs`). Busca por
+  >   `0001|0002|9999|0016|0003|0005|codigos|aaaa` no terminal e na tabela `logs` da sessão:
+  >   nenhuma ocorrência.
+- [X] T065 Roteiro de telas Q§3 (itens 1 a 12; no **item 2**, registrar toque a toque os toques
   da sacola de um pedido de 3 produtos, do primeiro "Adicionar à sacola" até o envio: 5
   esperados (3 "Adicionar à sacola", abrir a sacola, enviar), aprovado se ≤ 6, SC-001; incluindo **a conferência do envio com o
   `preview` parado ou o banco fora ⇒ "Não consegui conferir agora, tente de novo." e sacola
   intacta**, e o medidor da observação passando de "N de 200" para "Espaço da mensagem quase
   cheio") e regressão da 005 em Q§4 (`curl -sI /sacola` com `X-Robots-Tag`). O item 11 exige o
   humano editar o `.dev.vars` — **humano** (com o júnior colando os outputs de terminal)
-- [ ] T066 Registrar o resultado (aprovado ou falhas com o passo) nesta task e em
+  > **Resultado (2026-10-16, humano)**: itens 1 a 12 aprovados. Item 2 (SC-001): **5 toques** da
+  > sacola (3 "Adicionar à sacola", abrir a sacola, enviar), aprovado por ser ≤ 6. Conferência
+  > do envio com o `preview` parado ⇒ "Não consegui conferir agora, tente de novo." e sacola
+  > intacta. Medidor da observação passou de "N de 200" para "Espaço da mensagem quase cheio".
+  > `X-Robots-Tag` conferido em `/sacola` (Q§4). O passo extra de confirmação de "Limpar sacola"
+  > depois do envio não incomodou: **mantido**.
+- [X] T066 Registrar o resultado (aprovado ou falhas com o passo) nesta task e em
   `specs/006-sacola-whatsapp/rastreabilidade.md` (novo, critério → prova) — **tech-lead**
+  > **Resultado (2026-10-16)**: SF7 aprovada, sem falhas no roteiro de telas. Fica pendente
+  > o desvio do 405 sem `no-store`/`nosniff` (T064), uma questão de contrato que não aparece na
+  > tela. `rastreabilidade.md` criado com as provas locais; a SF8 (T071) completa com o dev.
 
 ---
 

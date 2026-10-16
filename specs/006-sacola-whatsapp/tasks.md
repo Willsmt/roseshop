@@ -117,7 +117,7 @@ fazer nesta SF.
   D1–D5 e constitution IV); registrar achados em cada ADR como "Notas da revisão". **Os dois
   ficam "proposto"** — **tech-lead**
 - [X] T005 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
-- [ ] T006 Commit (humano), com o ADR-012 e o ADR-013 ainda "proposto":
+- [X] T006 Commit (humano), com o ADR-012 e o ADR-013 ainda "proposto":
   ```text
   test(catalogo): fixa o HTML do servidor da 005 como referência da SC-005
 
@@ -130,7 +130,7 @@ fazer nesta SF.
 
 ### GATE antes da SF1 — ADR-013
 
-- [ ] T004 **GATE — o humano aprova o ADR-013** (roda **depois da T006**). Ler e aprovar
+- [X] T004 **GATE — o humano aprova o ADR-013** (roda **depois da T006**). Ler e aprovar
   `specs/adr/013-desvio-constitution-iv.md`; depois da aprovação, o tech-lead troca
   `**Status:** proposto` por `**Status:** aceito (AAAA-MM-DD, humano)`, e a mudança entra no
   commit da SF1 (T017). **Nenhuma task da SF1 em diante começa sem esta aprovação registrada no
@@ -149,14 +149,14 @@ FR-005, FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6, US3.2.
 **Fecha**: FR-015a (regra), FR-012, limites de FR-003/FR-005 sobre o resultado, US1.3 (puro).
 **Revisão**: humano revisa o diff (código do tech-lead).
 
-- [ ] T007 [P] [US2] Teste primeiro — `src/lib/sacola/observacao.test.ts` (FR-015a, D2): tabela
+- [X] T007 [P] [US2] Teste primeiro — `src/lib/sacola/observacao.test.ts` (FR-015a, D2): tabela
   com CRLF e CR → LF; NFD → NFC (`"é"` → `"é"`); controle removido (U+0000–U+0009,
   U+000B–U+001F, U+007F–U+009F) e LF preservado; U+200B, U+200C, U+200E, U+200F, U+202A–U+202E,
   U+2060, U+2066–U+2069 e U+FEFF removidos; **U+200D, U+FE0E e U+FE0F preservados** (emoji com
   ZWJ intacto); espaços das pontas removidos; `\n\n\n\n` → `\n\n`; só espaços/invisíveis ⇒ `""`.
   Idempotência `n(n(x)) === n(x)` sobre toda a tabela. `contarCaracteres` conta **code points**
   (`"👩‍👩‍👧"` = 5, `"á"` NFC = 1), não UTF-16. `OBSERVACAO_MAX === 200` — **test-writer**
-- [ ] T008 [P] [US1] [US3] Teste primeiro — `src/lib/sacola/sacola.test.ts` (D4, DM§1 transições,
+- [X] T008 [P] [US1] [US3] Teste primeiro — `src/lib/sacola/sacola.test.ts` (D4, DM§1 transições,
   FR-008a): constantes `MAX_PRODUTOS = 15`, `QTD_MIN = 1`, `QTD_MAX = 10`,
   `VALIDADE_MS = 7 dias`; `adicionar` entra com `quantidade 1`, `precoVisto` e `aPartirDe`,
   `mudou: true`; código já presente ⇒ `ok: true, mudou: false`, quantidade intacta (US1.3); 16º
@@ -170,37 +170,37 @@ FR-005, FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6, US3.2.
   sacola com quantidade 3 e, numa conferência seguinte como `ok`, segue com quantidade 3.
   `estaNaSacola`, `cheia` (15). Operações não mutam a entrada (`Object.freeze` na entrada) —
   **test-writer**
-- [ ] T009 [P] [US2] Teste primeiro — `src/lib/sacola/total.test.ts` (DM§4, FR-012): US2.5
+- [X] T009 [P] [US2] Teste primeiro — `src/lib/sacola/total.test.ts` (DM§4, FR-012): US2.5
   (2 × R$ 6,00 + 1 × "a partir de R$ 10,00" ⇒ subtotal "a partir de R$ 22,00"); US2.6 (2 com preço
   + 1 sem ⇒ "Consulte o valor" na linha, soma só dos 2, "+ 1 item a consultar"; 2 sem preço ⇒
   "+ 2 itens a consultar"); nenhum com preço ⇒ subtotal "Consulte o valor" e
   `aConsultar` conforme a contagem; `valorLinha` = quantidade × preço ("2x" de R$ 6,00 ⇒
   "R$ 12,00"); formato brasileiro "R$ 1.234,56"; teto 15 × 10 × 9.999.999 = 1.499.999.850
   centavos sem perda (inteiro) — **test-writer**
-- [ ] T010 [P] Teste primeiro — `src/lib/sacola/fronteira.test.ts` (D1, no molde de
+- [X] T010 [P] Teste primeiro — `src/lib/sacola/fronteira.test.ts` (D1, no molde de
   `src/lib/fotos/aparelho/fronteira.test.ts`): lê os imports de todo `src/lib/sacola/*.ts` que
   não é teste e falha em qualquer import fora de `@/lib/produtos/preco`, `@/lib/catalogo/exibicao`,
   `zod/mini` e `./<arquivo do módulo>` (proíbe `server-only`, `next/*`, `@/lib/db*`,
   `@/lib/auth*`, `@/lib/r2*`, o barrel `@/lib/catalogo` e `zod` cheio) — **test-writer**
-- [ ] T011 `eslint.config.mjs`: bloco para `src/lib/sacola/**/*.{ts,tsx}` que proíbe
+- [X] T011 `eslint.config.mjs`: bloco para `src/lib/sacola/**/*.{ts,tsx}` que proíbe
   `server-only`, `next/*`, `@/lib/db*`, `@/lib/auth*`, `@/lib/r2*`, o barrel `@/lib/catalogo` e
   os submódulos do catálogo exceto `exibicao` (reusar `proibirSubmoduloCatalogo` e acrescentar o
   barrel); mensagem citando CS (introdução) — **tech-lead**
-- [ ] T012 `src/lib/sacola/textos.ts` (CS§7, sem dependências): textos da mensagem
+- [X] T012 `src/lib/sacola/textos.ts` (CS§7, sem dependências): textos da mensagem
   ("Olá! Quero fazer este pedido:", "Subtotal:", "Observação:", "a partir de", "Consulte o valor",
   "+ 1 item a consultar" / "+ N itens a consultar") e das telas de CT§1–§3, incluindo os novos
   dos ajustes: "Não consegui conferir agora, tente de novo." (A1), "N de 200",
   "Espaço da mensagem quase cheio", "Espaço da mensagem usado" e "A observação não cabe mais na
   mensagem. Encurte para enviar." (A2) — **tech-lead**
-- [ ] T013 [P] `src/lib/sacola/observacao.ts`: `OBSERVACAO_MAX`, `normalizarObservacao`,
+- [X] T013 [P] `src/lib/sacola/observacao.ts`: `OBSERVACAO_MAX`, `normalizarObservacao`,
   `contarCaracteres` (D2, ordem exata da regra) — **tech-lead**
-- [ ] T014 [P] `src/lib/sacola/sacola.ts`: tipos `Item`, `Sacola`
+- [X] T014 [P] `src/lib/sacola/sacola.ts`: tipos `Item`, `Sacola`
   (`{ versao: 1; alteradaEm: number; itens: Item[] }`), `Operacao`, `Resultado`, constantes e
   operações de CS§2. Declara também o tipo `ItemConferencia` de DM§2 (a SF4 o reexporta em
   `conferencia.ts`, CS§5) para não haver dependência circular — **tech-lead**
-- [ ] T015 [P] `src/lib/sacola/total.ts`: `LinhaPedido`, `valorLinha`, `resumo` (DM§4), formatando
+- [X] T015 [P] `src/lib/sacola/total.ts`: `LinhaPedido`, `valorLinha`, `resumo` (DM§4), formatando
   por `@/lib/catalogo/exibicao` (`precoPublico`) e `@/lib/produtos/preco` — **tech-lead**
-- [ ] T016 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T016 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T017 Commit (humano), incluindo o status "aceito" do ADR-013 registrado na T004:
   ```text
   feat(sacola): adiciona as regras puras da sacola

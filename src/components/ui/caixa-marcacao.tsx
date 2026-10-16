@@ -14,14 +14,14 @@ export function CaixaMarcacao({ name, rotulo, defaultChecked, erro }: CaixaMarca
 	const idErro = `${useId()}-erro`;
 	return (
 		<div className="flex flex-col gap-2">
-			<label className="flex min-h-12 items-center gap-3 text-base font-semibold">
+			<label className="flex min-h-12 items-center gap-3 text-base font-bold">
 				<input
 					type="checkbox"
 					name={name}
 					defaultChecked={defaultChecked}
 					aria-invalid={erro ? "true" : undefined}
 					aria-describedby={erro ? idErro : undefined}
-					className="size-6 shrink-0 accent-neutral-900"
+					className="size-6 shrink-0 accent-acao"
 				/>
 				{rotulo}
 			</label>

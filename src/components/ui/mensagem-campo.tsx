@@ -6,7 +6,7 @@ type MensagemCampoProps = {
 // Mensagem de erro de um campo; o campo a aponta por `aria-describedby`.
 export function MensagemCampo({ id, children }: MensagemCampoProps) {
 	return (
-		<p id={id} className="text-base font-semibold text-red-700">
+		<p id={id} className="text-base font-bold text-erro">
 			{children}
 		</p>
 	);

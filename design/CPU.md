@@ -95,3 +95,25 @@ entre "SVG" (movimento reduzido: o 3D nem baixa) e "3D".
   sem economia de dados, sem movimento reduzido, com WebGL e (quando o navegador informa) com 3 GB
   de memória ou mais, e só depois que a página e as fotos da primeira tela apareceram.
 - Não medido: celular real (Fase 8) e a aba Performance do DevTools com GPU de verdade.
+
+## Fase 8 (validação final) — 2026-10-16
+
+Código atual (HEAD `2da5a9b`; o código do app é o mesmo do commit `8e7aad1`), já publicado no
+`roseshop-dev` na versão `6d47cf5d-f7ca-44bb-935f-41acb661d85e`. Mudança de método: **um pedido a
+cada 3 segundos** (14 por rota, intercalados), com `wrangler tail` aberto. Com esse ritmo o tail
+entregou **todos** os eventos; a perda das medições anteriores vinha dos pedidos em rajada.
+
+| Rota | Amostras (ms de CPU, ordenadas) | n | Mediana | Linha de base | Outcome |
+|---|---|---|---|---|---|
+| `/` | 10, 10, 11, 12, 12, 12, 14, 14, 14, 15, 16, 16, 19, 22 | 14 | **14** | 17 | todas `ok` |
+| `/p/0015` | 7, 8, 8, 8, 8, 8, 9, 9, 9, 11, 11, 12, 13, 62 | 14 | **9** | 12,5 | todas `ok` |
+| `/sacola` | 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 7, 9, 11, 14 | 14 | **6,5** | 10 | todas `ok` |
+
+- `/` dentro da faixa da 005 (14 a 18 ms): **sem piora, sem bloqueio**. Detalhe e sacola abaixo
+  da linha de base. Nenhum Erro 1102 nem `exceededCpu`.
+- O pico de 62 ms no detalhe é um evento isolado (provavelmente isolate novo); não muda a
+  mediana. Todas as rotas continuam acima dos 10 ms documentados do plano gratuito em parte das
+  amostras, que é o risco já aceito no ADR-010 (o sinal é falhar, não passar de 10 ms).
+- Atenção para a medição no navegador: o Next pré-carrega as categorias visíveis do filtro
+  (4 pedidos `_rsc` ao Worker logo depois da abertura da página inicial). Isso já acontecia na
+  005, mas a grade de categorias mostra mais links na primeira tela; cada pedido é CPU no Worker.

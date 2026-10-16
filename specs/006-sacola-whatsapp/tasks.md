@@ -707,13 +707,13 @@ doc-sync), `specs/006-sacola-whatsapp/rastreabilidade.md`.
 **Fecha**: entrega da 006 (merge pelo humano).
 **Revisão**: tech-lead.
 
-- [ ] T073 [P] `README.md`: rota `POST /api/catalogo/conferencia`, página `/sacola`, nenhuma
+- [X] T073 [P] `README.md`: rota `POST /api/catalogo/conferencia`, página `/sacola`, nenhuma
   variável nova — **redator**
-- [ ] T074 [P] Fechar `specs/006-sacola-whatsapp/rastreabilidade.md` com os pendentes de entrega
+- [X] T074 [P] Fechar `specs/006-sacola-whatsapp/rastreabilidade.md` com os pendentes de entrega
   (SC-001 com cliente real, junto da T143 da 004 e da T098 da 005) — **tech-lead**
-- [ ] T075 Acionar o `doc-sync-onboarding` (rota nova, módulo `src/lib/sacola/`, zona protegida
+- [X] T075 Acionar o `doc-sync-onboarding` (rota nova, módulo `src/lib/sacola/`, zona protegida
   alterada): `docs/` e as seções "Estrutura" e "Estado atual" do `CLAUDE.md` — **doc-sync**
-- [ ] T076 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T076 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T077 Commits (humano): `docs(readme): …` (T073), `docs(specs): …` (T074) e
   `docs(onboarding): …` (T075), mensagens propostas pelo redator — **humano**
 - [ ] T078 PR para `main` (comando e corpo mostrados ao humano antes do push), merge pelo humano

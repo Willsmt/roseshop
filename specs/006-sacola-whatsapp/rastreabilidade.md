@@ -67,3 +67,15 @@ completa.
 | 405 da conferência | **Resolvido por emenda do contrato** (2026-10-16): o `GET` recebe o 405 padrão do Next, sem `no-store` e sem `nosniff`; o §3 de `contracts/conferencia.md` passou a excluí-lo, já que não tem corpo nem dado. |
 | Dev (SF8) | Feito (T067 a T071). Ressalva do SC-004: amostra de CPU menor que as 10 aberturas e sem registro de 15 produtos na sacola durante o `tail`. Repetir a série completa só se o humano pedir. |
 | Versões do aparelho | Números do Android e do WhatsApp não registrados (só "última versão da data"). |
+
+## Pendências de entrega
+
+Fechadas na T074 (SF9, 2026-10-16). Nenhuma bloqueia o merge da 006; ficam para a entrega final,
+com o humano.
+
+| Pendência | Situação | Onde |
+|---|---|---|
+| Número da Rose no `WHATSAPP_NUMBER` de produção | Aberta. Produção segue com o número de **teste** do mantenedor; os pedidos da sacola vão para ele até a troca (`npx wrangler secret put WHATSAPP_NUMBER --env production`). | T090 da 005 |
+| SC-001 com cliente real | Aberta. O SC-001 foi aprovado no `preview` e no Android real (T065, T068), mas por quem construiu; falta observar uma cliente real montando e enviando um pedido. Fazer na mesma sessão da observação com a administradora e da SC-001 da 005. | T143 da 004, T098 da 005 |
+| T090 da 005 | Aberta, **adiada para a entrega final**: grava o número da Rose em produção e lista os segredos e o acesso público do bucket (US6.5 da 005). É a mesma ação da primeira linha. | `specs/005-catalogo-publico/tasks.md` |
+| Trava do `seed:dev` com `sslmode=verify-full` | Aberta, manutenção fora da 006. `scripts/seed-catalogo-local/trava.ts` exige `sslmode=require`; o `pg-connection-string` avisa que o `require` vai mudar de significado e recomenda `verify-full`. A trava deve passar a aceitar `verify-full` (com teste em `trava.test.ts`). Só afeta o `seed:dev`, não o worker. | Já registrada na 005 (`quickstart.md`, `rastreabilidade.md`) e em `docs/operacao.md` |

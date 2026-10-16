@@ -5,16 +5,17 @@
 > fechamento (SF15), ainda não em produção: servidor de fotos (`src/lib/r2/`,
 > `src/lib/fotos/`, rota de exibição), pipeline da foto no aparelho, telas do cadastro e da
 > tela Fotos, limpeza diária (worker próprio com `scheduled`) e sugestão por IA (servidor e
-> tela do cadastro)**. Este documento descreve apenas o que existe hoje
-> no repositório. Para o que está planejado (catálogo, sacola, R2, IA), ver `.specify/memory/constitution.md` e
+> tela do cadastro); feature 005 (catálogo público) construída, ramo FALLBACK, pronta para o
+> merge (PR #20), ainda não em produção**. Este documento descreve apenas o que existe hoje
+> no repositório. Para o que está planejado (sacola), ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
 ## Visão leiga
 
-O Roseshop ainda é, em grande parte, o esqueleto gerado pelo template oficial do
-OpenNext para Cloudflare (`create-next-app` + `@opennextjs/cloudflare`). A raiz
-do site continua sendo a página inicial padrão do Next.js; nenhuma tela de
-catálogo ou sacola foi construída. As funcionalidades de produto são o
+O Roseshop nasceu do template oficial do OpenNext para Cloudflare
+(`create-next-app` + `@opennextjs/cloudflare`). A raiz do site agora é o **catálogo
+público** (ver [F05-catalogo-publico.md](./features/F05-catalogo-publico.md)); a sacola ainda
+não foi construída. As outras funcionalidades de produto são o
 **login das administradoras** em `/painel` (ver
 [F01-autenticacao.md](./features/F01-autenticacao.md)) e o **cadastro de
 categorias** (ver [F02-categorias.md](./features/F02-categorias.md)) e o
@@ -65,8 +66,11 @@ Não há no `package.json` SDK da OpenAI de propósito: a IA usa `fetch` direto 
 
 ```
 src/app/
-  layout.tsx    # layout raiz (fonts Geist via next/font/google, <html lang="en">)
-  page.tsx      # página inicial — ainda é o boilerplate do create-next-app
+  layout.tsx    # layout raiz (fonts Geist via next/font/google, <html lang="pt-BR">, title "Roseshop")
+  (public)/     # catálogo público (F05): page.tsx (/), p/[codigo]/ (detalhe, not-found), error.tsx, layout.tsx, _catalogo/ (componentes)
+  fotos/[arquivo]/route.ts   # GET /fotos/<arquivo>: foto pública do catálogo, sem sessão (F05)
+  api/catalogo/produtos/route.ts   # GET do bloco da lista ("Carregar mais") (F05)
+  robots.ts     # /robots.txt sem Disallow (F05)
   globals.css   # estilos globais (Tailwind)
   api/health/route.ts   # GET /api/health (ver "Camada de banco")
   api/auth/[...nextauth]/route.ts   # handlers do Auth.js (GET, POST)
@@ -83,16 +87,18 @@ src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/produtos/     # módulo de domínio de produtos (actions, sugestao, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
+src/lib/catalogo/   # catálogo público (F05): barrel server-only, leitura, config, cursor, slug, exibicao, restauracao, falha/registro, prazos
 src/lib/ai/   # IA (SF13): config, sugestao (fetch à OpenAI), barrel server-only (ver "Módulo de IA")
 src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao, limpeza
-cloudflare/   # worker próprio (worker.ts: fetch do OpenNext + scheduled) e open-next-worker.d.ts
+cloudflare/   # worker próprio (worker.ts: fetch do OpenNext + scheduled), publico.ts (casca das rotas públicas, F05) e open-next-worker.d.ts
+scripts/      # require-ci.mjs, smoke-health.sh e seed-catalogo-local.ts (+ seed-catalogo-local/): seed de teste do catálogo (npm run seed:*)
 src/lib/fotos/aparelho/   # pipeline da foto só de navegador (SF8): tipo, recorte 1:1, WebP/JPEG até 1 MiB
 infra/r2/     # CORS dos buckets, versionado (cors.dev.json, cors.production.json)
 src/lib/db/
   client.ts     # createDb: Drizzle + driver HTTP do Neon
   health.ts     # checkDb: select 1
   schema.ts     # schema Drizzle (categorias, produtos, produto_fotos, fotos_envio, ia_uso)
-  categorias.ts, produtos.ts, fotos.ts, ia-uso.ts # camadas SQL; contexto.ts, locks.ts, erros-pg.ts
+  categorias.ts, produtos.ts, fotos.ts, ia-uso.ts, catalogo.ts # camadas SQL (catalogo.ts: leituras públicas, F05); contexto.ts, locks.ts, erros-pg.ts
   migrations/   # 0000 (função categoria_chave + categorias + seed), 0001 (produtos, produto_fotos), 0002 (fotos_envio, ia_uso, colunas de fotos) e meta/
   *.test.ts / *.int.test.ts   # testes unitário e de integração
 src/test/       # conformance/ (testes de guard e de acesso) e db/ (fixtures de integração, medição de desempenho)
@@ -100,7 +106,8 @@ drizzle.config.ts   # config do drizzle-kit (migrations em src/lib/db/migrations
 vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts, vitest.perf.config.mts, vitest.ia.config.mts   # unitário, integração, probe do CI, medição local, medição manual da IA
 ```
 
-Rotas: raiz, `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
+Rotas: `/` (catálogo público), `/p/[codigo]`, `/fotos/[arquivo]`, `/robots.txt`,
+`GET /api/catalogo/produtos` (todas públicas, ver "Catálogo público"), `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
 quatro de `/painel/categorias` (lista, `nova`, `[id]/renomear`, `[id]/remover`)
 as cinco de `/painel/produtos` (lista, `novo`, `[id]`, `[id]/editar`, `[id]/remover`)
 e `GET /painel/fotos/[arquivo]` (exibição de foto, guardada por sessão; ver
@@ -366,19 +373,19 @@ constitution para a nova: seção 4 = III (Segurança), 5 = IV, 6 = V, 7 = VI,
   `/painel/fotos/<arquivo>` (rota com sessão, `Cache-Control` privado e imutável); não há
   otimização de imagem do Next (`no-img-element` desligado com comentário).
 - **Objetos órfãos dependem do cron** (SF12): recusa de confirmação e remoção de produto
-  apagam objetos do R2 em melhor esforço; a limpeza diária recolhe o resto. **T118b
-  pendente**: a prova do cron no `roseshop-dev` (execução de 2026-10-15 06:00 UTC, via
-  `wrangler tail`) ainda não foi feita; o merge só depois (ver
-  [operacao.md, Troubleshooting](./operacao.md#troubleshooting)).
+  apagam objetos do R2 em melhor esforço; a limpeza diária recolhe o resto. A prova do cron
+  no `roseshop-dev` foi capturada em 2026-10-15 (T118b; ver
+  [operacao.md](./operacao.md#limite-de-cpu-do-plano-gratuito-do-workers)).
 - **Durable Objects do OpenNext não reexportados**: `.open-next/worker.js` também exporta
   classes de DO (fila e cache de tags); hoje não há `durable_objects` no `wrangler.jsonc`.
   Se o cache com DO for ligado, reexportar as classes em `cloudflare/worker.ts`.
 - **`next-auth` em beta** (`5.0.0-beta.32`, versão exata): atualização manual e
   deliberada.
-- **`<html lang="en">` em `src/app/layout.tsx`**: o produto é pt-BR, mas o
-  layout raiz declara `lang="en"` (herança do `create-next-app`). Afeta
-  leitores de tela e SEO. Também permanecem `title`/`description` genéricos
-  ("Create Next App") em `metadata`. Corrigir ao implementar a primeira tela.
+- **Catálogo sem cache de servidor** (F05, ADR-011): toda visita a `/` e `/p/*` renderiza e
+  consulta o Neon; o cache é só o do navegador. É o que cabe em `*.workers.dev`; se um
+  domínio próprio entrar, reavaliar cache de borda.
+- **Fotos do catálogo e do painel por rotas diferentes**: `/fotos/[arquivo]` (pública, confere
+  `produto_fotos`) e `/painel/fotos/[arquivo]` (sessão, aceita também envio confirmado).
 
 ### Módulo R2 (feature 004, SF2, SF3 e SF6)
 
@@ -486,9 +493,74 @@ enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras 
   Workers Free; ver [operacao.md](./operacao.md#limite-de-cpu-do-plano-gratuito-do-workers).
   Em `next dev` o Node não mostra o limite de CPU do Worker: medir no dev online.
 
+### Catálogo público (feature 005)
+
+> Estado: construído no **ramo FALLBACK** da spec (páginas dinâmicas), pronto para o merge
+> (PR #20). Fluxo, arquivos e pegadinhas na [F05](./features/F05-catalogo-publico.md).
+
+Em `*.workers.dev` não existe cache de borda da Cloudflare, e a spec exige que mudanças do
+painel apareçam em até 1 minuto. O spike da SF0 reprovou o ISR do OpenNext, e o
+[ADR-011](../specs/adr/011-cache-catalogo-workers-dev.md) fixou: **páginas dinâmicas, sem ISR,
+sem bucket de cache, sem Durable Object e sem permissão nova no token do CI**.
+`open-next.config.ts` e `next.config.ts` não mudaram por causa disso.
+
+| Rota | Quem atende | Resposta pública |
+|---|---|---|
+| `/` | `src/app/(public)/page.tsx` (`force-dynamic`) | 200 com `Cache-Control: public, max-age=60` |
+| `/p/[codigo]` | `src/app/(public)/p/[codigo]/page.tsx` (`force-dynamic`) | 200, 308 (código fora do canônico) ou 404, todos com `max-age=60` |
+| `/fotos/[arquivo]` | `src/app/fotos/[arquivo]/route.ts` | 200/304/404 com `max-age=60`, `ETag`; 503 `no-store` |
+| `GET /api/catalogo/produtos` | `src/app/api/catalogo/produtos/route.ts` | `max-age=20`; 400 e 503 `{}` `no-store` |
+
+Quem faz o quê (as camadas):
+
+```mermaid
+graph TD
+    A[cloudflare/worker.ts fetch] --> B[cloudflare/publico.ts criarFetch]
+    B --> C[OpenNext handler]
+    C --> D[Páginas e rotas públicas]
+    D --> E[src/lib/catalogo/index.ts barrel]
+    E --> F[leitura.ts]
+    F --> G[src/lib/db/catalogo.ts SQL]
+    D --> H[src/lib/r2 servirObjeto]
+```
+
+- **`cloudflare/publico.ts`** envolve o `fetch` do OpenNext só para `/`, `/p/*`, `/fotos/*` e
+  `/api/catalogo/*` (painel, `/api/auth`, `/api/interno`, `/api/health` e assets passam
+  intactos, e métodos que não leem também). Para `/p/<x>`: código numérico válido e não
+  canônico recebe **308** para `/p/<4 dígitos>` (preservando a query); lixo, zero ou mais de 9
+  dígitos é reescrito para `/p/0` (404 fixo, sem consultar o banco). Depois do Next: define
+  `X-Robots-Tag: noindex, nofollow` em todas as respostas dessas rotas e `Cache-Control: public,
+  max-age=60` nas páginas com 200, 308 ou 404.
+- **503 das páginas públicas**: todo 500 de `/` e `/p/*` (ou exceção do handler) vira **503**
+  `Service Unavailable` com `Cache-Control: no-store` e `Retry-After: 30`. O evento registrado é
+  `catalogo.banco_indisponivel` se `leitura.ts` marcou a causa `banco`, senão
+  `catalogo.erro_inesperado`. A marca viaja num `ctx` próprio do pedido (`roseshop`), que o OpenNext
+  devolve em `getCloudflareContext().ctx`; fora do worker (teste, `next dev`) a marca não existe.
+  Não há "versão anterior" para servir (só existiria com ISR).
+- **Registro** (`src/lib/catalogo/falha.ts`): `console.error` JSON com evento, rota e causa de
+  listas fechadas; nunca a mensagem da exceção, a chave do objeto, a URL com query nem valores
+  de configuração. Eventos: `catalogo.banco_indisponivel`, `catalogo.erro_inesperado`,
+  `catalogo.fotos_falha`, `catalogo.whatsapp_invalido`, `catalogo.site_url_invalida`.
+- **`X-Robots-Tag`** também sai do `metadata.robots` do layout público e do `/robots.txt` sem
+  `Disallow` (para o buscador conseguir ler o `noindex`).
+- **Bucket privado**: as fotos só saem pela rota `/fotos/[arquivo]`, via binding
+  (`servirObjeto`), nunca por URL pública do R2; o
+  `src/test/conformance/fotos-bucket-privado.test.ts` confere só o que está no repositório (CORS
+  de `infra/r2/` e `wrangler.jsonc`); acesso público `r2.dev` e domínio do bucket são conferência
+  manual (quickstart §1, item 5).
+- **Fronteira de módulo**: páginas e rotas importam só o barrel `@/lib/catalogo` (mais os
+  módulos puros `exibicao`, `prazos`, `restauracao`); regra de lint em `eslint.config.mjs`.
+  Conformidade: `catalogo-acesso.test.ts` (nega por padrão: a rota pública de fotos existe e
+  nenhuma rota fora de `painel/`, `api/auth/` e `api/interno/` usa sessão),
+  `fotos-acesso.test.ts` (`@/lib/r2` no catálogo só em `src/lib/catalogo/leitura.ts`, por
+  igualdade exata, e na rota `src/app/fotos/[arquivo]/route.ts`) e `catalogo-orcamento.test.ts`
+  (prazos de cache do navegador somam no máximo 60 s).
+- **Variáveis novas**: `SITE_URL` (var pública por ambiente em `wrangler.jsonc`) e
+  `WHATSAPP_NUMBER` (secret em dev e produção). Detalhes em
+  [operacao.md](./operacao.md#variáveis-de-ambiente).
+
 ### Planejado, não implementado
 
-Catálogo público e sacola são
-descritos em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas **não têm
-nenhum código correspondente** neste repositório ainda. Não documentamos
+A sacola é descrita em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas
+**não tem nenhum código correspondente** neste repositório ainda. Não documentamos
 comportamento aqui até existir implementação.

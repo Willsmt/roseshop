@@ -9,7 +9,10 @@
 > (Auth.js + Google) está implementado (feature 004 em andamento: o R2 tem
 > endpoint, credenciais e CORS configurados e é usado pelas actions de envio e pela rota
 > `/painel/fotos/<arquivo>`; o cadastro de produto envia fotos e a tela `/painel/produtos/<id>/fotos` as gerencia); a sugestão por IA
-> existe no servidor (SF13) e na tela do cadastro (SF14), com `OPENAI_API_KEY`.
+> existe no servidor (SF13) e na tela do cadastro (SF14), com `OPENAI_API_KEY`. O catálogo
+> público (feature 005, ramo FALLBACK, pronta para o merge no PR #20, ainda não em produção)
+> acrescenta `SITE_URL`, `WHATSAPP_NUMBER`, os scripts `seed:*` e a seção "Catálogo público:
+> sinais e contingências".
 
 ## Visão leiga
 
@@ -41,6 +44,9 @@ da Cloudflare e, futuramente, publicar.
 | `npm run db:up` | `docker compose up -d --wait` — sobe Postgres 18 + proxy Neon e espera o healthcheck do Postgres. |
 | `npm run db:down` | `docker compose down` — para os containers; **preserva** os dados (volume `pgdata`). |
 | `npm run db:reset` | `docker compose down -v && docker compose up -d --wait` — **DESTRUTIVO: apaga o volume `pgdata` e todos os dados do banco local**, e sobe um banco vazio. Só afeta o local. |
+| `npm run seed:local` | `node --env-file-if-exists=.dev.vars ... scripts/seed-catalogo-local.ts` — popula o **banco local** (Docker) e o **bucket local** do wrangler com um catálogo de teste (autor `seed@local`). Exige `db:up`, `db:migrate` e `npm run preview` no ar. A trava recusa qualquer alvo que não seja o local (igualdade exata). Ver [F05](./features/F05-catalogo-publico.md#seed-de-teste-catálogo-de-exemplo). |
+| `npm run seed:dev` | Mesmo script com `--dev`: popula o **branch dev do Neon** e o bucket `roseshop-dev` (autor `seed@dev`). Lê **só** `.seed-dev.vars` (modelo: `.seed-dev.vars.example`, só `DATABASE_URL` direta) e grava as fotos por `wrangler r2 object put --remote`, então exige `npx wrangler login`. Recusa produção e o pooler. |
+| `npm run seed:dev:limpar` | `seed:dev --limpar`: remove do dev só o que o seed criou (banco e R2). |
 | `npm run db:psql` | `docker compose exec postgres psql -U roseshop -d roseshop` — shell SQL no container (requer `db:up` antes). |
 
 | `npm run db:generate` | `drizzle-kit generate` — gera migration SQL em `src/lib/db/migrations/` a partir de `src/lib/db/schema.ts`. A `0000` foi gerada assim e editada à mão (função `categoria_chave` e seed; ver [database.md](./database.md#migration-0000-e-seed)); depois de editar, rode de novo e confira "No schema changes". |
@@ -453,9 +459,11 @@ local").
 | `R2_ACCESS_KEY_ID` | ID da chave do token R2 Object R/W do bucket do ambiente. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online e produção (cadastrados); local: valor falso em `.dev.vars.example` |
 | `R2_SECRET_ACCESS_KEY` | Segredo do mesmo token R2. | `src/lib/r2/config.ts` (`configR2`). | Secret em dev online e produção (cadastrados); local: valor falso em `.dev.vars.example` |
 | `CRON_SECRET` | Protege a limpeza diária de fotos (SF12): o `scheduled` o envia como Bearer. | `cloudflare/worker.ts` (`scheduled`) e `src/app/api/interno/limpeza/route.ts`. | Secret em dev online e produção (cadastrados); local: qualquer valor não vazio |
+| `WHATSAPP_NUMBER` | Número da loja em E.164 (`+` e 8 a 15 dígitos), para o botão "Perguntar no WhatsApp" do catálogo. Inválido ou ausente: o botão some, a página segue 200 e o evento `catalogo.whatsapp_invalido` é registrado uma vez por isolate. **Produção hoje usa o número de TESTE do mantenedor** (ver "Trocar o `WHATSAPP_NUMBER`"). | `src/lib/catalogo/config.ts` (`configCatalogo`), lida de `process.env`. | Secret em dev online e produção; local: qualquer número de teste |
+| `SITE_URL` | Endereço público do ambiente, sem barra final (`https`, ou `http` em `localhost`/`127.0.0.1`). Entra no link da mensagem do WhatsApp e na imagem de prévia (Open Graph). Inválida ou ausente: mensagem sem link, sem imagem de prévia e evento `catalogo.site_url_invalida` (uma vez por isolate). | `src/lib/catalogo/config.ts`; páginas `/` e `/p/[codigo]` (`metadataBase`). Declarada em `vars` no `wrangler.jsonc`, redeclarada por ambiente. | Var pública (`wrangler.jsonc`) |
 | `OPENAI_API_KEY` | Chave da OpenAI (começa com `sk-`); local e dev usam a do projeto `roseshop-dev`, produção usa a de `roseshop-prod` (projeto OpenAI separado, com teto de gasto). | `src/lib/ai/sugestao.ts` (`pedirSugestao`), lida de `process.env`; sem a chave a sugestão falha com `sem_chave` (vira `ia_indisponivel`). | Secret em dev online e produção |
 
-As variáveis de auth, R2 e `CRON_SECRET` estão em `.dev.vars.example` e tipadas em
+As variáveis de auth, R2, `CRON_SECRET` e `WHATSAPP_NUMBER` estão em `.dev.vars.example` (`SITE_URL` é var do `wrangler.jsonc`) e tipadas em
 `cloudflare-env.d.ts`. Todas têm consumidor (coluna "Onde é usada"); `OPENAI_API_KEY` só é referenciada em `src/lib/ai/`. O **bucket** é
 binding (`PRODUCT_IMAGES`); as chaves e o endpoint S3 são variáveis (ver "R2: segredos,
 endpoint e CORS" em "Bindings").
@@ -599,7 +607,9 @@ argumento, arquivo ou histórico do shell). Para os demais secrets, prefira o
 procedimento por pipe abaixo. Dev online tem 8 secrets cadastrados
 (informação do mantenedor): `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`,
 `AUTH_GOOGLE_SECRET`, `ADMIN_EMAILS`, `OPENAI_API_KEY`, `R2_ACCESS_KEY_ID`,
-`R2_SECRET_ACCESS_KEY`. Em produção, cadastre
+`R2_SECRET_ACCESS_KEY`; o `WHATSAPP_NUMBER` (catálogo, 005) também é secret por ambiente e, segundo o
+relato do mantenedor, está cadastrado no dev e em produção (nos dois com número de teste; conferir
+com `npx wrangler secret list --env <amb>`). Em produção, cadastre
 logo após o primeiro deploy; até lá `/api/health` responde 503.
 
 #### Procedimento por pipe (validar e enviar)
@@ -802,6 +812,12 @@ Prova do cron em 2026-10-15 (T118b, `wrangler tail --env dev`): a limpeza rodou 
 e status 200. O cron também passa dos 10 ms, sem erro. Na mesma captura, `/painel`
 35 ms, `/painel/entrar` 271 ms e `/api/health` 470 e 154 ms de CPU, todas `ok`.
 
+Medição do catálogo (2026-10-15, SF11, T139 da 005; `wrangler tail --env dev`, seed de 41
+produtos, relato do mantenedor): `/` com **337 ms** no 1º pedido de um isolate novo (após o
+deploy) e **14 a 18 ms** nos demais; `/p/0059` 13 a 19 ms (um pico de 43 ms); GET da lista 5 a
+8 ms; `/fotos/*` 4 a 7 ms. Todos `outcome` `ok`, sem `exceededCpu` e sem Erro 1102. A CPU de `/`
+não cresce com o número de produtos (igual à medida com 1 produto). Mesmo veredito: risco aceito.
+
 | Item | Valor |
 |---|---|
 | Limite documentado (Workers Free) | 10 ms de CPU por requisição HTTP e por Cron Trigger |
@@ -814,7 +830,92 @@ Fontes: [ADR-010](../specs/adr/010-ia-openai.md) (Consequências) e
 [quickstart §5 item 3](../specs/004-fotos-produto/quickstart.md). O tamanho das fotos tratadas
 não foi registrado na medição.
 
+## Catálogo público: sinais e contingências
+
+**Visão leiga.** O catálogo (`/`, `/p/<código>`, `/fotos/<arquivo>`) é aberto a qualquer pessoa
+e roda no plano gratuito. Esta seção diz o que olhar para saber se ele está saudável e o que
+fazer se alguém começar a varrer endereços inventados. Fluxo e arquivos:
+[F05](./features/F05-catalogo-publico.md); decisão de cache: [ADR-011](../specs/adr/011-cache-catalogo-workers-dev.md).
+
+**Técnico.**
+
+- **Como ver os logs.** `wrangler.jsonc` tem `observability.enabled`: os `console.error` do
+  catálogo vão para o Workers Logs. No plano gratuito o Workers Logs **retém 3 dias** (e tem teto
+  diário de eventos, por isso a configuração inválida é registrada uma vez por isolate, não a
+  cada visita). Para o que passou há mais de 3 dias não há registro. Ao vivo:
+  `npx wrangler tail --env dev` (ou `--env production`). No `preview`, capture o stderr com
+  `npm run preview > arquivo.log 2>&1`.
+- **Eventos do catálogo** (JSON com `evento`, `rota`, `causa`, `resultado`; nunca mensagem de erro,
+  chave de objeto, URL com query nem valor de configuração):
+
+| Evento | Significa | O que fazer |
+|---|---|---|
+| `catalogo.banco_indisponivel` | Consulta ao Neon falhou numa página, na lista ou na foto; a página pública respondeu 503 (`resultado: "503"`, só no registro do worker). | Ver o estado do Neon (branch correto, compute dormindo, cota). Volta sozinho; o visitante tem "Tentar de novo". |
+| `catalogo.erro_inesperado` | 500 de página sem causa de banco marcada. | Procurar a exceção no código/`wrangler tail`; não é falha de configuração. |
+| `catalogo.fotos_falha` | Falha na rota de fotos (`causa`: `banco`, `r2` ou `inesperado`). | `r2`: binding `PRODUCT_IMAGES` e bucket do ambiente. |
+| `catalogo.whatsapp_invalido` | `WHATSAPP_NUMBER` ausente ou fora de E.164 neste isolate. O botão "Perguntar no WhatsApp" some. **Uma vez por isolate**, não por visita. | Regravar o secret (ver abaixo). |
+| `catalogo.site_url_invalida` | `SITE_URL` ausente, com `/` final ou fora de `https`/localhost. Mensagem do WhatsApp sem link e sem imagem de prévia. | Corrigir `vars.SITE_URL` no `wrangler.jsonc` e fazer deploy. |
+
+- **Risco aceito de CPU (T139).** `/` mediu 14 a 18 ms (1º pedido de isolate novo, 337 ms), acima
+  dos 10 ms do Workers Free, sem falha. **Alerta = Erro 1102 nos logs** ("estourar" é falhar por
+  limite de CPU, não passar de 10 ms). **Contingência = Workers Paid**, com emenda da constitution
+  VII (ADR-010). Tabela completa em "Limite de CPU do plano gratuito do Workers".
+- **Varredura de endereços (risco aceito R3).** O worker já recusa `/p/<lixo>` sem tocar no banco
+  (reescreve para `/p/0`, 404 fixo), mas `/p/<número válido inexistente>` e
+  `/fotos/<uuid válido>` consultam o Neon, e isso pode gastar compute do Neon e operações do R2.
+  Sinais para olhar:
+  1. **Neon**: uso de compute do projeto `roseshop` no console do Neon (toda consulta de um
+     código numérico inexistente chega ao banco).
+  2. **R2 Class A** (escritas/listagens; cota gratuita de 1 milhão por mês) e **Class B** (leituras;
+     10 milhões por mês) no painel do bucket. No ramo FALLBACK o catálogo **não grava** cache no
+     R2, então Class A deveria vir só dos envios e da limpeza da 004; subida de Class A sem
+     cadastro de fotos é anormal. A cota é **compartilhada** com o bucket `comunidade-belleetbelle`
+     da mesma conta.
+  3. Volume anormal de `catalogo.banco_indisponivel` ou de pedidos a `/p/*` no `wrangler tail`.
+- **Contingência da varredura (R3).** A saída prevista na pesquisa da 005 (research R3) é um
+  **domínio próprio com rate limiting** na frente do worker; é decisão do humano e muda premissas
+  do ADR-011 (em `*.workers.dev` não há cache de borda). Até lá, só monitoramento.
+
+### Trocar o `WHATSAPP_NUMBER` de produção (número de teste para o da Rose)
+
+> **Hoje o `WHATSAPP_NUMBER` de produção é o número de TESTE do mantenedor** (decisão do humano,
+> 2026-10-15). O número da Rose entra **só na entrega final**, depois do merge e da observação
+> com a administradora. Enquanto isso, o botão do catálogo de produção abre conversa com o
+> número de teste: não divulgue o endereço de produção.
+
+O número não é impresso nem guardado em arquivo. Formato E.164 (`+` mais DDI, DDD e número, sem
+espaços ou traços), 8 a 15 dígitos após o `+`. Pelo padrão de pipe de "Gravar os segredos sem
+expor o valor":
+
+```bash
+read -rs V && printf %s "$V" | npx wrangler secret put WHATSAPP_NUMBER --env production; unset V
+```
+
+Depois de gravar: (1) não precisa de novo build; (2) abra `https://roseshop.willsmt.workers.dev/p/<código de um
+produto disponível>` e toque em "Perguntar no WhatsApp": a conversa deve abrir com o número novo,
+o nome do produto, o `#código` e o link; (3) o evento `catalogo.whatsapp_invalido` não deve aparecer no
+`wrangler tail --env production`. Se o botão sumiu, o valor gravado não passou na validação
+E.164: regrave. Para o dev, é o mesmo comando com `--env dev` (número de teste do mantenedor).
+
 ## Troubleshooting
+
+- **Botão "Perguntar no WhatsApp" não aparece no catálogo**: produto esgotado (de propósito) ou
+  `WHATSAPP_NUMBER` ausente/fora de E.164 no ambiente (evento `catalogo.whatsapp_invalido`). No
+  `preview`, reiniciar sem a variável no `.dev.vars` produz o mesmo efeito.
+- **Catálogo vazio no `preview` ou no dev**: não há produtos; rode `npm run seed:local` ou
+  `npm run seed:dev` (ver [F05](./features/F05-catalogo-publico.md#seed-de-teste-catálogo-de-exemplo)).
+  `seed:dev` recusa se o host de `.seed-dev.vars` não for o do branch dev do Neon. Pendência de
+  manutenção (fora da 005): a trava deve passar a aceitar `sslmode=verify-full` (hoje o `pg` avisa
+  sobre o `require`).
+- **Catálogo responde 503 "Não foi possível carregar agora"**: banco fora (`npm run db:down` no
+  local, Neon indisponível ou `DATABASE_URL` errada). Veja `catalogo.banco_indisponivel`. O 503
+  sai com `no-store`; basta recarregar quando o banco voltar.
+- **Alteração do painel não aparece no catálogo**: o navegador guarda a página por até 60 s
+  (`Cache-Control: public, max-age=60`); recarregue após 1 minuto. Se persistir além disso, não é
+  cache de servidor (não existe): confira se o produto está no ambiente certo.
+- **Rotas públicas diferentes no `next dev`**: o 308 de `/p/42` para `/p/0042`, o
+  `X-Robots-Tag` e o 503 vêm do `cloudflare/publico.ts`, que só roda no worker (`preview`, dev
+  online, produção).
 
 - **Erro 1102 (Worker excedeu o limite de recursos) nos logs**: é o sinal de alerta do risco de
   CPU aceito no plano gratuito; ver "Limite de CPU do plano gratuito do Workers" e voltar ao
@@ -830,11 +931,11 @@ não foi registrado na medição.
   por SQL em `ia_uso` (banco local: `npm run db:psql`).
 - **`npm run test:ia` falha de cara**: falta a pasta `ia-medicao/` (ignorada pelo git, com
   fotos reais e `gabarito.json`) ou a chave dev no `.dev.vars`. Cada execução custa dinheiro.
-- **Cron da limpeza não aparece ou falha (T118b: prova no dev pendente)**: no plano gratuito
+- **Cron da limpeza não aparece ou falha**: no plano gratuito
   os logs do cron **não ficam guardados** no painel (Logs); a execução só é vista ao vivo.
   Deixe `npx wrangler tail --env dev` (ou `--env production`) aberto antes das 06:00 UTC
-  (03:00 de Brasília) e capture o evento `scheduled` com o `outcome`. A primeira execução com
-  o cron no dev é a de 2026-10-15 06:00 UTC; o merge da 004 só depois desse resultado. A
+  (03:00 de Brasília) e capture o evento `scheduled` com o `outcome` (foi assim a prova de
+  2026-10-15, T118b, no `roseshop-dev`: `ok`, status 200). A
   falha mostra `limpeza: status <N>` (o `scheduled` lança de propósito). Status 404 indica
   `CRON_SECRET` ausente ou diferente no ambiente; 500 indica erro no banco ou no R2 (o log
   da rota não traz a mensagem). Testar localmente:

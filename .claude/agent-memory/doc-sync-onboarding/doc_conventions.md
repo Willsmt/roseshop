@@ -47,3 +47,8 @@ Sync de fechamento da 004 (SF15, 2026-10-14): ao fechar uma feature, varrer os d
 frases de "ainda não existe"/"SF15"/"pendente" que ficaram de syncs parciais (database.md,
 F04, operacao.md) e trocar pelo estado real. Segredos: documentar o padrão
 `read -rs V; printf %s "$V" | wrangler secret put` em `operacao.md` (seção R2), nunca valores.
+
+Sync da 005 (2026-10-15): âncoras entre docs usam o slug COM acentos (`#catálogo-público-feature-005`), como
+as já existentes. Doc de feature 005 = `F05-catalogo-publico.md`; sinais/contingências do catálogo e troca do
+`WHATSAPP_NUMBER` ficam em `operacao.md`, seção própria antes de "Troubleshooting". No `CLAUDE.md`, o "Estado
+atual" é UM parágrafo (linha única): anexar no fim dessa linha, não no fim do arquivo.

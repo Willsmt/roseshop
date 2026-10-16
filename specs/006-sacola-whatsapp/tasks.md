@@ -91,7 +91,7 @@ Housekeeping da 005 (Clarifications): T091–T097 marcadas e T090/T098 abertas c
 entrega final" **já estão** em `specs/005-catalogo-publico/tasks.md` (commit `d71b6ae`); nada a
 fazer nesta SF.
 
-- [ ] T001 **Primeira task da 006, antes de qualquer mudança de tela.** Conferir que
+- [X] T001 **Primeira task da 006, antes de qualquer mudança de tela.** Conferir que
   `git diff --stat main -- 'src/app/(public)'` está vazio (o tree das telas é o da 005). Criar o
   helper `src/test/catalogo-html.tsx` (sugerido) que gera o **HTML do servidor** da 005 com dados
   fixos, sem rede e sem banco. As páginas são componentes `async`, que o `renderToStaticMarkup`
@@ -105,18 +105,18 @@ fazer nesta SF.
   quando `GRAVAR_HTML_005=1`, em `src/test/fixtures/catalogo/detalhe-005.html`,
   `detalhe-esgotado-005.html` e `inicio-005.html`. Os fixtures são gravados **uma vez**, nesta
   task, e nunca regravados depois — **test-writer**
-- [ ] T002 [US4] Teste da SC-005 em `src/test/conformance/catalogo-html-005.test.tsx`: para cada
+- [X] T002 [US4] Teste da SC-005 em `src/test/conformance/catalogo-html-005.test.tsx`: para cada
   um dos três casos, gera o HTML com o helper da T001 e passa **o fixture e a saída pelo mesmo
   parser** (`DOMParser` do jsdom, `text/html`), **remove os elementos `[data-sacola]` só da
   saída** (nenhum outro elemento é tocado) e compara a serialização dos dois (`body.innerHTML`),
   para que diferenças de serialização não virem falso alarme. Passa **verde** contra o código atual (nenhum `[data-sacola]` ainda) e vai continuar
   verde depois da SF5 — **test-writer**
-- [ ] T003 Revisão do ADR-012 (`specs/adr/012-conferencia-sacola.md`: coerência com CC§1–§6,
+- [X] T003 Revisão do ADR-012 (`specs/adr/012-conferencia-sacola.md`: coerência com CC§1–§6,
   research D7/D8, FR-013, SC-004, SC-007 e o ajuste A1) e do ADR-013
   (`specs/adr/013-desvio-constitution-iv.md`: coerência com o Complexity Tracking do plan, research
   D1–D5 e constitution IV); registrar achados em cada ADR como "Notas da revisão". **Os dois
   ficam "proposto"** — **tech-lead**
-- [ ] T005 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T005 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T006 Commit (humano), com o ADR-012 e o ADR-013 ainda "proposto":
   ```text
   test(catalogo): fixa o HTML do servidor da 005 como referência da SC-005

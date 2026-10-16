@@ -60,3 +60,52 @@ plan "Constitution Check" (IV ⚠️) e "Complexity Tracking"; research D1–D5;
   e exigiria identificar a cliente.
 - **Emendar a constitution IV agora**: mudança de princípio fora do escopo da feature; fica como
   caminho futuro se outro caso aparecer.
+
+## Notas da revisão
+
+**2026-10-16, revisão do tech-lead (T003).** Status mantido: proposto. Nada do corpo deste ADR
+nem de outro artefato foi alterado; os achados abertos ficam para decisão humana no GATE da T004.
+
+Conferido e coerente:
+
+- Citação literal da constitution IV ("Mutações via Server Actions; nenhuma lógica de negócio no
+  client"). A Governança não prevê exceção: a alteração é só por humano, e a v1.0.0 não tem
+  emenda. Por isso o desvio fica em ADR com GATE humano, sem tocar na constitution.
+- Complexity Tracking do plan: mesma violação, mesmo "Why Needed" (FR-006, SC-007, FR-016, módulo
+  puro, dados que valem vêm do servidor) e as mesmas duas alternativas rejeitadas (mensagem no
+  servidor, sacola no servidor com Server Action). O ADR acrescenta a terceira (emendar a IV
+  agora), sem conflito.
+- D1: módulo puro `src/lib/sacola/` sem `server-only`, banco, `next/*`, auth, R2 nem barrel do
+  catálogo, travado por `fronteira.test.ts` e por lint (plan, Structure: `eslint.config.mjs`;
+  contracts/sacola.md). Os imports permitidos pela D1 (`@/lib/produtos/preco` e
+  `@/lib/catalogo/exibicao`) são puros: conferido no código, `exibicao.ts` importa só `preco`, que
+  não tem imports.
+- D2 (normalização única), D3 (mensagem e orçamento de 1800 sobre a URL codificada), D4 (operações
+  puras com limites sobre o resultado) e D5 (reler, aplicar, validar, gravar em `try/catch`): todos
+  na lista da Decisão, com os mesmos números (15 produtos, 1 a 10, 7 dias, 1800).
+- Restrição às três ilhas: o plan (Scale/Scope) fixa 3 ilhas cliente (contador, botão do detalhe,
+  tela da sacola), e a Structure põe os arquivos em `src/app/(public)/_sacola/`.
+- Dados que valem vêm do servidor (ADR-012); o preço guardado não entra no subtotal nem na mensagem
+  (FR-006, FR-011, SC-003).
+- Ajuste A1: a lista de falhas que bloqueiam o envio (4 s, rede, 400, 5xx, fora do formato) bate
+  com o FR-011, a D11 e o CC§6.
+- O restante da IV continua valendo: Server Components por padrão, SQL só em `src/lib/db/`, preço
+  em centavos inteiros (o total é calculado em centavos).
+- GATE antes da SF1 (Status) bate com a ordem de tasks.md (T004) e com o achado C1/A6 do analyze.
+
+Achados abertos (decisão humana; nenhum foi corrigido aqui):
+
+1. **Citação da constitution III.3.** A III.3 manda validar com Zod "no servidor" toda entrada
+   externa. A validação com `zod/mini` no cliente (sacola do aparelho e resposta da conferência) é
+   uma salvaguarda a mais, não o que a III.3 exige; o que cumpre a III.3 é o Zod da rota
+   (ADR-012). Opções: (a) trocar a referência para "no espírito da III.3" ou "complementar à III.3,
+   que a rota cumpre (ADR-012)"; (b) manter. Só redação, sem efeito na implementação.
+2. **Escopo do desvio menor no plan que no ADR.** O Constitution Check do plan diz "(limites,
+   total, mensagem)" e o Complexity Tracking diz "limites, total, conferência aplicada e mensagem".
+   O ADR inclui também a validade de 7 dias, a normalização da observação e o armazenamento com
+   releitura. O ADR é a lista completa e coerente com a D1 a D5. Opção: alinhar o texto do plan à
+   lista do ADR na próxima mudança do plan, ou aceitar o ADR como fonte do escopo.
+3. **Regra de lint da fronteira (nota para a SF1, não incoerência).** A regra precisa proibir o
+   barrel `@/lib/catalogo` e permitir `@/lib/catalogo/exibicao`, como diz a D1. Se ela proibir o
+   prefixo `@/lib/catalogo/*` inteiro, quebra a D1. Fica registrado para a T010 e para a regra do
+   `eslint.config.mjs`.

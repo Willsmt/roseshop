@@ -48,3 +48,60 @@
 - **Conferir pelo GET da lista da 005**: não busca por código e traria até 24 produtos por bloco.
 - **Rate limit**: sem KV/DO no Free sem custo de escrita; limites de corpo e de códigos bastam
   para o risco atual (revisar se o painel do Workers mostrar abuso).
+
+## Notas da revisão
+
+**2026-10-16, revisão do tech-lead (T003).** Status mantido: proposto. Nada do corpo deste ADR
+nem de outro artefato foi alterado; os achados abertos ficam para decisão humana no GATE da T023.
+
+Conferido e coerente:
+
+- Método, rota e sessão: `POST` público, sem sessão nem `@/lib/auth`, `no-store` (CC§1, CC§3,
+  D7, FR-011, FR-013).
+- Fronteira na ordem 415 → 413 (`Content-Length`) → 413 (stream com teto de 1024) → 400 (JSON +
+  Zod), erros com `{}` (CC§1, D7). Zod no servidor atende a constitution III.3.
+- Entrada: 1 a 15 códigos canônicos, sem repetição, sem chave extra (CC§1, D6, FR-013). O ADR
+  resume; o detalhe ("0000" e teto 2.147.483.647) está no CC§1 e na D6, sem conflito.
+- Resposta `ok` / `esgotado` / `inexistente`, só dados públicos da 005 mais `precoCentavos` e
+  `aPartirDe`, ambos já deriváveis do texto público (CC§2, FR-013). A justificativa do preço em
+  centavos está nas Consequências.
+- Uma única consulta `WHERE id IN (...)` em `src/lib/db/catalogo.ts`, sem migration (CC§5, D8,
+  FR-013).
+- Log só no 503 com evento, rota e causa fechados, e conformidade espionando o `console` (CC§4,
+  FR-013, SC-007). `registrarFalha` (`src/lib/catalogo/falha.ts`) já tem esse formato; a SF3 só
+  acrescenta `"/api/catalogo/conferencia"` ao tipo fechado `RotaFalha`.
+- Worker: `criarFetch` em `cloudflare/publico.ts` repassa métodos que não são GET/HEAD sem tocar
+  na resposta (conferido no código), como dizem as Consequências, o CC§3 e a D15.
+- SC-004: CPU medida no dev com 15 códigos, critério do ADR-010 (Decisão; research R4).
+- SC-007: códigos só no corpo, nunca na URL nem no log (Contexto, Alternativas).
+- Ajuste A1: a rota responde 400/413/415/503 com `{}` e nunca devolve resultado parcial; o
+  bloqueio do envio (4 s, rede, 400, 5xx, fora do formato) é do cliente (CC§6, ADR-013) e não
+  contradiz este ADR. O CC§6 trata qualquer status diferente de 200 como falha, o que inclui 405,
+  413 e 415, além do 400/5xx citado no A1 e no FR-011.
+- GATE antes da SF3 (Status) bate com o A3 e com a T023.
+
+Achados abertos (decisão humana; nenhum foi corrigido aqui):
+
+1. **"Antes de ler o corpo" (FR-013) x leitura em stream.** Sem `Content-Length`, ou com um
+   valor menor que o corpo real, só dá para recusar depois de ler até 1024 bytes. O ADR diz "antes
+   de qualquer parse" e o CC§1 diz "leitura cancelada"; o FR-013 diz "antes de ler o corpo". O
+   comportamento do ADR é o possível. Opções: (a) ajustar a redação do FR-013 para "antes de
+   interpretar o corpo, lendo no máximo 1 KB"; (b) manter e registrar a leitura limitada como
+   interpretação aceita.
+2. **Cabeçalhos do 405.** O CC§3 exige `no-store` e `nosniff` em "todas as respostas", mas o CC§1
+   deixa o 405 com o padrão do Next. Num `GET`, o worker só acrescenta `X-Robots-Tag` à classe
+   `api`, então o 405 sai sem os dois cabeçalhos. Risco baixo, mas o texto se contradiz. Opções:
+   (a) o CC§3 abre exceção para o 405; (b) a rota exporta os outros métodos com 405 `{}` e os
+   cabeçalhos do CC§3.
+3. **Erro inesperado que não é do banco.** O CC§1 e o ADR só tratam o banco indisponível (503).
+   Uma exceção que não é do banco cai no 500 padrão do Next, o worker não converte `POST`, e o Next
+   pode registrar a mensagem e a pilha da exceção no `console`, fora da lista fechada do CC§4.
+   Opções: (a) a rota captura qualquer exceção e responde 503 `{}` com `causa: "inesperado"`
+   (evento `catalogo.erro_inesperado`), e a conformidade cobre esse caso; (b) aceitar o 500 padrão.
+   Recomendação do tech-lead: (a), porque fecha a SC-007 também nesse caminho.
+4. **Menores (redação, sem efeito no contrato):** (i) a Decisão não diz "na ordem pedida" nem cita
+   `X-Content-Type-Options: nosniff`, que estão no CC§2 e no CC§3; (ii) na lista de estados, o
+   parêntese "com os dados públicos" aparece só depois de `esgotado`, mas o `ok` também leva
+   `produto` (CC§2); (iii) em Alternativas, "a constitution reserva Server Actions para mutações"
+   lê mais do que a IV diz ("Mutações via Server Actions"), embora a alternativa continue
+   descartada pelos outros motivos.

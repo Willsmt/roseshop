@@ -66,9 +66,14 @@
   LF) nem invisíveis de direção ou largura zero, preservando o junção de emoji
   (U+200D) e os seletores de variação (U+FE0E/U+FE0F); sem espaços nas pontas; 3
   ou mais quebras seguidas viram 2. Os 200 contam em caracteres inteiros (code
-  points). O contador mostra o menor entre o que resta dos 200 e o que resta do
+  points). O limite é o menor entre o que resta dos 200 e o que resta do
   orçamento codificado (FR-016). Vai ao final, depois do rótulo "Observação:";
-  vazia depois de normalizar, a linha não aparece.
+  vazia depois de normalizar, a linha não aparece. **Atualização do humano
+  (2026-10-16, tasks)**: a tela mostra "N de 200" enquanto o teto de 200 é o
+  menor e, quando o orçamento do endereço passa a ser o menor, "Espaço da
+  mensagem quase cheio" com barra de progresso, sem expor a conta codificada; o
+  campo não passa do limite; a troca de modo é anunciada ao leitor de tela uma
+  vez, na transição.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -176,8 +181,9 @@ mensagem que chega ao WhatsApp e a tela de confirmação na volta.
     não é montada; o resto da sacola funciona; e a falha fica registrada para o
     mantenedor sem o valor configurado.
 13. **Given** uma sacola com 15 produtos de nomes longos, **When** a cliente
-    escreve a observação, **Then** o campo mostra quanto ainda cabe e não aceita
-    passar disso; os nomes na mensagem encolhem antes de a observação perder
+    escreve a observação, **Then** o campo mostra "N de 200" enquanto o teto de 200
+    é o limite e, quando o espaço da mensagem passa a ser o limite, "Espaço da
+    mensagem quase cheio" com uma barra, e não aceita passar disso; os nomes na mensagem encolhem antes de a observação perder
     espaço; **Given** que a sacola cresce depois e o texto já escrito deixa de
     caber, **Then** o excesso aparece, o envio fica desabilitado e nada é cortado
     sozinho.
@@ -221,10 +227,13 @@ marcações, os avisos, o subtotal e a mensagem.
    conferir.
 6. **Given** todos os produtos da sacola esgotados, **When** a sacola abre, **Then**
    o envio fica desabilitado com explicação em texto.
-7. **Given** o catálogo indisponível (banco fora ou sem rede), **When** a sacola
-   abre ou o envio é tocado, **Then** aparece uma mensagem simples de que não foi
-   possível conferir a sacola agora, com "Tentar de novo"; o envio não acontece e a
-   sacola guardada não é alterada.
+7. **Given** o catálogo indisponível (banco fora, sem rede, sem resposta em 4 s
+   ou resposta de erro), **When** a sacola abre, **Then** aparece uma mensagem
+   simples de que não foi possível conferir a sacola agora, com "Tentar de novo".
+   **When** o envio é tocado, **Then** o envio é bloqueado com "Não consegui
+   conferir agora, tente de novo.", a lista conferida continua na tela e o próprio
+   botão de envio é a nova tentativa. Nos dois casos o WhatsApp não abre e a sacola
+   guardada não é alterada.
 8. **Given** a conferência, **When** a resposta é inspecionada, **Then** contém só os
    dados públicos da 005 (código, nome, preço, "a partir de", disponível ou
    esgotado, capa), nunca campo interno, e não fica guardada em cache.
@@ -286,13 +295,15 @@ a sacola abre vazia, sem erro.
 - **Limite de 15 com produtos esgotados na sacola**: o esgotado ainda conta para o
   limite até ser removido; a explicação do limite sugere remover algum.
 - **Observação no limite**: o campo não aceita mais que o permitido (200
-  caracteres ou o que resta do orçamento, o que for menor) e mostra quanto ainda
-  cabe; nada do que a cliente escreveu é cortado sem ela ver.
+  caracteres ou o que resta do orçamento, o que for menor) e mostra "N de 200" ou,
+  quando o orçamento é o limite, "Espaço da mensagem quase cheio" com barra, sem
+  a conta codificada; nada do que a cliente escreveu é cortado sem ela ver.
 - **Sacola grande com observação longa**: os nomes na mensagem encolhem para dar
-  espaço; com os nomes já reduzidos ao código, o contador da observação diminui.
+  espaço; com os nomes já reduzidos ao código, o espaço da observação diminui e a
+  tela troca "N de 200" por "Espaço da mensagem quase cheio" com barra.
 - **Cliente aumenta a sacola depois de escrever a observação**: se o texto já
-  escrito não couber mais, o contador mostra o excesso e o envio fica desabilitado
-  até ela encurtar; o texto nunca é cortado sozinho.
+  escrito não couber mais, a tela avisa que a observação não cabe mais na mensagem
+  e o envio fica desabilitado até ela encurtar; o texto nunca é cortado sozinho.
 - **Mensagem perto do limite de tamanho**: nunca passa do limite (FR-016).
 - **Cliente sem WhatsApp instalado**: o link abre a página do WhatsApp na web
   (comportamento do WhatsApp, igual à 005).
@@ -385,9 +396,13 @@ a sacola abre vazia, sem erro.
     passa a ser o atual. O preço guardado MUST NOT entrar no subtotal nem na
     mensagem.
   Se a conferência ao enviar encontrar mudança, o WhatsApp MUST NOT abrir e a tela
-  MUST mostrar os avisos. Se a conferência falhar, a sacola MUST mostrar que não
-  foi possível conferir agora, com "Tentar de novo", sem enviar e sem alterar a
-  sacola guardada.
+  MUST mostrar os avisos. A conferência falha quando não há resposta em 4 s, há erro
+  de rede ou a resposta é 400, 5xx ou fora do formato. Falha ao abrir: a sacola
+  MUST mostrar que não foi possível conferir agora, com "Tentar de novo". Falha ao
+  enviar: o envio MUST ser bloqueado com "Não consegui conferir agora, tente de
+  novo.", a lista conferida MUST continuar na tela e o botão de envio MUST
+  continuar ativo como a nova tentativa. Em qualquer falha, o WhatsApp MUST NOT
+  abrir com dados não conferidos e a sacola guardada MUST NOT ser alterada.
 - **FR-012** (total): O subtotal MUST ser a soma, em centavos inteiros, de
   quantidade × preço dos produtos disponíveis com preço. Se algum desses for "a
   partir de", o subtotal MUST vir com "a partir de" antes do valor. Produto sem
@@ -429,14 +444,21 @@ a sacola abre vazia, sem erro.
   combinação válida de sacola e observação. Para caber:
   - os nomes MUST encolher primeiro, por igual e por caractere inteiro, abaixo de
     40 se preciso, até restar só quantidade, código e valor da linha;
-  - a observação MUST NOT ser cortada em silêncio: o campo MUST mostrar quanto
-    ainda cabe (o menor entre o que resta dos 200 caracteres inteiros, FR-015, e o
-    que resta do orçamento codificado depois dos nomes no mínimo; uma quebra de
-    linha custa 3, um emoji até 12) e MUST impedir passar disso; se o texto já escrito deixar de
+  - a observação MUST NOT ser cortada em silêncio. O limite é o menor entre o
+    que resta dos 200 caracteres inteiros (FR-015) e o que resta do orçamento
+    codificado depois dos nomes no mínimo (uma quebra de linha custa 3, um emoji
+    até 12). Enquanto o teto de 200 for o menor, o campo MUST mostrar "N de 200"
+    (N = caracteres inteiros já usados, depois de normalizar); quando o orçamento
+    do endereço passar a ser o menor, MUST mostrar "Espaço da mensagem quase
+    cheio" com uma barra de progresso, MUST NOT expor a conta em caracteres
+    codificados. A troca de um modo para outro MUST ser anunciada ao leitor de
+    tela uma vez, na transição (região `aria-live="polite"`), sem anunciar cada
+    tecla. O campo MUST impedir passar do limite; se o texto já escrito deixar de
     caber (ex.: a sacola cresceu), o excesso MUST ser mostrado e o envio MUST ficar
     desabilitado até a cliente encurtar.
   O limite MUST ser garantido pela forma de montar a mensagem e provado por teste
-  do pior caso: 15 produtos, quantidade 10, códigos de 5 dígitos, nomes de 40
+  do pior caso: 15 produtos, quantidade 10, códigos com o máximo de dígitos aceito
+  (10, até 2.147.483.647), nomes de 40
   caracteres acentuados e com emoji, preços com "a partir de" e observação cheia
   com acentos e emoji.
 - **FR-017**: O envio MUST usar o número do WhatsApp configurado no ambiente (005,

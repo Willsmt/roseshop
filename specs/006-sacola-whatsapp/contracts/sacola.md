@@ -54,7 +54,9 @@ export function medidorObservacao(e: { numero: string; linhas: LinhaPedido[]; ob
 ```
 
 - `numero` é o E.164 já validado pelo servidor; a função usa só os dígitos.
-- `observacao` é **bruta**; a função chama `normalizarObservacao` (mesma regra do campo).
+- Nas **três** funções (`montarPedido`, `restanteObservacao` e `medidorObservacao`), `observacao`
+  é a **observação bruta**, como está no campo; cada função chama `normalizarObservacao` (mesma
+  regra do campo e do contador). Quem chama nunca passa texto já normalizado como se fosse outro.
 - `restanteObservacao = min(200 − code points, 1800 − comprimento com nomes em 0)`; negativo é
   excesso.
 - `medidorObservacao` (o que a tela mostra, contracts/telas.md §3): `limite: "caracteres"` quando

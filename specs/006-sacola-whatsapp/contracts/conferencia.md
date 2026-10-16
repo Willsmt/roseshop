@@ -20,7 +20,7 @@ Content-Length: <≤ 1024>
 | `Content-Type` sem `application/json` (mídia antes do `;`, sem diferenciar maiúsculas) | **415** `{}` |
 | `Content-Length` presente e > 1024 | **413** `{}`, corpo não lido |
 | Corpo lido por stream passa de 1024 bytes (com ou sem `Content-Length`) | **413** `{}`, leitura cancelada |
-| JSON inválido; objeto com chave diferente de `codigos`; `codigos` fora de 1–15; item fora de `^(?:\d{4}|[1-9]\d{4,8})$` ou `"0000"`; repetido | **400** `{}` |
+| JSON inválido; objeto com chave diferente de `codigos`; `codigos` fora de 1–15; item fora de `^(?:\d{4}|[1-9]\d{4,9})$`, `"0000"` ou acima de `2147483647` (limite do `lerProduto` e do `integer` do Postgres); repetido | **400** `{}` |
 | Banco indisponível | **503** `{}` + registro (§4) |
 
 Não lê cookie, sessão nem `Authorization`; não importa `@/lib/auth`.

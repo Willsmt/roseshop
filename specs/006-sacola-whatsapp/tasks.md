@@ -4,7 +4,8 @@
 [research.md](./research.md) ("D<n>", "R<n>"), [data-model.md](./data-model.md) ("DM§n"),
 [contracts/conferencia.md](./contracts/conferencia.md) ("CC§n"),
 [contracts/sacola.md](./contracts/sacola.md) ("CS§n"), [contracts/telas.md](./contracts/telas.md)
-("CT§n"), [quickstart.md](./quickstart.md) ("Q§n"), [ADR-012](../adr/012-conferencia-sacola.md).
+("CT§n"), [quickstart.md](./quickstart.md) ("Q§n"), [ADR-012](../adr/012-conferencia-sacola.md),
+[ADR-013](../adr/013-desvio-constitution-iv.md).
 Da spec: Clarifications e critérios de aceite (USn.m, FR, SC).
 
 ## Como ler
@@ -12,7 +13,9 @@ Da spec: Clarifications e critérios de aceite (USn.m, FR, SC).
 - Cada sub-fase (SF) é **pequena e autossuficiente**: a implementação lê só a sua seção e os
   trechos citados em **Usa**. Cada seção traz **Usa**, **Arquivos**, **Fecha**, **Revisão**, as
   tasks e a mensagem de commit.
-- Formato: `- [ ] Txxx [P?] [USn…] Descrição com caminho — **dono**`.
+- Formato: `- [ ] Txxx [P?] [USn…] Descrição com caminho — **dono**`. Os IDs seguem a ordem de
+  execução, **exceto a T004** (GATE do ADR-013), que roda depois da T006 e antes da SF1; o número
+  foi mantido porque a análise de 2026-10-16 a cita.
 - **`[P]`** = pode rodar em paralelo com as outras `[P]` **vizinhas da mesma SF**, porque **não há
   arquivo em comum** entre elas nem dependência de task aberta. Sem `[P]` = em série. Nenhuma task
   que roda `test:int` leva `[P]`.
@@ -44,16 +47,20 @@ Da spec: Clarifications e critérios de aceite (USn.m, FR, SC).
 |---|---|---|
 | A1 | Envio: se a conferência passar de 4 s, falhar por rede ou responder 400/5xx (ou fora do esquema), o envio é **BLOQUEADO** com "Não consegui conferir agora, tente de novo." e a sacola fica intacta. Nunca enviar com dados não conferidos (SC-003) | CT§3 (atualizado), CS§5 (atualizado), research D11 (nota); T012, T035, **T053** (teste dedicado), T059, T065 |
 | A2 | Contador da observação: "N de 200" enquanto o teto de 200 manda; quando o orçamento da URL manda, "Espaço da mensagem quase cheio" com barra de progresso, sem expor a conta codificada; o número exato fica nos testes | CT§3 e CS§4 (`medidorObservacao`, atualizados), research D3 (nota); T012, T018, T020, T055, T058 |
-| A3 | SF3 só começa depois da aprovação do ADR-012 pelo humano | **GATE T004** e T023 |
+| A3 | SF3 só começa depois da aprovação do ADR-012 pelo humano | primeiro passo da **T023** |
+| A6 | Correções do `/speckit-analyze` (2026-10-16): ADR-013 do desvio da constitution IV com GATE antes da SF1 (C1/O1); spec com a regra do A2 e com o botão de envio como nova tentativa (I1/I2); `sacola.codigo` sem "#" (I3); HTML da 005 com `await` (T1); testes de anúncio, foco e esgotado que volta (A1/L4); contagem de toques (S1); códigos até 10 dígitos (L3) | **GATE T004** (ADR-013), T001, T002, T008, T018, T019, T023, T026, T031, T036, T042, T043, T053–T055, T058–T060, T065, T068 |
 | A4 | `[P]` só sem conflito de arquivo; `test:int` sempre em série | todas as SFs |
 | A5 | Cada task com dono; a primeira task da SF0 grava os HTMLs de referência da 005 (SC-005) | T001 |
 
 ## Ordem entre SFs
 
-`SF0 → SF1 → SF2 → [GATE T004 aprovado] → SF3 → SF4 → SF5 → SF6 → SF7 → SF8 → SF9`
+`SF0 (commit T006, ADR-012 e ADR-013 "proposto") → [GATE T004: ADR-013 aprovado] → SF1 → SF2 →
+[GATE T023: ADR-012 aprovado] → SF3 → SF4 → SF5 → SF6 → SF7 → SF8 → SF9`
 
-- O GATE do ADR-012 (T004) bloqueia **só** a SF3 em diante; SF1 e SF2 (núcleo puro, sem servidor)
-  podem andar enquanto o humano lê o ADR.
+- O GATE do ADR-013 (T004) bloqueia a SF1 em diante: as regras da sacola no cliente (SF1, SF2,
+  SF4) são o desvio da constitution IV que esse ADR registra.
+- O GATE do ADR-012 é o primeiro passo da T023 e bloqueia só a SF3 em diante; SF1 e SF2 (núcleo
+  puro, sem servidor) não dependem da rota e podem andar enquanto o humano lê o ADR-012.
 - A T001 roda **antes de qualquer mudança** em `src/app/(public)/`; a SF5 é a primeira que mexe
   nessas telas.
 - Nada vai a `main` antes da SF9. Merge só pelo humano.
@@ -69,15 +76,16 @@ Da spec: Clarifications e critérios de aceite (USn.m, FR, SC).
 
 ---
 
-## SF0 — Referência da 005 (SC-005) e GATE do ADR-012
+## SF0 — Referência da 005 (SC-005) e ADRs propostos
 
-**Usa**: plan, linha SF0; research D9, D14 (linha SC-005); CT§1; spec SC-005, Clarifications
-(HTML do servidor sem JS); ADR-012.
+**Usa**: plan, linha SF0; research D9, D14 (linha SC-005), §3; CT§1; spec SC-005, Clarifications
+(HTML do servidor sem JS); ADR-012; ADR-013.
 **Arquivos**: `src/test/fixtures/catalogo/{detalhe-005,detalhe-esgotado-005,inicio-005}.html`
 (novos), `src/test/catalogo-html.tsx` (helper, sugerido), `src/test/conformance/catalogo-html-005.test.tsx`
-(novo), `specs/adr/012-conferencia-sacola.md` (status).
-**Fecha**: base da SC-005; GATE da SF3.
-**Revisão**: tech-lead (ADR).
+(novo), `specs/adr/012-conferencia-sacola.md` e `specs/adr/013-desvio-constitution-iv.md` (os dois
+commitados como "proposto").
+**Fecha**: base da SC-005. Depois do commit, o GATE do ADR-013 (T004) libera a SF1.
+**Revisão**: tech-lead (ADRs).
 
 Housekeeping da 005 (Clarifications): T091–T097 marcadas e T090/T098 abertas com "adiada para a
 entrega final" **já estão** em `specs/005-catalogo-publico/tasks.md` (commit `d71b6ae`); nada a
@@ -86,8 +94,10 @@ fazer nesta SF.
 - [ ] T001 **Primeira task da 006, antes de qualquer mudança de tela.** Conferir que
   `git diff --stat main -- 'src/app/(public)'` está vazio (o tree das telas é o da 005). Criar o
   helper `src/test/catalogo-html.tsx` (sugerido) que gera o **HTML do servidor** da 005 com dados
-  fixos, sem rede e sem banco: `renderToStaticMarkup(<LayoutPublico><Pagina/></LayoutPublico>)`
-  de `src/app/(public)/layout.tsx` com `src/app/(public)/p/[codigo]/page.tsx` e
+  fixos, sem rede e sem banco. As páginas são componentes `async`, que o `renderToStaticMarkup`
+  não renderiza: o helper faz `const pagina = await Pagina({ params, searchParams })` e depois
+  `renderToStaticMarkup(<LayoutPublico>{pagina}</LayoutPublico>)`, com `LayoutPublico` de
+  `src/app/(public)/layout.tsx` e `Pagina` de `src/app/(public)/p/[codigo]/page.tsx` e de
   `src/app/(public)/page.tsx`, mockando `@/lib/catalogo` e `next/navigation` como em
   `src/app/(public)/p/[codigo]/page.test.tsx` (produto fixo com 2 fotos, preço "R$ 6,00",
   categoria, descrição; `whatsapp` válido de teste). Três casos: **detalhe disponível**,
@@ -96,34 +106,44 @@ fazer nesta SF.
   `detalhe-esgotado-005.html` e `inicio-005.html`. Os fixtures são gravados **uma vez**, nesta
   task, e nunca regravados depois — **test-writer**
 - [ ] T002 [US4] Teste da SC-005 em `src/test/conformance/catalogo-html-005.test.tsx`: para cada
-  um dos três casos, gera o HTML com o helper da T001, **remove os elementos `[data-sacola]`**
-  (parse com `DOMParser` do jsdom; nenhum outro elemento é tocado) e compara byte a byte com o
-  fixture. Passa **verde** contra o código atual (nenhum `[data-sacola]` ainda) e vai continuar
+  um dos três casos, gera o HTML com o helper da T001 e passa **o fixture e a saída pelo mesmo
+  parser** (`DOMParser` do jsdom, `text/html`), **remove os elementos `[data-sacola]` só da
+  saída** (nenhum outro elemento é tocado) e compara a serialização dos dois (`body.innerHTML`),
+  para que diferenças de serialização não virem falso alarme. Passa **verde** contra o código atual (nenhum `[data-sacola]` ainda) e vai continuar
   verde depois da SF5 — **test-writer**
-- [ ] T003 Revisão do ADR-012 (`specs/adr/012-conferencia-sacola.md`): coerência com CC§1–§6,
-  research D7/D8, FR-013, SC-004, SC-007 e com os ajustes A1/A3; registrar achados no próprio ADR
-  como "Notas da revisão" antes de entregar ao humano — **tech-lead**
-- [ ] T004 **GATE — aprovação do ADR-012 pelo humano.** Ler e aprovar o ADR; o tech-lead troca
-  `**Status:** proposto` por `**Status:** aceito (AAAA-MM-DD, humano)`. **Nenhuma task da SF3
-  (T023 em diante) começa sem esta aprovação registrada no arquivo.** SF1 e SF2 não dependem
-  dela — **humano**
+- [ ] T003 Revisão do ADR-012 (`specs/adr/012-conferencia-sacola.md`: coerência com CC§1–§6,
+  research D7/D8, FR-013, SC-004, SC-007 e o ajuste A1) e do ADR-013
+  (`specs/adr/013-desvio-constitution-iv.md`: coerência com o Complexity Tracking do plan, research
+  D1–D5 e constitution IV); registrar achados em cada ADR como "Notas da revisão". **Os dois
+  ficam "proposto"** — **tech-lead**
 - [ ] T005 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
-- [ ] T006 Commit (humano):
+- [ ] T006 Commit (humano), com o ADR-012 e o ADR-013 ainda "proposto":
   ```text
   test(catalogo): fixa o HTML do servidor da 005 como referência da SC-005
 
   Detalhe disponível, detalhe esgotado e página inicial gravados antes de
   qualquer mudança de tela da 006; o teste compara sem os [data-sacola].
-  ADR-012 (conferência da sacola por POST) para aprovação.
+  ADR-012 (conferência da sacola por POST) e ADR-013 (regras da sacola no
+  cliente, desvio da constitution IV) entram como propostos.
   ```
   — **humano**
+
+### GATE antes da SF1 — ADR-013
+
+- [ ] T004 **GATE — o humano aprova o ADR-013** (roda **depois da T006**). Ler e aprovar
+  `specs/adr/013-desvio-constitution-iv.md`; depois da aprovação, o tech-lead troca
+  `**Status:** proposto` por `**Status:** aceito (AAAA-MM-DD, humano)`, e a mudança entra no
+  commit da SF1 (T017). **Nenhuma task da SF1 em diante começa sem esta aprovação registrada no
+  arquivo.** Sem aprovação, o caminho é emendar a constitution IV por `/speckit-constitution`
+  antes de seguir — **humano**
 
 ---
 
 ## SF1 — Núcleo puro: observação, operações, total e fronteira
 
-**Usa**: CS§1, CS§2, CS§3, CS§7; DM§1, DM§3, DM§4; research D1, D2, D4, D6; spec FR-003, FR-005,
-FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6.
+**Começa só depois do GATE T004** (ADR-013 aceito no arquivo).
+**Usa**: CS§1, CS§2, CS§3, CS§7; DM§1, DM§3, DM§4; research D1, D2, D4, D6; ADR-013; spec FR-003,
+FR-005, FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6, US3.2.
 **Arquivos**: `src/lib/sacola/{observacao,sacola,total,textos}.ts` e testes,
 `src/lib/sacola/fronteira.test.ts`, `eslint.config.mjs`.
 **Fecha**: FR-015a (regra), FR-012, limites de FR-003/FR-005 sobre o resultado, US1.3 (puro).
@@ -145,7 +165,9 @@ FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6.
   `nao_esta`; `remover` ausente ⇒ `mudou: false`; `limpar` ⇒ `itens: []`; toda operação com
   `mudou: true` grava `alteradaEm = agora`; `aplicarConferencia`: `inexistente` remove; `ok`/
   `esgotado` com preço, `a` ou ausência de preço diferente atualiza `precoVisto`/`aPartirDe`;
-  **códigos não cobertos pela resposta ficam como estão**; nada diferente ⇒ `mudou: false`.
+  **códigos não cobertos pela resposta ficam como estão**; nada diferente ⇒ `mudou: false`;
+  **esgotado que volta** (US3.2): item com quantidade 3 conferido como `esgotado` continua na
+  sacola com quantidade 3 e, numa conferência seguinte como `ok`, segue com quantidade 3.
   `estaNaSacola`, `cheia` (15). Operações não mutam a entrada (`Object.freeze` na entrada) —
   **test-writer**
 - [ ] T009 [P] [US2] Teste primeiro — `src/lib/sacola/total.test.ts` (DM§4, FR-012): US2.5
@@ -179,12 +201,13 @@ FR-012, FR-015a, FR-008a, US1.2, US1.3, US2.5, US2.6.
 - [ ] T015 [P] `src/lib/sacola/total.ts`: `LinhaPedido`, `valorLinha`, `resumo` (DM§4), formatando
   por `@/lib/catalogo/exibicao` (`precoPublico`) e `@/lib/produtos/preco` — **tech-lead**
 - [ ] T016 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
-- [ ] T017 Commit (humano):
+- [ ] T017 Commit (humano), incluindo o status "aceito" do ADR-013 registrado na T004:
   ```text
   feat(sacola): adiciona as regras puras da sacola
 
   Normalização única da observação, operações com limites conferidos no
   resultado, subtotal em centavos e fronteira do módulo por teste e lint.
+  ADR-013 aceito: regras da sacola no cliente (desvio da constitution IV).
   ```
   — **humano**
 
@@ -209,22 +232,25 @@ FR-014, FR-015, FR-015a, FR-016, SC-002, US2.7, US2.8, US2.10, US2.13.
   `text=` devolve o `texto`, com acento, `&`, `#`, `?`, `+` e emoji preservados; URL começa com
   `https://wa.me/<dígitos do E.164>?text=`; observação que não cabe ⇒ `{ tipo: "excede",
   excesso > 0 }` (nunca corta); a observação recebida bruta passa por `normalizarObservacao`
-  (mesma saída que a T007). `restanteObservacao` com **números exatos** (inclui o caso de
-  research §4: sobra 567 no pior caso sem observação, nomes em 0). `medidorObservacao` (A2):
+  (mesma saída que a T007). `restanteObservacao` com **números exatos** (inclui os casos de
+  research §4, com número de 15 dígitos: sobra 567 com códigos de 5 dígitos e **492 com códigos
+  de 10 dígitos** (`2147483647`), sem observação e nomes em 0). `restanteObservacao` e
+  `medidorObservacao` recebem a observação **bruta** (CS§4). `medidorObservacao` (A2):
   com sacola pequena e 37 code points ⇒ `{ limite: "caracteres", usados: 37, maximo: 200 }`;
   com o pior caso ⇒ `limite: "mensagem"`, `fracao` em `[0, 1]` crescente com o texto e
   `excede: false`; sacola que cresce depois ⇒ `excede: true`, `fracao: 1`; a troca de modo
   acontece exatamente quando `200 − code points > 1800 − comprimento com nomes em 0` —
   **test-writer**
 - [ ] T019 [P] [US2] Teste primeiro — `src/lib/sacola/mensagem.pior-caso.test.ts` (SC-002,
-  FR-016): pior caso fixo (15 itens, quantidade 10, códigos de 5 dígitos, nomes de 40 code points
-  acentuados e com emoji, incluindo ZWJ e U+FE0F, preços "a partir de R$ 99.999,99",
+  FR-016): pior caso fixo (15 itens, quantidade 10, códigos de 10 dígitos até `2147483647`,
+  número de 15 dígitos, nomes de 40 code points acentuados e com emoji, incluindo ZWJ e U+FE0F,
+  preços "a partir de R$ 99.999,99",
   observação no limite de `restanteObservacao` com acento, emoji e quebras) ⇒ `tipo: "ok"` e
   `url.length ≤ 1800`; **nomes encolhem antes** da observação perder espaço (com a mesma
   observação, os nomes saem mais curtos que 40 e a observação sai inteira); **propriedade** com
   gerador próprio de semente fixa (laço, sem dependência nova) sobre ≈ 2000 combinações válidas:
-  sempre `ok` com `url.length ≤ 1800` ou `excede` quando a observação passa de
-  `restanteObservacao`; **corte por code point**: nome com emoji exatamente na fronteira do corte
+  códigos de 4 a 10 dígitos; sempre `ok` com `url.length ≤ 1800` ou `excede` quando a observação
+  passa de `restanteObservacao`; **corte por code point**: nome com emoji exatamente na fronteira do corte
   nunca deixa surrogate solto (`decodeURIComponent` não lança, `String.prototype.isWellFormed()`
   é `true`) — **test-writer**
 - [ ] T020 `src/lib/sacola/mensagem.ts`: `ORCAMENTO_URL = 1800`, `NOME_MAX = 40`, `montarPedido`
@@ -244,7 +270,7 @@ FR-014, FR-015, FR-015a, FR-016, SC-002, US2.7, US2.8, US2.10, US2.13.
 
 ---
 
-## SF3 — Conferência no servidor (`POST /api/catalogo/conferencia`) — **depois do GATE T004**
+## SF3 — Conferência no servidor (`POST /api/catalogo/conferencia`) — **depois do GATE do ADR-012 (T023)**
 
 **Usa**: CC§1–§5; ADR-012; research D6, D7, D8, D15; DM§8; spec FR-010, FR-011, FR-013, US3.8,
 SC-007.
@@ -256,9 +282,11 @@ SC-007.
 **Fecha**: US3.8, FR-013, FR-010 (worker), SC-007 (rota); parte de US3.1–3.4 (servidor).
 **Revisão**: ✅ humano revisa o diff (zonas protegidas).
 
-- [ ] T023 **GATE**: conferir em `specs/adr/012-conferencia-sacola.md` o status
-  `aceito (…, humano)` registrado na T004. Sem ele, **parar e avisar o humano**; nenhuma task
-  abaixo começa — **tech-lead**
+- [ ] T023 **GATE do ADR-012 — primeiro passo da SF3.** (1) O **humano** lê e aprova
+  `specs/adr/012-conferencia-sacola.md`; (2) depois da aprovação, o tech-lead troca
+  `**Status:** proposto` por `**Status:** aceito (AAAA-MM-DD, humano)` (a mudança entra no commit
+  T034); (3) o tech-lead confere o status no arquivo. Sem aprovação, **parar e avisar o humano**;
+  nenhuma task abaixo começa — **humano** (aprova) + **tech-lead** (registra e confere)
 - [ ] T024 [US3] Teste primeiro — ampliar `src/lib/db/catalogo.int.test.ts` (banco local, em
   série) com `conferirProdutos(db, ids)`: produto disponível com capa, esgotado, sem capa, id
   inexistente (fica fora do resultado); colunas `id`, `nome`, `preco_centavos`, `a_partir_de`,
@@ -275,7 +303,8 @@ SC-007.
   do `;`, sem diferenciar maiúsculas); `Content-Length: 2000` ⇒ **413** `{}` **sem ler o corpo**
   (spy no `body`); corpo de 2000 bytes **sem** `Content-Length` (stream) ⇒ **413** e leitura
   cancelada depois de 1024 bytes; JSON inválido, chave extra, `codigos` vazio, 16 códigos, `"42"`,
-  `"0000"`, `"012345"`, repetido ⇒ **400** `{}`; banco fora ⇒ **503** `{}` e `registrarFalha`
+  `"0000"`, `"012345"`, `"2147483648"` (acima do `integer`), `"12345678901"` (11 dígitos),
+  repetido ⇒ **400** `{}`; `"2147483647"` (10 dígitos) é aceito; banco fora ⇒ **503** `{}` e `registrarFalha`
   chamado **uma vez** com `{ evento: "catalogo.banco_indisponivel", rota:
   "/api/catalogo/conferencia", causa: "banco" }`; 200 com um item por código na ordem pedida;
   **todas** as respostas com `Cache-Control: no-store` e `X-Content-Type-Options: nosniff`; só
@@ -302,20 +331,21 @@ SC-007.
   **tech-lead**
 - [ ] T031 [US3] `src/app/api/catalogo/conferencia/route.ts` (D7, ordem exata: 415 → 413 pelo
   cabeçalho → 413 pela leitura com `getReader()` e teto de 1024 bytes → `JSON.parse` + Zod
-  (`{ codigos: string[] }` estrito, 1 a 15, regex `^(?:\d{4}|[1-9]\d{4,8})$`, ≠ `"0000"`, sem
-  repetição) ⇒ 400 → `lerConferencia` → 200; 503 só com a causa `"banco"`, demais exceções
+  (`{ codigos: string[] }` estrito, 1 a 15, regex `^(?:\d{4}|[1-9]\d{4,9})$`, ≠ `"0000"`, valor
+  ≤ 2.147.483.647 como o `lerProduto`, sem repetição) ⇒ 400 → `lerConferencia` → 200; 503 só com a causa `"banco"`, demais exceções
   relançadas; nenhum outro `console.*`) — **tech-lead**
 - [ ] T032 [TL✅] [US4] `cloudflare/publico.ts`: `classificar` trata `caminho === "/sacola"` como
   `"pagina"` e o 503 usa `rota: "/sacola"`; `POST` segue intocado (D15) — **tech-lead**
 - [ ] T033 `npm run check` e `npm run test:int` (**em série**); colar o output real — **júnior**
-- [ ] T034 Revisão do diff pelo humano (zonas protegidas `src/lib/db/` e `cloudflare/`) e commit:
+- [ ] T034 Revisão do diff pelo humano (zonas protegidas `src/lib/db/` e `cloudflare/`) e commit,
+  incluindo o status "aceito" do ADR-012 registrado na T023:
   ```text
   feat(catalogo): adiciona a conferência pública da sacola
 
   POST /api/catalogo/conferencia com JSON até 1 KB, de 1 a 15 códigos e uma
   única consulta com IN; resposta sem cache, erros com {} e log só do 503,
-  sem códigos nem corpo (ADR-012). /sacola tratada como página pública
-  pelo worker (noindex, max-age=60, 503).
+  sem códigos nem corpo (ADR-012, aceito). /sacola tratada como página
+  pública pelo worker (noindex, max-age=60, 503).
   ```
   — **humano**
 
@@ -343,7 +373,7 @@ FR-008, FR-008a, FR-011, US3.5, US3.7, US4.1–4.5; riscos R1, R2.
 - [ ] T036 [P] [US4] Teste primeiro — `src/lib/sacola/armazenamento.test.ts` (CS§6, DM§1, D5):
   `lerSacola` devolve vazia (sem gravar: spy em `setItem`/`removeItem`) para chave ausente, JSON
   corrompido, `v: 0`, `t` com mais de 7 dias, `t` mais de 1 dia no futuro, quantidade 11, código
-  `"42"` ou `"0000"`, código repetido, 16 itens, `p` 0 ou 10.000.000, chave extra em qualquer
+  `"42"`, `"0000"`, `"2147483648"` ou `"12345678901"`, código repetido (e aceita `"2147483647"`), 16 itens, `p` 0 ou 10.000.000, chave extra em qualquer
   nível; `storage()` que lança ou `getItem` que lança ⇒ `{ disponivel: false }` (US4.4);
   `alterarSacola` relê **imediatamente antes** de gravar, grava só se `mudou`, limpa com
   `removeItem` quando vazia, dispara `roseshop:sacola`; `setItem` que lança ⇒
@@ -392,10 +422,12 @@ e `page.test.tsx`.
 
 - [ ] T042 [US1] Teste primeiro — ampliar `src/lib/catalogo/leitura.test.ts`: `lerProduto`
   devolve `sacola: { codigo, precoCentavos, aPartirDe }` para disponível e `sacola: null` para
-  esgotado (DM§8). Ampliar `src/test/conformance/catalogo-acesso.test.ts`: as props do detalhe
+  esgotado (DM§8); para o produto de id 42, **`sacola.codigo === "0042"` (sem "#")**, enquanto
+  `codigo === "#0042"` continua como na 005; para id 12345, `sacola.codigo === "12345"`. Ampliar `src/test/conformance/catalogo-acesso.test.ts`: as props do detalhe
   só ganham as chaves `sacola`, `precoCentavos` e `aPartirDe` — **test-writer**
 - [ ] T043 [US1] `src/lib/catalogo/leitura.ts`: campo `sacola` em `ProdutoPublico` (`null` se
-  esgotado) — **tech-lead**
+  esgotado), com `codigo: codigoCanonico(id)` de `src/lib/catalogo/exibicao.ts` (**nunca** o
+  `codigo` formatado com "#") — **tech-lead**
 - [ ] T044 [P] [US1] [US4] Teste primeiro — `src/app/(public)/_sacola/usar-sacola.test.tsx`
   (jsdom, D9/D13): `renderToString` devolve o estado do servidor `null`; depois de hidratar,
   lê a sacola; `localStorage` que lança ⇒ continua `null` sem erro nem `console.error`; evento
@@ -460,22 +492,31 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   3. **responde 400** ⇒
   4. **responde 5xx** (500 e 503) ⇒
 
-  em **cada** caso, num `it` próprio: aparece `role="status"` com "Não consegui conferir agora,
-  tente de novo."; `location.assign` **não** é chamado; `history.replaceState` não recebe
-  `sacolaEnviada`; `setItem`/`removeItem` **não** são chamados (sacola intacta); lista e
-  observação continuam na tela; o botão segue ativo e uma nova tentativa com 200 sem mudança
-  abre o WhatsApp. Nenhum `wa.me` aparece no DOM em nenhum momento (SC-003) — **test-writer**
+  em **cada** caso, num `it` próprio: a tela entra no estado "Falha no envio (lista conferida
+  mantida)" de CT§3, com `role="alert"` e o texto "Não consegui conferir agora, tente de novo.";
+  **não** existe botão "Tentar de novo" à parte; `location.assign` **não** é chamado;
+  `history.replaceState` não recebe `sacolaEnviada`; `setItem`/`removeItem` **não** são chamados
+  (sacola intacta); lista conferida, resumo e observação continuam na tela; **o foco fica no
+  botão de envio** (`document.activeElement`); o botão de envio continua ativo (sem
+  `aria-disabled`) e é a nova tentativa: um novo toque com 200 sem mudança tira o alerta e abre o
+  WhatsApp. Nenhum `wa.me` aparece no DOM em nenhum momento (SC-003) — **test-writer**
 - [ ] T054 [P] [US2] [US3] Teste primeiro — `src/app/(public)/_sacola/tela-sacola.test.tsx`
   (CT§3): estados um por vez — armazenamento indisponível (texto próprio + link), **vazia**
   (`#sacola-vazia`, link "Ver o catálogo", sem envio, US2.11), **conferindo** ("Conferindo a
   sacola…" com `role="status"`, sem preços), **falha ao abrir** ("Não foi possível conferir a
-  sacola agora." + "Tentar de novo", envio `aria-disabled`, nada gravado, US3.7), **conferida**
+  sacola agora." + "Tentar de novo", envio `aria-disabled`, nada gravado, US3.7). O estado
+  **armazenamento indisponível** tem `<h1>Sacola</h1>` e o texto literal de CT§3: "Não foi
+  possível abrir a sacola neste navegador. Você ainda pode perguntar por cada produto no
+  WhatsApp." com link ao catálogo. **Conferida**
   (nome com link, "#0042", capa ou "Sem foto", preço unitário, quantidade, valor da linha,
   subtotal, US2.1); esgotado em texto, fora do subtotal, sem quantidade, com "Remover" (US3.1);
   inexistente ⇒ removido e aviso "O produto #0042 não está mais no catálogo." (US3.3); preço
   alterado ⇒ preço atual e "O preço mudou desde que você adicionou." (US3.4); todos esgotados ⇒
-  envio desabilitado com texto (US3.6); quantidade: "−" `disabled` em 1, "+" em 10, subtotal
-  atualiza (US2.2); "Remover" ⇒ foco em `#sacola-titulo` e anúncio "Produto removido.
+  envio desabilitado com texto (US3.6); **esgotado que volta** (US3.2): item conferido como
+  `esgotado` e, ao reabrir, como `ok` volta ao subtotal com a quantidade que tinha; quantidade:
+  "−" `disabled` em 1, "+" em 10, subtotal atualiza (US2.2) e **o novo subtotal é anunciado** na
+  região `aria-live="polite"` do resumo enquanto **o foco fica no botão** tocado; avisos
+  (inexistente, preço) dentro de `role="status"`; "Remover" ⇒ foco em `#sacola-titulo` e anúncio "Produto removido.
   Subtotal: …"; remover o último ⇒ foco em `#sacola-vazia` (US2.3); "Limpar sacola" abre
   `<dialog>` "Todos os produtos vão sair da sacola."; "Cancelar" devolve o foco ao botão;
   "Limpar" esvazia e foca `#sacola-vazia` (US2.4); outra aba adiciona um código ⇒ só esse código
@@ -483,11 +524,15 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   com Tab/Enter/Espaço, incluindo o diálogo (SC-006) — **test-writer**
 - [ ] T055 [P] [US2] Teste primeiro — `src/app/(public)/_sacola/observacao.test.tsx` (ajuste A2,
   CT§3, FR-015a, FR-016): `<label>` ligado ao `<textarea id="obs">` sem `maxLength` e com
-  `aria-describedby="obs-conta"`; com sacola pequena, mostra **"N de 200"** contando code points
-  do texto **normalizado** (colar `"  oi\r\n\r\n\r\n👍  "` mostra "5 de 200"); com 15 produtos de
-  nomes longos, ao digitar até o orçamento da URL mandar, troca para **"Espaço da mensagem quase
-  cheio"** com `<progress>` (`aria-label="Espaço da mensagem usado"`) e **nenhum número de
-  caracteres codificados no texto do DOM**; entrada que passaria do limite é desfeita (o texto não
+  `aria-describedby="obs-medidor obs-conta"`; com sacola pequena, `#obs-medidor` mostra
+  **"N de 200"** contando code points do texto **normalizado** (colar `"  oi\r\n\r\n\r\n👍  "`
+  mostra "5 de 200"); com 15 produtos de nomes longos, ao digitar até o orçamento da URL mandar,
+  troca para **"Espaço da mensagem quase cheio"** com `<progress>` (`aria-label="Espaço da
+  mensagem usado"`) e **nenhum número de caracteres codificados no texto do DOM**; **anúncio**:
+  `#obs-medidor` **não** tem `aria-live`; `#obs-conta` tem `aria-live="polite"` e o texto dele
+  muda **só na transição de modo** (vazio → "Espaço da mensagem quase cheio" → excesso; registrar
+  as mutações com `MutationObserver` e conferir exatamente uma mudança por transição e nenhuma
+  ao digitar dentro do mesmo modo); entrada que passaria do limite é desfeita (o texto não
   cresce); a sacola cresce em outra aba ⇒ "A observação não cabe mais na mensagem. Encurte para
   enviar.", barra cheia e envio desabilitado, texto **não cortado**; a mesma entrada suja gera a
   mesma string em contador, campo e mensagem (FR-015a, três pontos); recarregar ⇒ campo vazio
@@ -515,18 +560,22 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   com `aria-label` "Diminuir/Aumentar quantidade de <nome>", `<output>`, "Remover", "Esgotado",
   aviso de preço) e `src/app/(public)/_sacola/confirmar-limpar.tsx` (`<dialog>` nativo com
   `showModal()`, "Limpar" e "Cancelar") — **ui-dev**
-- [ ] T058 [P] [US2] `src/app/(public)/_sacola/observacao.tsx` (ajuste A2): guarda o texto bruto;
-  medidor por `medidorObservacao` de `@/lib/sacola/mensagem` em três modos ("N de 200";
-  "Espaço da mensagem quase cheio" + `<progress>`; excesso); desfaz a entrada que deixaria
+- [ ] T058 [P] [US2] `src/app/(public)/_sacola/observacao.tsx` (ajuste A2, CT§3): guarda o texto
+  bruto; modo por `medidorObservacao` de `@/lib/sacola/mensagem`; `#obs-medidor` sem `aria-live`
+  ("N de 200" ou `<progress>`); `#obs-conta` com `aria-live="polite"` cujo texto só muda na
+  transição de modo ("Espaço da mensagem quase cheio"; excesso); desfaz a entrada que deixaria
   `restanteObservacao < 0` só quando o texto cresce; nunca mostra o número codificado — **ui-dev**
 - [ ] T059 [US2] [US3] `src/app/(public)/_sacola/enviar-pedido.tsx` (D11 + ajuste A1):
   `<button type="button">`, nunca `<a href>`; toque ⇒ `normalizarObservacao` → `conferir` →
-  `"falha"` ⇒ **bloqueia** com "Não consegui conferir agora, tente de novo." e não grava nada;
+  `"falha"` ⇒ **bloqueia**: estado "Falha no envio (lista conferida mantida)" de CT§3, com
+  `<p role="alert">Não consegui conferir agora, tente de novo.</p>`, foco no próprio botão, botão
+  ativo como nova tentativa (sem botão "Tentar de novo" à parte) e nada gravado;
   senão `alterarSacola(aplicarConferencia(...))`; `houveMudanca` ⇒ avisos e foco no título;
   senão `montarPedido` → `history.replaceState({ ...history.state, sacolaEnviada: true }, "")`
   → `location.assign(url)` (mesma aba, sem `window.open`). Número inválido ⇒ ramo sem
   `montarPedido`, com `aria-disabled` + `aria-describedby` — **ui-dev**
-- [ ] T060 [US2] [US3] [US4] `src/app/(public)/_sacola/tela-sacola.tsx` (estados de CT§3,
+- [ ] T060 [US2] [US3] [US4] `src/app/(public)/_sacola/tela-sacola.tsx` (estados de CT§3, com
+  "Falha ao abrir" e "Falha no envio (lista conferida mantida)" como estados distintos,
   conferência ao abrir e de códigos novos de outra aba, foco e anúncios de CT "Foco e anúncios",
   confirmação pelo `pageshow`) e `src/app/(public)/sacola/page.tsx` (`force-dynamic`,
   `<noscript>` e `TelaSacola` com `configCatalogo().whatsapp`) — **ui-dev**
@@ -556,7 +605,9 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   rodar os `curl` de Q§2 e colar o output real (200 na ordem, 415, 413 com e sem
   `Content-Length`, 400, 405, `no-store`; com `npm run db:down`, 503 `{}` e um único log
   fechado; nenhum código nos logs do `preview`) — **júnior**
-- [ ] T065 Roteiro de telas Q§3 (itens 1 a 12, incluindo **a conferência do envio com o
+- [ ] T065 Roteiro de telas Q§3 (itens 1 a 12; no **item 2**, registrar toque a toque os toques
+  da sacola de um pedido de 3 produtos, do primeiro "Adicionar à sacola" até o envio: 5
+  esperados (3 "Adicionar à sacola", abrir a sacola, enviar), aprovado se ≤ 6, SC-001; incluindo **a conferência do envio com o
   `preview` parado ou o banco fora ⇒ "Não consegui conferir agora, tente de novo." e sacola
   intacta**, e o medidor da observação passando de "N de 200" para "Espaço da mensagem quase
   cheio") e regressão da 005 em Q§4 (`curl -sI /sacola` com `X-Robots-Tag`). O item 11 exige o
@@ -576,7 +627,9 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
 - [ ] T067 Deploy do dev pelo PR (`pull-request.yml`) e `npm run seed:dev` — **humano**
 - [ ] T068 Q§5.1 mensagem real num Android com Chrome (3 produtos: com preço, "a partir de", sem
   preço; observação com acento, emoji e quebra); conferir a conversa e a confirmação na volta;
-  contar os toques da sacola (SC-001 ≤ 6) — **humano**
+  **SC-001**: registrar toque a toque (1º, 2º e 3º "Adicionar à sacola", abrir a sacola, enviar;
+  a navegação entre produtos fica fora da contagem), 5 esperados, aprovado se ≤ 6; anotar o total
+  e qualquer toque extra com o motivo — **humano**
 - [ ] T069 Q§5.2 pior caso no aparelho (R3): 15 produtos de nomes longos, quantidade 10,
   observação até o medidor marcar o limite; a mensagem chega inteira. Registrar modelo, Android,
   Chrome e WhatsApp. Se truncar, parar e levar ao tech-lead (reduzir `ORCAMENTO_URL` sem mudar a
@@ -623,7 +676,8 @@ doc-sync), `specs/006-sacola-whatsapp/rastreabilidade.md`.
 
 ## Dependências e paralelismo
 
-- **Entre SFs**: linear, como em [Ordem entre SFs](#ordem-entre-sfs). Dentro de cada SF: testes
+- **Entre SFs**: linear, como em [Ordem entre SFs](#ordem-entre-sfs), com o GATE T004 (ADR-013)
+  entre a SF0 e a SF1 e o GATE do ADR-012 no início da T023. Dentro de cada SF: testes
   `[P]` do test-writer → implementação → check/test:int (júnior) → revisão → commit.
 - **Paralelos por SF** (arquivos disjuntos):
   - SF1: T007, T008, T009, T010 (testes); depois T013, T014, T015 (implementação, após T011 e T012).
@@ -666,15 +720,17 @@ doc-sync), `specs/006-sacola-whatsapp/rastreabilidade.md`.
 | US3.1–3.4, SC-003 | T008, T024, T025, T035, T054, T056, T065 |
 | US3.5 | T035, T056 |
 | US3.6 | T054 |
-| US3.7 + ajuste A1 | T035, **T053**, T054, T059, T065 |
+| US3.2 | T008, T054 |
+| US3.7 + ajuste A1 | T035, **T053**, T054, T059, T060, T065 |
 | US3.8, FR-013 | T026, T027, T064 |
 | US4.1–4.3, FR-007 | T036, T065 |
 | US4.4, FR-002a | T036, T044, T045, T046, T047 |
 | US4.5, FR-006 | T036 |
 | US4.6, FR-010 | T028, T032, T047, T056 |
 | FR-008a | T008, T036, T037 |
-| FR-019, SC-006 | T045, T046, T054 |
-| SC-001 | T068 |
+| FR-019, SC-006 | T045, T046, T053 (foco), T054 (foco, anúncio do subtotal), T055 (`#obs-conta`) |
+| Constitution IV (desvio) | ADR-013, GATE T004 |
+| SC-001 | T065 (item 2, `preview`), T068 (dev) |
 | SC-004 | T070 |
 | SC-005 | T001, T002, T049, T051, T065 |
 | SC-007 | T027, T064, T070 |

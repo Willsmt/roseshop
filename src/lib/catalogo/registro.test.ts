@@ -36,6 +36,22 @@ describe("registrarFalha", () => {
     ]);
   });
 
+  it("grava a classe do erro quando informada, depois dos campos do contrato", () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    registrarFalha({
+      evento: "catalogo.erro_inesperado",
+      rota: "/api/catalogo/conferencia",
+      causa: "inesperado",
+      classe: "TypeError",
+    });
+    expect(JSON.parse(erro.mock.calls[0][0] as string)).toEqual({
+      evento: "catalogo.erro_inesperado",
+      rota: "/api/catalogo/conferencia",
+      causa: "inesperado",
+      classe: "TypeError",
+    });
+  });
+
   it("rejeita causa fora de banco|r2|config|inesperado em tempo de tipo", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     // @ts-expect-error causa fora da lista fechada

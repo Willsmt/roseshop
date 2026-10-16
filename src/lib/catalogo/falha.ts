@@ -30,8 +30,10 @@ export type Falha = {
   rota: RotaFalha;
   causa: CausaFalha;
   resultado?: ResultadoFalha;
+  /** Só o nome da classe do erro (identificador); nunca a mensagem nem a pilha. */
+  classe?: string;
 };
 
-export function registrarFalha({ evento, rota, causa, resultado }: Falha): void {
-  console.error(JSON.stringify({ evento, rota, causa, resultado }));
+export function registrarFalha({ evento, rota, causa, resultado, classe }: Falha): void {
+  console.error(JSON.stringify({ evento, rota, causa, resultado, classe }));
 }

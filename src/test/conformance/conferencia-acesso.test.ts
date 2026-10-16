@@ -265,6 +265,35 @@ describe("conferência: resposta e registro (T027, SC-007)", () => {
     semRastro();
   });
 
+  it("JSON.parse que lança com os códigos na mensagem: 400 {}, e nem console nem registro os contêm", async () => {
+    const parse = vi.spyOn(JSON, "parse").mockImplementationOnce(() => {
+      throw new SyntaxError(`token inesperado em ${CODIGO_A} ${CODIGO_B} ${SEGREDO_CORPO}`);
+    });
+    const r = await post(req(JSON.stringify({ codigos: [CODIGO_A, CODIGO_B], x: SEGREDO_CORPO })));
+    expect(parse).toHaveBeenCalled();
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({});
+    semRastro();
+  });
+
+  it("500 (erro fora do banco com os códigos na mensagem): corpo {} e registro só com o nome da classe", async () => {
+    lerConferencia.mockRejectedValue(new SyntaxError(`falha ${CODIGO_A} ${CODIGO_B} ${SEGREDO_CORPO}`));
+    const r = await post(req(JSON.stringify({ codigos: [CODIGO_A, CODIGO_B] })));
+    expect(r.status).toBe(500);
+    expect(await r.json()).toEqual({});
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(registrarFalha).toHaveBeenCalledTimes(1);
+    expect(registrarFalha).toHaveBeenCalledWith({
+      evento: "catalogo.erro_inesperado",
+      rota: "/api/catalogo/conferencia",
+      causa: "inesperado",
+      classe: "SyntaxError",
+    });
+    semRastro();
+    for (const m of metodos) expect(espioes[m]).not.toHaveBeenCalled();
+  });
+
   it("todos os cenários juntos: console.log/info/warn/error/debug nunca recebem chamadas da rota", async () => {
     await post(req(JSON.stringify({ codigos: [CODIGO_A] })));
     await post(req("{", { "content-type": "text/plain" }));

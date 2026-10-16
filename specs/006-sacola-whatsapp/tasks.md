@@ -616,8 +616,8 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   >   `{}`. Todos com `no-store` e `nosniff` (cabeçalhos do pedido conferidos com `curl -v`).
   > - `GET` ⇒ 405, mas **sem** `Cache-Control: no-store` e sem `nosniff` (vem só
   >   `X-Robots-Tag: noindex, nofollow`): é o 405 padrão do Next (contrato §1), que contradiz o
-  >   "todas as respostas" do §3. **Desvio pendente**: emendar o §3 do
-  >   `contracts/conferencia.md` ou responder o 405 pela rota (decisão do tech-lead/humano).
+  >   "todas as respostas" do §3. **Resolvido por emenda do contrato** (2026-10-16): o §3 de
+  >   `contracts/conferencia.md` passou a excluir o 405 padrão do Next, que não tem corpo nem dado.
   > - `npm run db:down` ⇒ 503 `{}` com `no-store` e `nosniff`; exatamente **um** registro
   >   `{"evento":"catalogo.banco_indisponivel","rota":"/api/catalogo/conferencia","causa":"banco"}`
   >   (nível `error`). Banco de volta com `npm run db:up`, `/api/health` 200, 41 produtos.
@@ -642,9 +642,9 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   > depois do envio não incomodou: **mantido**.
 - [X] T066 Registrar o resultado (aprovado ou falhas com o passo) nesta task e em
   `specs/006-sacola-whatsapp/rastreabilidade.md` (novo, critério → prova) — **tech-lead**
-  > **Resultado (2026-10-16)**: SF7 aprovada, sem falhas no roteiro de telas. Fica pendente
-  > o desvio do 405 sem `no-store`/`nosniff` (T064), uma questão de contrato que não aparece na
-  > tela. `rastreabilidade.md` criado com as provas locais; a SF8 (T071) completa com o dev.
+  > **Resultado (2026-10-16)**: SF7 aprovada, sem falhas. O 405 sem `no-store`/`nosniff`
+  > (T064) foi resolvido por emenda do contrato (§3 de `contracts/conferencia.md`).
+  > `rastreabilidade.md` criado com as provas locais; a SF8 (T071) completa com o dev.
 
 ---
 

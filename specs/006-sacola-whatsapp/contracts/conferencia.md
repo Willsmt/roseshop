@@ -47,10 +47,15 @@ Não lê cookie, sessão nem `Authorization`; não importa `@/lib/auth`.
   `produto`, `nome`, `href`, `precoCentavos`, `aPartirDe`, `capa`, `url`, `alt`. Nunca id interno,
   categoria, versão, `destaque_vaga`, datas, e-mail.
 
-## 3. Cabeçalhos (todas as respostas)
+## 3. Cabeçalhos
 
-`Cache-Control: no-store` e `X-Content-Type-Options: nosniff`. O worker não altera respostas
+Todas as respostas da rota levam `Cache-Control: no-store` e `X-Content-Type-Options: nosniff`,
+exceto o 405 padrão do Next (§1), que não tem corpo nem dado. O worker não altera respostas
 de `POST` (research D15).
+
+> Emenda (2026-10-16, T064): no `preview`, o `GET` recebeu o 405 do Next sem esses dois
+> cabeçalhos. Como a resposta não carrega corpo nem dado do pedido, o contrato passa a
+> excluí-la, em vez de exigir que a rota responda os outros métodos.
 
 ## 4. Registro
 

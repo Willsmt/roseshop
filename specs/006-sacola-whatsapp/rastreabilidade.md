@@ -21,7 +21,7 @@ os pendentes de entrega.
 
 | Prova | Resultado | Onde |
 |---|---|---|
-| Rota de conferência (Q§2) | 200 na ordem pedida (ok, esgotado, inexistente), 415, 413 com e sem `Content-Length`, 400, 405; `no-store` e `nosniff` em todas as respostas, menos no 405 (ver pendência). | T064 |
+| Rota de conferência (Q§2) | 200 na ordem pedida (ok, esgotado, inexistente), 415, 413 com e sem `Content-Length`, 400, 405; `no-store` e `nosniff` em todas as respostas da rota; o 405 padrão do Next fica de fora, pela emenda do §3 do contrato. | T064 |
 | Falha no envio (US3.7, ajuste A1) | Com o `preview` parado: "Não consegui conferir agora, tente de novo.", sacola intacta, WhatsApp não abre. | T065 (Q§3 item 9) |
 | Banco fora (US3.8, FR-013) | 503 `{}` e um único registro fechado. | T064 |
 | Número inválido (US2.12, FR-017) | Aprovado (humano editou o `.dev.vars`). | T065 (Q§3 item 11) |
@@ -31,5 +31,5 @@ os pendentes de entrega.
 
 | Pendência | Situação |
 |---|---|
-| 405 da conferência | O `GET` recebe o 405 padrão do Next, sem `Cache-Control: no-store` e sem `X-Content-Type-Options: nosniff`, ao contrário do §3 de `contracts/conferencia.md` ("todas as respostas"). Decidir: emendar o §3 ou responder o 405 pela rota. |
+| 405 da conferência | **Resolvido por emenda do contrato** (2026-10-16): o `GET` recebe o 405 padrão do Next, sem `no-store` e sem `nosniff`; o §3 de `contracts/conferencia.md` passou a excluí-lo, já que não tem corpo nem dado. |
 | Dev (SF8) | SC-001 no aparelho, SC-002, SC-004 e SC-007 no `wrangler tail` (T068 a T071). |

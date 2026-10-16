@@ -5,17 +5,18 @@
 > fechamento (SF15), ainda não em produção: servidor de fotos (`src/lib/r2/`,
 > `src/lib/fotos/`, rota de exibição), pipeline da foto no aparelho, telas do cadastro e da
 > tela Fotos, limpeza diária (worker próprio com `scheduled`) e sugestão por IA (servidor e
-> tela do cadastro); feature 005 (catálogo público) construída, ramo FALLBACK, pronta para o
-> merge (PR #20), ainda não em produção**. Este documento descreve apenas o que existe hoje
-> no repositório. Para o que está planejado (sacola), ver `.specify/memory/constitution.md` e
+> tela do cadastro); feature 005 (catálogo público) construída, ramo FALLBACK, já em `main`
+> (deploy de produção não verificado aqui); feature 006 (sacola e envio pelo WhatsApp)
+> construída, pronta para o merge, ainda não em produção**. Este documento descreve apenas o que existe hoje
+> no repositório. Para o que está planejado, ver `.specify/memory/constitution.md` e
 > os ADRs em `specs/adr/`.
 
 ## Visão leiga
 
 O Roseshop nasceu do template oficial do OpenNext para Cloudflare
 (`create-next-app` + `@opennextjs/cloudflare`). A raiz do site agora é o **catálogo
-público** (ver [F05-catalogo-publico.md](./features/F05-catalogo-publico.md)); a sacola ainda
-não foi construída. As outras funcionalidades de produto são o
+público** (ver [F05-catalogo-publico.md](./features/F05-catalogo-publico.md)) e a **sacola**
+com envio do pedido pelo WhatsApp (ver [F06-sacola-whatsapp.md](./features/F06-sacola-whatsapp.md)). As outras funcionalidades de produto são o
 **login das administradoras** em `/painel` (ver
 [F01-autenticacao.md](./features/F01-autenticacao.md)) e o **cadastro de
 categorias** (ver [F02-categorias.md](./features/F02-categorias.md)) e o
@@ -68,6 +69,8 @@ Não há no `package.json` SDK da OpenAI de propósito: a IA usa `fetch` direto 
 src/app/
   layout.tsx    # layout raiz (fonts Geist via next/font/google, <html lang="pt-BR">, title "Roseshop")
   (public)/     # catálogo público (F05): page.tsx (/), p/[codigo]/ (detalhe, not-found), error.tsx, layout.tsx, _catalogo/ (componentes)
+  (public)/sacola/page.tsx   # /sacola: casca da sacola (F06); componentes cliente em (public)/_sacola/
+  api/catalogo/conferencia/route.ts   # POST: conferência pública da sacola (F06)
   fotos/[arquivo]/route.ts   # GET /fotos/<arquivo>: foto pública do catálogo, sem sessão (F05)
   api/catalogo/produtos/route.ts   # GET do bloco da lista ("Carregar mais") (F05)
   robots.ts     # /robots.txt sem Disallow (F05)
@@ -88,6 +91,7 @@ src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitur
 src/lib/produtos/     # módulo de domínio de produtos (actions, sugestao, painel, validacao, preco, codigo, erros, mensagens)
 src/lib/r2/   # R2: config, chaves, assinatura, bucket e verificação do arquivo (ver "Módulo R2")
 src/lib/catalogo/   # catálogo público (F05): barrel server-only, leitura, config, cursor, slug, exibicao, restauracao, falha/registro, prazos
+src/lib/sacola/   # sacola (F06): regras puras no navegador (observacao, sacola, total, mensagem, conferencia, armazenamento, textos); sem server-only (ver "Sacola e conferência")
 src/lib/ai/   # IA (SF13): config, sugestao (fetch à OpenAI), barrel server-only (ver "Módulo de IA")
 src/lib/fotos/   # fotos: actions de envio (pedirEnvio, confirmarEnvio), tipos, mensagens, erros, validacao, exibicao, limpeza
 cloudflare/   # worker próprio (worker.ts: fetch do OpenNext + scheduled), publico.ts (casca das rotas públicas, F05) e open-next-worker.d.ts
@@ -107,7 +111,7 @@ vitest.config.mts, vitest.int.config.mts, vitest.probe.config.mts, vitest.perf.c
 ```
 
 Rotas: `/` (catálogo público), `/p/[codigo]`, `/fotos/[arquivo]`, `/robots.txt`,
-`GET /api/catalogo/produtos` (todas públicas, ver "Catálogo público"), `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
+`GET /api/catalogo/produtos`, `/sacola` e `POST /api/catalogo/conferencia` (todas públicas, ver "Catálogo público" e "Sacola e conferência"), `/api/health`, `/painel/entrar`, `/painel`, `/api/auth/*` e as
 quatro de `/painel/categorias` (lista, `nova`, `[id]/renomear`, `[id]/remover`)
 as cinco de `/painel/produtos` (lista, `novo`, `[id]`, `[id]/editar`, `[id]/remover`)
 e `GET /painel/fotos/[arquivo]` (exibição de foto, guardada por sessão; ver
@@ -495,8 +499,8 @@ enviadas; nada é gravado, ela só recebe o texto para conferir. Fluxo e regras 
 
 ### Catálogo público (feature 005)
 
-> Estado: construído no **ramo FALLBACK** da spec (páginas dinâmicas), pronto para o merge
-> (PR #20). Fluxo, arquivos e pegadinhas na [F05](./features/F05-catalogo-publico.md).
+> Estado: construído no **ramo FALLBACK** da spec (páginas dinâmicas), já em `main`
+> (commits da 005 no histórico de `main`). Fluxo, arquivos e pegadinhas na [F05](./features/F05-catalogo-publico.md).
 
 Em `*.workers.dev` não existe cache de borda da Cloudflare, e a spec exige que mudanças do
 painel apareçam em até 1 minuto. O spike da SF0 reprovou o ISR do OpenNext, e o
@@ -559,8 +563,40 @@ graph TD
   `WHATSAPP_NUMBER` (secret em dev e produção). Detalhes em
   [operacao.md](./operacao.md#variáveis-de-ambiente).
 
+### Sacola e conferência (feature 006)
+
+> Estado: construída, pronta para o merge, ainda não em produção. Fluxo, arquivos e pegadinhas
+> na [F06](./features/F06-sacola-whatsapp.md). Sem migration, sem variável nem binding novos
+> (usa `WHATSAPP_NUMBER` e `SITE_URL` da 005).
+
+A sacola é guardada **só no aparelho** (`localStorage`); o servidor só confere. Duas rotas
+públicas novas e um módulo novo:
+
+| Item | Onde | Resposta / regra |
+|---|---|---|
+| `/sacola` | `src/app/(public)/sacola/page.tsx` (`force-dynamic`) | Página pública: `cloudflare/publico.ts` a trata como as demais páginas (`X-Robots-Tag: noindex, nofollow`, `Cache-Control: public, max-age=60`, 500 vira 503 `no-store` com `Retry-After: 30`; a rota registrada é `/sacola`). `/sacolas` e `/sacola/x` continuam fora do catálogo (resposta devolvida intacta). |
+| `POST /api/catalogo/conferencia` | `src/app/api/catalogo/conferencia/route.ts` | O worker **não altera** o `POST` (a rota define `Cache-Control: no-store` e `X-Content-Type-Options: nosniff`; 400, 413, 415, 500 e 503 com corpo `{}`). Decisão: [ADR-012](../specs/adr/012-conferencia-sacola.md). |
+| `src/lib/sacola/` | núcleo puro, importado por componentes cliente | Desvio documentado da constitution IV: [ADR-013](../specs/adr/013-desvio-constitution-iv.md). |
+
+- **Leitura**: `lerConferencia` (`src/lib/catalogo/leitura.ts`, exportada pelo barrel) chama
+  `conferirProdutos` em `src/lib/db/catalogo.ts`: **uma** consulta `WHERE id IN (...)`, só
+  `produtos` e a capa (mesmo subselect da 005). Falha de banco vira `BancoIndisponivel`.
+- **Registro**: `falha.ts` ganhou as rotas `/sacola` e `/api/catalogo/conferencia` e o campo
+  opcional `classe` (só o nome do construtor do erro, usado no 500 da conferência). O 503 usa
+  `catalogo.banco_indisponivel`; o 500, `catalogo.erro_inesperado`. Nunca corpo, códigos nem
+  mensagem de exceção.
+- **Fronteira do módulo** (`src/lib/sacola/`): sem `server-only`, `next/*`, `@/lib/db`,
+  `@/lib/auth`, `@/lib/r2` nem o barrel `@/lib/catalogo`; só `@/lib/produtos/preco`,
+  `@/lib/catalogo/exibicao` e `zod/mini`. Travada por `src/lib/sacola/fronteira.test.ts` e por
+  regra de lint em `eslint.config.mjs`.
+- **Conformidade**: `src/test/conformance/conferencia-acesso.test.ts` (sem sessão, chaves
+  permitidas na resposta, nada do pedido no `console`) e `catalogo-html-005.test.tsx` (o HTML da
+  005 só ganha os dois `[data-sacola]` vazios).
+- **Camadas cliente**: `src/app/(public)/_sacola/` consome só `@/lib/sacola/*`; o layout público
+  e o detalhe ganham dois espaços reservados de altura fixa, para a página não pular ao hidratar.
+
 ### Planejado, não implementado
 
-A sacola é descrita em `.specify/memory/constitution.md` (princípio II, "Stack fechada") mas
-**não tem nenhum código correspondente** neste repositório ainda. Não documentamos
-comportamento aqui até existir implementação.
+Nada além do já descrito acima e nas specs: não há pedido gravado no servidor, conta de cliente
+nem pagamento (fora de escopo da 006). Não documentamos comportamento aqui até existir
+implementação.

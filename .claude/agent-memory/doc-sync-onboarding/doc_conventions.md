@@ -52,3 +52,7 @@ Sync da 005 (2026-10-15): âncoras entre docs usam o slug COM acentos (`#catálo
 as já existentes. Doc de feature 005 = `F05-catalogo-publico.md`; sinais/contingências do catálogo e troca do
 `WHATSAPP_NUMBER` ficam em `operacao.md`, seção própria antes de "Troubleshooting". No `CLAUDE.md`, o "Estado
 atual" é UM parágrafo (linha única): anexar no fim dessa linha, não no fim do arquivo.
+
+Sync da 006 (2026-10-16): doc `F06-sacola-whatsapp.md`; seção "Sacola e conferência (feature 006)" em
+`architecture.md` e "Sacola: sinais e pendências de entrega" em `operacao.md`. Estado de feature já em
+`main` sem prova de deploy: escrever "já em `main` (deploy de produção não verificado)", nunca "em produção".

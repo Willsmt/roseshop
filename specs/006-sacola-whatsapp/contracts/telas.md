@@ -9,7 +9,7 @@ as regras.
 
 | Onde | HTML do servidor (único acréscimo à 005) | Depois de hidratar |
 |---|---|---|
-| `(public)/layout.tsx` | `<div data-sacola="cabecalho" class="mx-auto flex h-12 max-w-xl justify-end px-4"></div>` | `AcessoSacola`: `<a href="/sacola">Sacola, <span aria-live="polite">2 produtos</span></a>`; "1 produto" no singular; armazenamento indisponível ⇒ nada |
+| `(public)/layout.tsx` | `<div data-sacola="cabecalho" class="mx-auto flex h-12 max-w-xl justify-end px-4"></div>` | `AcessoSacola`: `<a href="/sacola">Sacola, <span aria-live="polite">2 produtos</span></a>`; "1 produto" no singular; "0 produtos" com a sacola vazia; armazenamento indisponível ⇒ nada |
 | `p/[codigo]/page.tsx` (só disponível) | `<div data-sacola="detalhe" class="min-h-12"></div>` antes de "Perguntar no WhatsApp" | `BotaoSacola` (abaixo) |
 
 O teste da SC-005 remove os elementos `[data-sacola]` e compara com o fixture da 005.
@@ -54,10 +54,18 @@ Estados (um por vez):
 - Resumo: "Subtotal: R$ 22,00" (ou "a partir de …" / "Consulte o valor") e "+ N itens a
   consultar"; região `aria-live="polite"`.
 - Observação: `<label for="obs">Observação (opcional)</label>` `<textarea id="obs"
-  aria-describedby="obs-conta">` sem `maxLength`; `<p id="obs-conta" aria-live="polite">` com
-  "Ainda cabem N" ou "Passou N. Encurte a observação para enviar." Ao digitar, entrada que
-  deixaria `restante < 0` é desfeita (só quando o texto cresce); excesso causado por a sacola
-  crescer é exibido e não cortado.
+  aria-describedby="obs-conta">` sem `maxLength`; `<p id="obs-conta" aria-live="polite">` com o
+  medidor de `medidorObservacao` (contracts/sacola.md §4), em um de três modos:
+  - **teto de 200 manda** (`limite: "caracteres"`): "N de 200", N = code points do texto
+    normalizado (ex.: "37 de 200");
+  - **orçamento da URL manda** (`limite: "mensagem"`, sem excesso): "Espaço da mensagem quase
+    cheio" + `<progress max="100" value={fracao × 100} aria-label="Espaço da mensagem usado">`;
+    nunca mostra o número de caracteres codificados nem o que resta deles;
+  - **excesso** (`limite: "mensagem"`, `excede: true`): "A observação não cabe mais na mensagem.
+    Encurte para enviar." + a barra cheia; envio desabilitado.
+  O número exato do orçamento fica só nos testes (`restanteObservacao`). Ao digitar, entrada que
+  deixaria `restanteObservacao < 0` é desfeita (só quando o texto cresce); excesso causado por a
+  sacola crescer é exibido e não cortado.
 - `<button>Limpar sacola</button>` → `<dialog>` "Todos os produtos vão sair da sacola." com
   "Limpar" e "Cancelar".
 - `<button>Enviar pedido pelo WhatsApp</button>`:
@@ -67,6 +75,11 @@ Estados (um por vez):
     tarde.</p>`; sem `href`, nenhum `wa.me` no DOM;
   - todos esgotados ⇒ mesmo padrão com "Todos os produtos da sacola estão esgotados.";
   - observação com excesso, conferindo ou falha ⇒ mesmo padrão com o texto do caso.
+  - **conferência do envio sem resposta válida** (mais de 4 s, erro de rede, resposta 400 ou
+    5xx, ou fora do esquema): o envio é **bloqueado**, nunca abre o WhatsApp com dados não
+    conferidos (SC-003). Mostra `<p role="status">Não consegui conferir agora, tente de
+    novo.</p>`; a sacola guardada fica intacta (nenhum `setItem`/`removeItem`), a lista e a
+    observação continuam na tela e o botão de envio segue ativo para nova tentativa.
 
 ### Foco e anúncios (research D12)
 
@@ -77,5 +90,6 @@ Estados (um por vez):
 | Cancelar o Limpar | botão "Limpar sacola" | — |
 | Quantidade | fica no botão | subtotal novo |
 | Envio barrado por mudança | `#sacola-titulo` | avisos |
+| Envio barrado por falha da conferência | fica no botão de envio | "Não consegui conferir agora, tente de novo." |
 
 Mudança vinda de outra aba: só re-render e anúncio do contador; foco não se move.

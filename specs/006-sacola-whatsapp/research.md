@@ -79,9 +79,10 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
     `\n\nObservação:\n`; normalizada vazia ⇒ sem o bloco.
   - **Orçamento da observação** (contador do campo): `restante = min(200 − contarCaracteres(obs),
     1800 − comprimento(com nomes em L = 0 e com obs))`. Negativo ⇒ excesso exibido e envio
-    desabilitado. O contador mostra a unidade combinada como "Ainda cabem N" / "Passou N" (uma
-    quebra custa 3, um acento 6, um emoji até 12; o texto da tela explica que acento e emoji
-    ocupam mais espaço).
+    desabilitado. **Ajuste do humano (tasks, 2026-10-16)**: a tela mostra "N de 200" enquanto o
+    teto de 200 manda e, quando o orçamento da URL passa a mandar, "Espaço da mensagem quase
+    cheio" com barra de progresso, sem expor a conta codificada (`medidorObservacao`,
+    contracts/telas.md §3); o número exato fica nos testes.
   - **Número inválido**: `montarPedido` nunca é chamado (FR-017); a tela decide antes.
 - **Rationale**: o orçamento é garantido pela construção (a função só devolve `ok` se mediu ≤ 1800)
   e provado por teste do pior caso (§4).
@@ -206,6 +207,10 @@ Fontes conferidas nesta sessão: código da 005 no branch (`src/lib/catalogo/`, 
     FR-017; o clique não faz nada; `montarPedido` não é importado nesse ramo de render.
   - Envio desabilitado também quando: todos esgotados (texto próprio), observação passou do limite
     (contador mostra o excesso), conferência pendente ou falha.
+  - **Ajuste do humano (tasks, 2026-10-16)**: se a conferência do envio passar de 4 s, falhar por
+    rede ou responder 400/5xx (ou fora do esquema), o envio é **bloqueado** com "Não consegui
+    conferir agora, tente de novo." e a sacola fica intacta; nunca se envia com dados não
+    conferidos (SC-003).
 - **Rationale**: US2.7, US2.9, US3.5, FR-017, FR-018. A navegação dentro da ativação transitória
   (≈ 5 s no Chrome) depois do toque mantém o atalho para o app (R3).
 

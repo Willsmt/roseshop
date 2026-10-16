@@ -52,7 +52,7 @@ export function ConfirmarRemocao({
 				</Button>
 			</div>
 			{erro ? (
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					{erro}
 				</p>
 			) : null}

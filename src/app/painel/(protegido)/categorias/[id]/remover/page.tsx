@@ -18,12 +18,12 @@ export default async function RemoverCategoriaPage({
 	if (c === null) {
 		return (
 			<div className="flex flex-col gap-4">
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					{mensagem("nao_existe")}
 				</p>
 				<Link
 					href="/painel/categorias"
-					className="inline-flex min-h-12 items-center text-base font-semibold underline"
+					className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
 				>
 					Voltar para a lista
 				</Link>
@@ -33,7 +33,7 @@ export default async function RemoverCategoriaPage({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-bold">Remover categoria</h1>
+			<h1 className="text-3xl">Remover categoria</h1>
 			<ConfirmarRemocao id={c.id} versao={c.versao} nome={c.nome} />
 		</div>
 	);

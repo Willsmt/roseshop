@@ -10,9 +10,9 @@ import { listarProdutosDoPainel } from "@/lib/produtos/painel";
 
 const LISTA = "/painel/produtos";
 const linkPrimario =
-	"inline-flex min-h-12 items-center justify-center rounded-lg bg-neutral-900 px-6 py-3 text-base font-semibold text-white sm:self-start";
+	"inline-flex min-h-12 items-center justify-center rounded-pilula bg-acao px-6 py-3 text-base font-bold text-white hover:bg-acao-forte sm:self-start";
 const linkSecundario =
-	"inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-neutral-900 px-4 py-3 text-base font-semibold underline sm:self-start";
+	"inline-flex min-h-12 items-center justify-center rounded-pilula border-2 border-texto bg-superficie px-5 py-3 text-base font-bold text-texto hover:bg-superficie-2 sm:self-start";
 
 const primeiro = (v: string | string[] | undefined) => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
 
@@ -34,10 +34,10 @@ export default async function ProdutosPage({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<Link href="/painel" className="inline-flex min-h-12 items-center self-start text-base font-semibold underline">
+			<Link href="/painel" className="inline-flex min-h-12 items-center self-start text-base font-bold underline underline-offset-4">
 				Voltar ao painel
 			</Link>
-			<h1 className="text-2xl font-bold">Produtos</h1>
+			<h1 className="text-3xl">Produtos</h1>
 			{aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
 			<Link href={`${LISTA}/novo`} className={linkPrimario}>
 				Novo produto
@@ -68,7 +68,7 @@ export default async function ProdutosPage({
 			{itens.length === 0 ? (
 				filtrando ? (
 					<div className="flex flex-col gap-4">
-						<p className="text-base font-semibold">Nada encontrado com esses filtros.</p>
+						<p className="text-base font-bold">Nada encontrado com esses filtros.</p>
 						<Link href={LISTA} className={linkSecundario}>
 							Limpar filtros
 						</Link>
@@ -80,7 +80,7 @@ export default async function ProdutosPage({
 				<ul className="flex flex-col gap-4">
 					{itens.map((i) => (
 						<li key={i.id}>
-							<Link href={i.href} className="flex gap-4 rounded-lg border border-neutral-300 p-4">
+							<Link href={i.href} className="flex gap-4 rounded-suave border-2 border-linha bg-white p-4 hover:border-texto-suave">
 								{i.capaUrl ? (
 									// eslint-disable-next-line @next/next/no-img-element -- rota com sessão, sem otimização
 									<img
@@ -89,20 +89,20 @@ export default async function ProdutosPage({
 										loading="lazy"
 										width={64}
 										height={64}
-										className="size-16 shrink-0 rounded object-cover"
+										className="size-16 shrink-0 rounded-arco object-cover"
 									/>
 								) : (
-									<span className="flex size-16 shrink-0 items-center justify-center rounded border border-dashed border-neutral-400 text-center text-base">
+									<span className="flex size-16 shrink-0 items-center justify-center rounded-arco border-2 border-dashed border-texto-suave text-center text-base">
 										sem foto
 									</span>
 								)}
 								<span className="flex flex-col gap-1">
-									<span className="text-base font-semibold">{i.codigo}</span>
+									<span className="text-base font-bold">{i.codigo}</span>
 									<span className="text-lg font-bold">{i.nome}</span>
 									<span className="text-base">{i.categoriaNome}</span>
-									<span className="text-base font-semibold">{i.preco ?? "Sem preço"}</span>
-									{i.esgotado ? <span className="text-base font-semibold">Esgotado</span> : null}
-									{i.emDestaque ? <span className="text-base font-semibold">Em destaque</span> : null}
+									<span className="text-base font-bold">{i.preco ?? "Sem preço"}</span>
+									{i.esgotado ? <span className="text-base font-bold">Esgotado</span> : null}
+									{i.emDestaque ? <span className="text-base font-bold">Em destaque</span> : null}
 								</span>
 							</Link>
 						</li>

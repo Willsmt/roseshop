@@ -6,7 +6,7 @@ import { obterProdutoDoPainel } from "@/lib/produtos/painel";
 import { AcoesProduto } from "./acoes-produto";
 
 const linkBotao =
-	"inline-flex min-h-12 items-center justify-center rounded-lg border-2 border-neutral-900 px-4 py-3 text-base font-semibold underline";
+	"inline-flex min-h-12 items-center justify-center rounded-pilula border-2 border-texto bg-superficie px-5 py-3 text-base font-bold text-texto hover:bg-superficie-2";
 
 export default async function DetalheProdutoPage({
 	params,
@@ -23,10 +23,10 @@ export default async function DetalheProdutoPage({
 	if (p === null) {
 		return (
 			<div className="flex flex-col gap-4">
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					Produto não encontrado
 				</p>
-				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-semibold underline">
+				<Link href="/painel/produtos" className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4">
 					Voltar à lista
 				</Link>
 			</div>
@@ -36,17 +36,17 @@ export default async function DetalheProdutoPage({
 	const emDestaque = p.destaqueVaga !== null;
 	return (
 		<div className="flex flex-col gap-6">
-			<Link href={p.voltarHref} className="inline-flex min-h-12 items-center self-start text-base font-semibold underline">
+			<Link href={p.voltarHref} className="inline-flex min-h-12 items-center self-start text-base font-bold underline underline-offset-4">
 				Voltar à lista
 			</Link>
 			<div className="flex flex-col gap-2">
-				<p className="text-base font-semibold">{p.codigo}</p>
-				<h1 className="text-2xl font-bold">{p.nome}</h1>
+				<p className="text-base font-bold">{p.codigo}</p>
+				<h1 className="text-3xl">{p.nome}</h1>
 				<p className="text-base">{p.categoriaNome}</p>
 				<p className="text-lg font-bold">{p.preco ?? "Sem preço"}</p>
 				<div className="flex gap-2">
-					{p.esgotado ? <span className="text-base font-semibold">Esgotado</span> : null}
-					{emDestaque ? <span className="text-base font-semibold">Em destaque</span> : null}
+					{p.esgotado ? <span className="text-base font-bold">Esgotado</span> : null}
+					{emDestaque ? <span className="text-base font-bold">Em destaque</span> : null}
 				</div>
 			</div>
 			{p.fotos.length > 0 ? (
@@ -59,10 +59,10 @@ export default async function DetalheProdutoPage({
 								alt={`Foto ${i + 1}`}
 								width={400}
 								height={400}
-								className="aspect-square h-auto w-full max-w-sm rounded-lg object-cover"
+								className="aspect-square h-auto w-full max-w-sm rounded-arco border-[6px] border-superficie-2 object-cover"
 							/>
 							{i === 0 ? (
-								<span className="absolute left-2 top-2 rounded bg-neutral-900 px-2 py-1 text-base font-semibold text-white">
+								<span className="absolute left-2 top-2 rounded-pilula bg-texto px-3 py-1 text-base font-bold text-superficie">
 									Capa
 								</span>
 							) : null}
@@ -70,7 +70,7 @@ export default async function DetalheProdutoPage({
 					))}
 				</ul>
 			) : (
-				<div className="flex min-h-32 items-center justify-center rounded-lg border-2 border-dashed border-neutral-400 text-base">
+				<div className="flex min-h-32 items-center justify-center rounded-suave border-2 border-dashed border-texto-suave text-base">
 					sem foto
 				</div>
 			)}

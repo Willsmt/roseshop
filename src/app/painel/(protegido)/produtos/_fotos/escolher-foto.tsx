@@ -87,7 +87,7 @@ export function EscolherFoto({ quantidade, onEscolher, desabilitado = false }: P
 					/>
 				</div>
 			)}
-			{cheio ? <p className="text-base text-neutral-700">Máximo de 3 fotos</p> : null}
+			{cheio ? <p className="text-base text-texto-suave">Máximo de 3 fotos</p> : null}
 		</div>
 	);
 }

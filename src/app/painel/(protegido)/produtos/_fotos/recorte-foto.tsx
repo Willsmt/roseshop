@@ -54,7 +54,7 @@ export function RecorteFoto({ arquivo, onUsar, onCancelar }: Props) {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-neutral-900">
+			<div className="relative aspect-square w-full max-w-md overflow-hidden rounded-suave bg-texto">
 				{imagem ? (
 					<Cropper
 						image={imagem}
@@ -73,7 +73,7 @@ export function RecorteFoto({ arquivo, onUsar, onCancelar }: Props) {
 				) : null}
 			</div>
 			<div className="flex max-w-md flex-col gap-2">
-				<label htmlFor={idZoom} className="text-base font-semibold text-neutral-900">
+				<label htmlFor={idZoom} className="text-base font-bold text-texto">
 					Aproximar
 				</label>
 				<input
@@ -84,7 +84,7 @@ export function RecorteFoto({ arquivo, onUsar, onCancelar }: Props) {
 					step={0.1}
 					value={zoom}
 					onChange={(e) => setZoom(Number(e.currentTarget.value))}
-					className="h-12 w-full accent-neutral-900"
+					className="h-12 w-full accent-acao"
 				/>
 			</div>
 			<div className="flex flex-col gap-3 sm:flex-row">

@@ -7,7 +7,7 @@ export default async function NovaCategoriaPage() {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-bold">Nova categoria</h1>
+			<h1 className="text-3xl">Nova categoria</h1>
 			<FormCriar />
 		</div>
 	);

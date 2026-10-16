@@ -18,12 +18,12 @@ export default async function RenomearCategoriaPage({
 	if (c === null) {
 		return (
 			<div className="flex flex-col gap-4">
-				<p role="alert" className="text-base font-semibold text-red-700">
+				<p role="alert" className="text-base font-bold text-erro">
 					{mensagem("nao_existe")}
 				</p>
 				<Link
 					href="/painel/categorias"
-					className="inline-flex min-h-12 items-center text-base font-semibold underline"
+					className="inline-flex min-h-12 items-center text-base font-bold underline underline-offset-4"
 				>
 					Voltar para a lista
 				</Link>
@@ -33,7 +33,7 @@ export default async function RenomearCategoriaPage({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<h1 className="text-2xl font-bold">Renomear categoria</h1>
+			<h1 className="text-3xl">Renomear categoria</h1>
 			<FormRenomear id={c.id} versao={c.versao} nomeAtual={c.nome} />
 		</div>
 	);

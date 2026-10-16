@@ -133,6 +133,23 @@ Worker não as empacota (`npm audit --omit=dev` não as vê).
 
 As versões evitam lançamentos de menos de duas semanas.
 
+**Instalação e auditoria (Fase 7, 2026-10-16).** Instalados com `npm install --save-exact
+--ignore-scripts` (nenhum script rodou): o `three` acrescentou 1 pacote e o `@types/three`, 7.
+Resultado do audit logo depois:
+
+- `npm audit --omit=dev --audit-level=high` (runtime, o gate do CI): **0 vulnerabilidades**.
+- `npm audit --audit-level=high` (tudo): **5 high, todas pré-existentes e de desenvolvimento**,
+  uma única falha (GHSA-vfj7-8cjw-p6xm, `braces`) pela cadeia `eslint-config-next` →
+  `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`. O mesmo audit sobre o
+  `package-lock.json` do commit anterior (16dccfb) acusa as mesmas 5: não vêm do three. É risco
+  aceito pelo ADR-007, registrado em `docs/operacao.md` com revisão em 2026-11-03.
+  `npm audit fix --force` não foi usado (trocaria o `eslint-config-next` por uma versão major
+  antiga).
+- Das 6 dependências de apoio do `@types/three`, as 4 que são pacotes de código aparecem só sob
+  ele na árvore (`npm ls --all`): `@dimforge/rapier3d-compat@0.12.0`, `@tweenjs/tween.js@23.1.3`,
+  `fflate@0.8.3` e `meshoptimizer@1.1.1`. As outras duas são só tipos (`@types/webxr`,
+  `@types/stats.js`). Nenhuma é importada pelo app.
+
 ## Alternativas descartadas
 
 - **shadcn/ui completo (Radix + cva + tailwind-merge):** acessível e popular, mas pesa nas rotas

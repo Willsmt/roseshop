@@ -431,8 +431,9 @@ a sacola abre vazia, sem erro.
   codificar. A observação MUST ter no máximo 200 caracteres inteiros (code points,
   contados depois da normalização) e MUST NOT ser guardada.
 - **FR-015a** (normalização da observação): uma única regra, usada igualmente pelo
-  contador, pelo campo e pela mensagem, MUST: converter CRLF em LF; aplicar NFC;
-  remover caracteres de controle (exceto LF) e os invisíveis de direção e largura
+  contador, pelo campo e pela mensagem, MUST: converter CRLF em LF; remover
+  surrogate sem par (alto ou baixo sozinho), preservando os pares válidos; aplicar
+  NFC; remover caracteres de controle (exceto LF) e os invisíveis de direção e largura
   zero (U+200B–U+200F, U+202A–U+202E, U+2060, U+2066–U+2069, U+FEFF), preservando
   U+200D e os seletores de variação U+FE0E/U+FE0F; tirar os espaços das pontas;
   reduzir 3 ou mais quebras seguidas a 2. A observação MUST ir por último, depois

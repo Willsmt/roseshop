@@ -129,6 +129,23 @@ export async function obterPublico(db: Db, id: number): Promise<ProdutoPublicoDb
   };
 }
 
+// Conferência da sacola (feature 006, contracts/conferencia.md §5, research D8): uma consulta com
+// `IN` pela PK, sem `ORDER BY` (a ordem vem do pedido). Id ausente fica fora do resultado.
+export type ConferenciaDb = CartaoDb;
+
+export async function conferirProdutos(db: Db, ids: number[]): Promise<ConferenciaDb[]> {
+  if (ids.length === 0) return [];
+  const lista = sql.join(
+    ids.map((id) => sql`${id}::integer`),
+    sql`, `,
+  );
+  const r = await db.execute(sql`
+    SELECT p.id, p.nome, p.preco_centavos, p.a_partir_de, p.esgotado, ${CAPA} AS capa_chave
+    FROM produtos p
+    WHERE p.id IN (${lista})`);
+  return (r.rows as LinhaCartao[]).map(cartao);
+}
+
 // Só `produto_fotos`: envio pendente ou confirmado e ainda não adotado não é público (US6).
 export async function fotoPublica(db: Db, chave: string): Promise<boolean> {
   const r = await db.execute(sql`

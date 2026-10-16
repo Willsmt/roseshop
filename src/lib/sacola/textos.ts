@@ -32,6 +32,7 @@ export const textos = {
   falhaAoAbrir: "Não foi possível conferir a sacola agora.",
   tentarDeNovo: "Tentar de novo",
   falhaNoEnvio: "Não consegui conferir agora, tente de novo.",
+  falhaAoGravar: "Não foi possível salvar a sacola agora. Tente de novo.",
   enviado: "Seu pedido foi aberto no WhatsApp.",
   voltar: "Voltar",
   naoEstaMaisNoCatalogo: (codigo: string) => `O produto #${codigo} não está mais no catálogo.`,

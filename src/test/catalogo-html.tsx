@@ -71,6 +71,18 @@ const vitrine = () => ({
   bloco: { itens: [cartao(1), cartao(2, true), cartao(3), cartao(4), cartao(5)], proximo: null, categoria: null },
 });
 
+// Feature 006, SF6: HTML do servidor da /sacola (layout + página), para a regressão sem JS.
+export async function gerarHtmlSacola(): Promise<string> {
+  configCatalogo.mockReset().mockReturnValue({ whatsapp: "+5511999999999", siteUrl: null });
+  const { default: Layout } = await import("@/app/(public)/layout");
+  const { default: Sacola } = await import("@/app/(public)/sacola/page");
+  return renderToStaticMarkup(
+    <Layout>
+      <Sacola />
+    </Layout>,
+  );
+}
+
 export async function gerarHtml005(caso: Caso005): Promise<string> {
   configCatalogo.mockReset().mockReturnValue({ whatsapp: "+5511999999999", siteUrl: null });
   const { default: Layout } = await import("@/app/(public)/layout");

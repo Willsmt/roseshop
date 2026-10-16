@@ -35,7 +35,13 @@ function ler(): Leitura {
 const assinar = (aoMudar: () => void) => assinarSacola(window, aoMudar);
 const doServidor = (): Leitura | null => null;
 
+// A leitura inteira, para a /sacola separar "antes de hidratar" (`null`) de "armazenamento
+// indisponível" (`{ disponivel: false }`).
+export function useLeituraSacola(): Leitura | null {
+  return useSyncExternalStore<Leitura | null>(assinar, ler, doServidor);
+}
+
 export function useSacola(): Sacola | null {
-  const leitura = useSyncExternalStore<Leitura | null>(assinar, ler, doServidor);
+  const leitura = useLeituraSacola();
   return leitura?.disponivel ? leitura.sacola : null;
 }

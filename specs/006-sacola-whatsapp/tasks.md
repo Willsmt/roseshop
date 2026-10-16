@@ -484,7 +484,7 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
 **Fecha**: US2, US3 (tela), US4.6 (`/sacola` sem JS), SC-003, SC-006.
 **Revisão**: tech-lead revisa o diff do ui-dev.
 
-- [ ] T053 [P] [US3] **Teste dedicado do ajuste A1** — `src/app/(public)/_sacola/enviar-pedido.test.tsx`
+- [X] T053 [P] [US3] **Teste dedicado do ajuste A1** — `src/app/(public)/_sacola/enviar-pedido.test.tsx`
   (jsdom, `fetch` e `location.assign` espionados, `localStorage` falso com spy): sacola conferida e
   pronta; ao tocar em "Enviar pedido pelo WhatsApp", a reconferência:
   1. **passa de 4 s** (fake timers, `fetch` pendente) ⇒
@@ -500,7 +500,7 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   botão de envio** (`document.activeElement`); o botão de envio continua ativo (sem
   `aria-disabled`) e é a nova tentativa: um novo toque com 200 sem mudança tira o alerta e abre o
   WhatsApp. Nenhum `wa.me` aparece no DOM em nenhum momento (SC-003) — **test-writer**
-- [ ] T054 [P] [US2] [US3] Teste primeiro — `src/app/(public)/_sacola/tela-sacola.test.tsx`
+- [X] T054 [P] [US2] [US3] Teste primeiro — `src/app/(public)/_sacola/tela-sacola.test.tsx`
   (CT§3): estados um por vez — armazenamento indisponível (texto próprio + link), **vazia**
   (`#sacola-vazia`, link "Ver o catálogo", sem envio, US2.11), **conferindo** ("Conferindo a
   sacola…" com `role="status"`, sem preços), **falha ao abrir** ("Não foi possível conferir a
@@ -522,7 +522,7 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   "Limpar" esvazia e foca `#sacola-vazia` (US2.4); outra aba adiciona um código ⇒ só esse código
   é conferido e o foco não se move (D13); axe sem violações graves em cada estado; percurso só
   com Tab/Enter/Espaço, incluindo o diálogo (SC-006) — **test-writer**
-- [ ] T055 [P] [US2] Teste primeiro — `src/app/(public)/_sacola/observacao.test.tsx` (ajuste A2,
+- [X] T055 [P] [US2] Teste primeiro — `src/app/(public)/_sacola/observacao.test.tsx` (ajuste A2,
   CT§3, FR-015a, FR-016): `<label>` ligado ao `<textarea id="obs">` sem `maxLength` e com
   `aria-describedby="obs-medidor obs-conta"`; com sacola pequena, `#obs-medidor` mostra
   **"N de 200"** contando code points do texto **normalizado** (colar `"  oi\r\n\r\n\r\n👍  "`
@@ -537,7 +537,7 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   enviar.", barra cheia e envio desabilitado, texto **não cortado**; a mesma entrada suja gera a
   mesma string em contador, campo e mensagem (FR-015a, três pontos); recarregar ⇒ campo vazio
   (US2.8) — **test-writer**
-- [ ] T056 [US2] [US3] [US4] Teste primeiro — `src/app/(public)/sacola/page.test.tsx` e
+- [X] T056 [US2] [US3] [US4] Teste primeiro — `src/app/(public)/sacola/page.test.tsx` e
   ampliar `src/app/(public)/_sacola/enviar-pedido.test.tsx` **depois da T053** (mesmo arquivo,
   por isso em série com ela): página com `<noscript>` "Ative o JavaScript para usar a sacola." e
   link "Ver o catálogo" para `/` (US4.6, FR-009); `dynamic = "force-dynamic"`; passa
@@ -556,16 +556,16 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
 
   > Sem `[P]`: a T056 divide `enviar-pedido.test.tsx` com a T053 e só começa depois dela.
 
-- [ ] T057 [P] [US2] [US3] `src/app/(public)/_sacola/item-sacola.tsx` (linha da lista, quantidade
+- [X] T057 [P] [US2] [US3] `src/app/(public)/_sacola/item-sacola.tsx` (linha da lista, quantidade
   com `aria-label` "Diminuir/Aumentar quantidade de <nome>", `<output>`, "Remover", "Esgotado",
   aviso de preço) e `src/app/(public)/_sacola/confirmar-limpar.tsx` (`<dialog>` nativo com
   `showModal()`, "Limpar" e "Cancelar") — **ui-dev**
-- [ ] T058 [P] [US2] `src/app/(public)/_sacola/observacao.tsx` (ajuste A2, CT§3): guarda o texto
+- [X] T058 [P] [US2] `src/app/(public)/_sacola/observacao.tsx` (ajuste A2, CT§3): guarda o texto
   bruto; modo por `medidorObservacao` de `@/lib/sacola/mensagem`; `#obs-medidor` sem `aria-live`
   ("N de 200" ou `<progress>`); `#obs-conta` com `aria-live="polite"` cujo texto só muda na
   transição de modo ("Espaço da mensagem quase cheio"; excesso); desfaz a entrada que deixaria
   `restanteObservacao < 0` só quando o texto cresce; nunca mostra o número codificado — **ui-dev**
-- [ ] T059 [US2] [US3] `src/app/(public)/_sacola/enviar-pedido.tsx` (D11 + ajuste A1):
+- [X] T059 [US2] [US3] `src/app/(public)/_sacola/enviar-pedido.tsx` (D11 + ajuste A1):
   `<button type="button">`, nunca `<a href>`; toque ⇒ `normalizarObservacao` → `conferir` →
   `"falha"` ⇒ **bloqueia**: estado "Falha no envio (lista conferida mantida)" de CT§3, com
   `<p role="alert">Não consegui conferir agora, tente de novo.</p>`, foco no próprio botão, botão
@@ -574,15 +574,15 @@ e testes (novos; `enviar-pedido` sugerido), `src/test/conformance/catalogo-orcam
   senão `montarPedido` → `history.replaceState({ ...history.state, sacolaEnviada: true }, "")`
   → `location.assign(url)` (mesma aba, sem `window.open`). Número inválido ⇒ ramo sem
   `montarPedido`, com `aria-disabled` + `aria-describedby` — **ui-dev**
-- [ ] T060 [US2] [US3] [US4] `src/app/(public)/_sacola/tela-sacola.tsx` (estados de CT§3, com
+- [X] T060 [US2] [US3] [US4] `src/app/(public)/_sacola/tela-sacola.tsx` (estados de CT§3, com
   "Falha ao abrir" e "Falha no envio (lista conferida mantida)" como estados distintos,
   conferência ao abrir e de códigos novos de outra aba, foco e anúncios de CT "Foco e anúncios",
   confirmação pelo `pageshow`) e `src/app/(public)/sacola/page.tsx` (`force-dynamic`,
   `<noscript>` e `TelaSacola` com `configCatalogo().whatsapp`) — **ui-dev**
-- [ ] T061 Revisão do diff do ui-dev: regras só por `@/lib/sacola/*`, nenhum `wa.me` montado fora de
+- [X] T061 Revisão do diff do ui-dev: regras só por `@/lib/sacola/*`, nenhum `wa.me` montado fora de
   `montarPedido`, nenhuma gravação no caminho de falha (A1), contador sem número codificado (A2)
   — **tech-lead**
-- [ ] T062 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T062 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T063 Commit (humano):
   ```text
   feat(sacola): adiciona a página da sacola e o envio pelo WhatsApp

@@ -4,6 +4,7 @@ import {
   houveMudanca,
   juntar,
   lerRespostaConferencia,
+  linhasDoPedido,
   type ItemConferencia,
 } from "./conferencia";
 import type { Item, ProdutoConferido, Sacola } from "./sacola";
@@ -228,5 +229,19 @@ describe("houveMudanca (US3.5)", () => {
 
   it("verdadeiro com preço alterado", () => {
     expect(houveMudanca(sacola([item("0042", { precoVisto: 500 })]), [OK])).toBe(true);
+  });
+});
+
+// Feature 006, SF6 (US3.1, SC-003): só os disponíveis viram linha do pedido, com o preço atual.
+describe("linhasDoPedido", () => {
+  it("deixa o esgotado de fora e usa nome e preço da conferência", () => {
+    const s = sacola([item("0042", { quantidade: 2, precoVisto: 500 }), item("0007")]);
+    expect(linhasDoPedido(juntar(s, [OK, ESGOTADO]))).toEqual([
+      { quantidade: 2, nome: "Meia", codigo: "0042", precoCentavos: 600, aPartirDe: false },
+    ]);
+  });
+
+  it("sem disponíveis ⇒ nenhuma linha", () => {
+    expect(linhasDoPedido(juntar(sacola([item("0007")]), [ESGOTADO]))).toEqual([]);
   });
 });

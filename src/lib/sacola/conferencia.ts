@@ -6,6 +6,7 @@ import * as z from "zod/mini";
 
 import { precoPublico } from "@/lib/catalogo/exibicao";
 import { codigoValido, type ItemConferencia, type ProdutoConferido, type Sacola } from "./sacola";
+import type { LinhaPedido } from "./total";
 
 export type { ItemConferencia, ProdutoConferido } from "./sacola";
 
@@ -105,6 +106,19 @@ export function juntar(sacola: Sacola, itens: ItemConferencia[]): ItemConferido[
       },
     ];
   });
+}
+
+// Só os disponíveis entram no subtotal e na mensagem, com nome e preço da conferência (US3.1, SC-003).
+export function linhasDoPedido(itens: ItemConferido[]): LinhaPedido[] {
+  return itens
+    .filter((i) => i.estado === "ok")
+    .map((i) => ({
+      quantidade: i.quantidade,
+      nome: i.produto.nome,
+      codigo: i.codigo,
+      precoCentavos: i.produto.precoCentavos,
+      aPartirDe: i.produto.aPartirDe,
+    }));
 }
 
 // US3.5: no envio, algo que a cliente não viu na tela barra o WhatsApp. `anteriores` é a

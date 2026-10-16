@@ -75,3 +75,16 @@ describe("página inicial sem cache de servidor (T068, FALLBACK)", () => {
     expect(fonte()).not.toMatch(/\brevalidate\b/);
   });
 });
+
+// Feature 006, T056: a /sacola é dinâmica e não guarda nada no servidor.
+describe("/sacola sem cache de servidor (006)", () => {
+  const fonte = () => readFileSync(join(RAIZ, "src/app/(public)/sacola/page.tsx"), "utf8");
+
+  it('exporta dynamic = "force-dynamic"', () => {
+    expect(fonte()).toMatch(/export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/);
+  });
+
+  it("não exporta revalidate", () => {
+    expect(fonte()).not.toMatch(/\brevalidate\b/);
+  });
+});

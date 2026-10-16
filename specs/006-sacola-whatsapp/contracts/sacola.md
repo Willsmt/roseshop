@@ -32,6 +32,10 @@ export function estaNaSacola(s: Sacola, codigo: string): boolean;
 export function cheia(s: Sacola): boolean;
 ```
 
+- `mudarQuantidade` com a quantidade que o item já tem devolve `{ ok: true, mudou: false }` com a
+  sacola relida, e `alterarSacola` não grava nem dispara o evento (§6). Registrado na T074,
+  conforme o código da SF1 (`90cd379`).
+
 ## 3. `total.ts`
 
 ```ts
@@ -75,12 +79,19 @@ export function lerRespostaConferencia(json: unknown): ItemConferencia[] | null;
 export async function conferir(codigos: string[], opcoes?: { fetch?: typeof fetch; timeoutMs?: number })
   : Promise<ItemConferencia[] | "falha">;                      // POST, 4 s
 export function juntar(sacola: Sacola, itens: ItemConferencia[]): ItemConferido[];
-export function houveMudanca(antes: Sacola, itens: ItemConferencia[]): boolean;  // US3.5
+export function houveMudanca(antes: Sacola, itens: ItemConferencia[],
+  anteriores?: ItemConferencia[]): boolean;                    // US3.5
 ```
 
 - `conferir` devolve `"falha"` (nunca lança) quando: passa de 4 s (`AbortController`), o `fetch`
-  rejeita (rede), o status não é 200 (inclui 400, 413, 415 e 5xx) ou a resposta sai do esquema.
+  rejeita (rede), o status não é 200 (inclui 400, 413, 415 e 5xx), a resposta sai do esquema ou
+  **não traz exatamente um item por código, na ordem pedida** (mesmo tamanho e mesmo código em
+  cada posição).
   Quem chama não grava nada nesse caso; no envio, o WhatsApp não abre (contracts/telas.md §3).
+- `houveMudanca(antes, itens, anteriores)`: `anteriores` é a conferência que a tela já mostra.
+  Com ela, conta como mudança o inexistente, a troca de estado em qualquer sentido (inclusive o
+  esgotado que volta) e o preço diferente do visto; sem ela, todo esgotado conta como novo.
+  Registrado na T074, conforme o código da SF4 (`835754f`).
 
 ## 6. `armazenamento.ts`
 

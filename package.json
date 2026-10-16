@@ -17,6 +17,8 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d --wait",
+    "seed:dev": "node --env-file=.seed-dev.vars --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-catalogo-local.ts --dev",
+    "seed:dev:limpar": "node --env-file=.seed-dev.vars --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-catalogo-local.ts --dev --limpar",
     "seed:local": "node --env-file-if-exists=.dev.vars --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-catalogo-local.ts",
     "db:psql": "docker compose exec postgres psql -U roseshop -d roseshop",
     "db:generate": "drizzle-kit generate",

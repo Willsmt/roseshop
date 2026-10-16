@@ -796,7 +796,7 @@ lenta ou falha ao tocar em Carregar mais".
   wrangler, não do código — **principal**
 - [X] T083 Registrar os resultados e qualquer desvio; desvio vira task nova na SF que o
   originou (reabrir a SF, corrigir, novo commit) antes de seguir — **principal**
-- [ ] T084 Commit (humano):
+- [X] T084 Commit (humano):
   ```text
   docs(specs): registra o roteiro do preview da 005
   ```
@@ -816,6 +816,14 @@ lenta ou falha ao tocar em Carregar mais".
   `roseshop-cache-dev` em `npx wrangler r2 bucket list`; Q§1.5 (`npx wrangler r2 bucket dev-url
   get roseshop-dev` e `npx wrangler r2 bucket domain list roseshop-dev`: acesso público desligado,
   nenhum domínio, US6.5). Entregar o output real — **humano**
+- [ ] T085a Seed do dev (decisão do humano, para os ≥ 24 produtos da T087): `scripts/seed-catalogo-local.ts`
+  ganha a flag explícita `--dev` (`npm run seed:dev`) e `--limpar` (`npm run seed:dev:limpar`).
+  Trava por igualdade exata em `trava.ts` (`validarAmbienteDev`): host direto do branch dev do
+  Neon (`HOST_NEON_DEV`, marcador até o mantenedor preencher), `sslmode=require`, endpoint
+  `roseshop-dev`; recusa produção, pooler, localhost, CI e `NODE_ENV=production`. Credenciais só de
+  `.seed-dev.vars` (no `.gitignore`; modelo em `.seed-dev.vars.example`, sem valores). Autor
+  `seed@dev`; a limpeza remove só o que tem esse autor (produtos, envios e objetos do R2).
+  Testes da trava nos dois modos em `trava.test.ts` — **principal**
 - [ ] T086 Abrir o PR para `main` (deploy do dev pelo CI, `pull-request.yml`), mostrando antes o
   comando e o corpo completo, **sem** `--force`; só com confirmação do humano. **[ISR]** O log
   do passo de deploy mostra "Populating remote R2 incremental cache" e "Successfully populated

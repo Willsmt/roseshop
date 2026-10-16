@@ -50,6 +50,8 @@ next-env.d.ts
 
 
 !.dev.vars.example
+.seed-dev.vars
+!.seed-dev.vars.example
 
 # Claude Code — configuração pessoal da máquina
 .claude/settings.local.json

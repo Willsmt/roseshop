@@ -144,6 +144,16 @@ bucket fica em `infra/r2/cors.<ambiente>.json`, aplicado com
 em `specs/004-fotos-produto/quickstart.md` §1. No local, as chaves esperadas estão no
 `.dev.vars.example`.
 
+#### Catálogo público (feature 005)
+
+Duas variáveis novas, sem dependência de runtime nova:
+
+- `SITE_URL`: endereço público do ambiente, fixo no `wrangler.jsonc` (não é segredo). Usada nos links e na prévia do WhatsApp.
+- `WHATSAPP_NUMBER`: número da loja em E.164 (ex.: `+5511999999999`). Secret por ambiente: `npx wrangler secret put WHATSAPP_NUMBER --env <dev|production>`; no local, no `.dev.vars`. Sem ele (ou inválido), o botão "Perguntar no WhatsApp" some e o resto da página segue.
+- Em produção, por enquanto, o número é o de teste do mantenedor; o da Rose entra só na entrega final.
+
+O ramo é o FALLBACK (páginas dinâmicas com `Cache-Control: public, max-age=60`, ADR-011): não há bucket de cache, Durable Object nem permissão nova no token do CI. A verificação de acessibilidade automática usa `axe-core@4.13.0` (devDependency, versão exata) no `npm run check`. Para popular um catálogo de teste: `npm run seed:local` (banco local) e `npm run seed:dev` (`roseshop-dev`, com `.seed-dev.vars`); `npm run seed:dev:limpar` remove o que o seed criou.
+
 #### Medição manual da IA
 
 ```bash

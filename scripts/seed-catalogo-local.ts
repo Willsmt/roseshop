@@ -2,11 +2,17 @@
 //  - local: `npm run seed:local`. Popula o Postgres do Docker e o bucket local do wrangler
 //    (precisa de `db:up`, `db:migrate` e de `npm run preview` no ar). Autor: seed@local.
 //  - dev (`--dev`): `npm run seed:dev` e `npm run seed:dev:limpar`. Popula o branch dev do Neon e o
-//    bucket roseshop-dev, lendo SÓ o .seed-dev.vars. Autor: seed@dev. Recusa produção.
+//    bucket roseshop-dev, lendo SÓ o .seed-dev.vars (só DATABASE_URL). As fotos vão e saem por
+//    `wrangler r2 object put|delete --remote`, com o login do wrangler. Autor: seed@dev.
 // `--limpar` remove só o que tem o autor do modo (banco e R2) e sai. Idempotente: refaz só o que ele
 // mesmo criou.
 // Roda com o Node nativo (type stripping): imports relativos com extensão, sem alias `@/`.
+import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 
 import { AwsClient } from "aws4fetch";
 import pg from "pg";
@@ -25,41 +31,90 @@ const limpar = process.argv.includes("--limpar");
 const config = validarAmbiente(modo, process.env);
 const AUTOR_SEED = config.autor;
 const nomeR2 = modo === "dev" ? "R2 dev" : "R2 local";
-const r2 = new AwsClient({
-  accessKeyId: config.r2.accessKeyId,
-  secretAccessKey: config.r2.secretAccessKey,
-  service: "s3",
-  region: "auto",
-});
-const urlObjeto = (chave: string) => `${config.r2.endpoint}/${chave}`;
+const executar = promisify(execFile);
 
-async function enviarObjeto(chave: string, corpo: Uint8Array) {
-  let resposta: Response;
-  try {
-    resposta = await r2.fetch(urlObjeto(chave), {
-      method: "PUT",
-      headers: { "content-type": "image/jpeg" },
-      body: corpo as BodyInit,
+// Armazenamento das fotos: S3 do wrangler local (aws4fetch) ou `wrangler r2 object --remote` no dev.
+type Armazem = {
+  enviar(chave: string, corpo: Uint8Array): Promise<void>;
+  /** Melhor esforço: devolve se apagou. */
+  apagar(chave: string): Promise<boolean>;
+  paralelo: number;
+  encerrar(): Promise<void>;
+};
+
+async function criarArmazem(): Promise<Armazem> {
+  if (config.modo === "local") {
+    const r2 = new AwsClient({
+      accessKeyId: config.r2.accessKeyId,
+      secretAccessKey: config.r2.secretAccessKey,
+      service: "s3",
+      region: "auto",
     });
-  } catch {
-    throw new Error(
-      modo === "dev"
-        ? "R2 dev inacessível: confira o token em .seed-dev.vars."
-        : "R2 local fora do ar: suba `npm run preview` (porta 8787) e rode de novo.",
-    );
+    const url = (chave: string) => `${config.r2.endpoint}/${chave}`;
+    return {
+      paralelo: 1,
+      async enviar(chave, corpo) {
+        let resposta: Response;
+        try {
+          resposta = await r2.fetch(url(chave), {
+            method: "PUT",
+            headers: { "content-type": "image/jpeg" },
+            body: corpo as BodyInit,
+          });
+        } catch {
+          throw new Error("R2 local fora do ar: suba `npm run preview` (porta 8787) e rode de novo.");
+        }
+        if (!resposta.ok) throw new Error(`PUT ${chave} falhou: HTTP ${resposta.status}`);
+      },
+      async apagar(chave) {
+        try {
+          const resposta = await r2.fetch(url(chave), { method: "DELETE" });
+          return resposta.ok || resposta.status === 404;
+        } catch {
+          return false;
+        }
+      },
+      async encerrar() {},
+    };
   }
-  if (!resposta.ok) throw new Error(`PUT ${chave} falhou: HTTP ${resposta.status}`);
+  const bucket = config.bucket;
+  const pasta = await mkdtemp(join(tmpdir(), "seed-dev-"));
+  const wrangler = (args: string[]) => executar("npx", ["wrangler", "r2", "object", ...args, "--remote"]);
+  return {
+    paralelo: 4,
+    async enviar(chave, corpo) {
+      const arquivo = join(pasta, chave.replaceAll("/", "_"));
+      await writeFile(arquivo, corpo);
+      try {
+        await wrangler(["put", `${bucket}/${chave}`, "--file", arquivo, "--content-type", "image/jpeg"]);
+      } catch {
+        throw new Error(`wrangler r2 object put falhou em ${chave}: rode \`npx wrangler login\` e tente de novo.`);
+      }
+    },
+    async apagar(chave) {
+      try {
+        await wrangler(["delete", `${bucket}/${chave}`]);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    encerrar: () => rm(pasta, { recursive: true, force: true }),
+  };
 }
 
-// Melhor esforço: sobra no bucket não quebra nada; devolve se apagou (404 conta, já não existe).
-async function apagarObjeto(chave: string): Promise<boolean> {
-  try {
-    const resposta = await r2.fetch(urlObjeto(chave), { method: "DELETE" });
-    return resposta.ok || resposta.status === 404;
-  } catch {
-    return false;
-  }
+async function emParalelo<T>(itens: T[], limite: number, tarefa: (item: T) => Promise<void>) {
+  const fila = [...itens];
+  await Promise.all(
+    Array.from({ length: limite }, async () => {
+      for (let item = fila.shift(); item !== undefined; item = fila.shift()) await tarefa(item);
+    }),
+  );
 }
+
+const armazem = await criarArmazem();
+const enviarObjeto = armazem.enviar;
+const apagarObjeto = armazem.apagar;
 
 async function limparSeed() {
   const cliente = new pg.Client({ connectionString: config.databaseUrl });
@@ -85,7 +140,10 @@ async function limparSeed() {
     await cliente.end();
   }
   let falhas = 0;
-  for (const chave of chaves) if (!(await apagarObjeto(chave))) falhas++;
+  await emParalelo(chaves, armazem.paralelo, async (chave) => {
+    if (!(await apagarObjeto(chave))) falhas++;
+  });
+  await armazem.encerrar();
   console.log(
     `Limpeza (${modo}): ${produtosApagados} produtos de ${AUTOR_SEED}, ${chaves.length - falhas}/${chaves.length} objetos do ${nomeR2}.` +
       (falhas ? ` ${falhas} objeto(s) não apagados: o cron de limpeza os recolhe como órfãos.` : "") +
@@ -112,7 +170,7 @@ const chaveEnvio = `fotos/${ID_ENVIO_PENDENTE}.jpg`;
 const chaveOrfao = `fotos/${ID_ORFAO}.jpg`;
 
 process.stdout.write(`Enviando fotos ao ${nomeR2}... `);
-for (const foto of planoFotos.flat()) await enviarObjeto(foto.chave, foto.bytes);
+await emParalelo(planoFotos.flat(), armazem.paralelo, (foto) => enviarObjeto(foto.chave, foto.bytes));
 // Envio pendente e órfão são do item 12 do preview; no dev o cron os recolheria sem ganho.
 if (modo === "local") {
   await enviarObjeto(chaveEnvio, bytesEnvio);
@@ -221,7 +279,8 @@ try {
 }
 
 // 3. Objetos da rodada anterior, já sem referência.
-for (const chave of antigas) await apagarObjeto(chave);
+await emParalelo(antigas, armazem.paralelo, async (chave) => void (await apagarObjeto(chave)));
+await armazem.encerrar();
 
 const especial = produtos.findIndex((p) => p.nome.includes("&"));
 const itensLocais =

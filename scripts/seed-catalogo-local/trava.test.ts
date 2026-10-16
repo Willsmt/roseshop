@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUTOR_SEED_DEV,
-  ENDPOINT_R2_DEV,
+  BUCKET_R2_DEV,
   ENDPOINT_R2_LOCAL,
   MARCADOR_HOST_NEON_DEV,
   validarAmbienteDev,
@@ -97,18 +97,16 @@ describe("validarAmbienteLocal", () => {
 const HOST_DEV = "ep-teste-dev.sa-east-1.aws.neon.tech";
 const DEV: EnvSeed = {
   DATABASE_URL: `postgres://dono:senha-secreta@${HOST_DEV}/neondb?sslmode=require`,
-  R2_S3_ENDPOINT: ENDPOINT_R2_DEV,
-  R2_ACCESS_KEY_ID: "chave-do-token-dev",
-  R2_SECRET_ACCESS_KEY: "segredo-do-token-dev",
 };
 const dev = (extra: EnvSeed): EnvSeed => ({ ...DEV, ...extra });
 
 describe("validarAmbienteDev", () => {
-  it("aceita o host exato do branch dev e o bucket roseshop-dev", () => {
+  it("aceita o host exato do branch dev e fixa o bucket roseshop-dev", () => {
     const config = validarAmbienteDev(DEV, HOST_DEV);
     expect(config.modo).toBe("dev");
     expect(config.autor).toBe(AUTOR_SEED_DEV);
-    expect(config.r2.endpoint).toBe(ENDPOINT_R2_DEV);
+    expect(config.bucket).toBe("roseshop-dev");
+    expect(config.bucket).toBe(BUCKET_R2_DEV);
   });
 
   it("recusa tudo enquanto o host permitido for o marcador", () => {
@@ -134,21 +132,17 @@ describe("validarAmbienteDev", () => {
     expect(() => validarAmbienteDev(dev({ DATABASE_URL: valor }), HOST_DEV)).toThrow(/Seed recusado/);
   });
 
-  it.each([
-    ["ausente", undefined],
-    ["bucket de produção", "https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-prod"],
-    ["bucket de cache", "https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-cache-dev"],
-    ["outra conta", "https://0000.r2.cloudflarestorage.com/roseshop-dev"],
-    ["bucket local", ENDPOINT_R2_LOCAL],
-    ["barra final", `${ENDPOINT_R2_DEV}/`],
-  ])("recusa R2_S3_ENDPOINT %s", (_nome, valor) => {
-    expect(() => validarAmbienteDev(dev({ R2_S3_ENDPOINT: valor }), HOST_DEV)).toThrow(/R2_S3_ENDPOINT/);
+  it("o bucket não vem do env: variáveis de R2 no ambiente são ignoradas", () => {
+    const config = validarAmbienteDev(
+      dev({ R2_S3_ENDPOINT: "https://x.r2.cloudflarestorage.com/roseshop-prod", R2_BUCKET: "roseshop-prod" }),
+      HOST_DEV,
+    );
+    expect(config.bucket).toBe("roseshop-dev");
   });
 
-  it("recusa credenciais ausentes ou a falsa local", () => {
-    expect(() => validarAmbienteDev(dev({ R2_ACCESS_KEY_ID: undefined }), HOST_DEV)).toThrow(/R2_ACCESS_KEY_ID/);
-    expect(() => validarAmbienteDev(dev({ R2_ACCESS_KEY_ID: "roseshop-local" }), HOST_DEV)).toThrow(/falsa local/);
-    expect(() => validarAmbienteDev(dev({ R2_SECRET_ACCESS_KEY: undefined }), HOST_DEV)).toThrow(/R2_SECRET_ACCESS_KEY/);
+  it("DATABASE_URL ausente aponta o .seed-dev.vars, não o .dev.vars", () => {
+    expect(() => validarAmbienteDev(dev({ DATABASE_URL: undefined }), HOST_DEV)).toThrow(/\.seed-dev\.vars/);
+    expect(() => validarAmbienteDev(dev({ DATABASE_URL: undefined }), HOST_DEV)).not.toThrow(/copie \.dev\.vars/);
   });
 
   it("recusa em CI, com NODE_ENV=production e com o proxy local do Neon", () => {
@@ -170,8 +164,12 @@ describe("validarAmbienteDev", () => {
 });
 
 describe("modo local não aceita o ambiente dev", () => {
-  it("recusa DATABASE_URL e credenciais do dev", () => {
+  it("recusa DATABASE_URL e o endpoint do dev", () => {
     expect(() => validarAmbienteLocal(DEV)).toThrow(/Seed recusado/);
-    expect(() => validarAmbienteLocal(com({ R2_S3_ENDPOINT: ENDPOINT_R2_DEV }))).toThrow(/R2_S3_ENDPOINT/);
+    expect(() =>
+      validarAmbienteLocal(
+        com({ R2_S3_ENDPOINT: "https://e93918940385c0ea43d9327d98a78554.r2.cloudflarestorage.com/roseshop-dev" }),
+      ),
+    ).toThrow(/R2_S3_ENDPOINT/);
   });
 });

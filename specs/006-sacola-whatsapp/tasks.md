@@ -221,7 +221,7 @@ FR-014, FR-015, FR-015a, FR-016, SC-002, US2.7, US2.8, US2.10, US2.13.
 **Fecha**: SC-002; FR-014; FR-016 (regra); US2.8 (injeção); US2.10 (ida e volta).
 **Revisão**: humano revisa o diff.
 
-- [ ] T018 [P] [US2] Teste primeiro — `src/lib/sacola/mensagem.test.ts`: **formato exato** de D3
+- [X] T018 [P] [US2] Teste primeiro — `src/lib/sacola/mensagem.test.ts`: **formato exato** de D3
   (cabeçalho, "2x Meia (#0042) — R$ 12,00", "1x … — a partir de R$ 10,00", "1x … — Consulte o
   valor", "Subtotal: a partir de R$ 22,00", "+ 1 item a consultar", linha em branco,
   "Observação:" e o texto), linhas separadas por LF; nome cortado a zero vira
@@ -241,7 +241,7 @@ FR-014, FR-015, FR-015a, FR-016, SC-002, US2.7, US2.8, US2.10, US2.13.
   `excede: false`; sacola que cresce depois ⇒ `excede: true`, `fracao: 1`; a troca de modo
   acontece exatamente quando `200 − code points > 1800 − comprimento com nomes em 0` —
   **test-writer**
-- [ ] T019 [P] [US2] Teste primeiro — `src/lib/sacola/mensagem.pior-caso.test.ts` (SC-002,
+- [X] T019 [P] [US2] Teste primeiro — `src/lib/sacola/mensagem.pior-caso.test.ts` (SC-002,
   FR-016): pior caso fixo (15 itens, quantidade 10, códigos de 10 dígitos até `2147483647`,
   número de 15 dígitos, nomes de 40 code points acentuados e com emoji, incluindo ZWJ e U+FE0F,
   preços "a partir de R$ 99.999,99",
@@ -253,11 +253,11 @@ FR-014, FR-015, FR-015a, FR-016, SC-002, US2.7, US2.8, US2.10, US2.13.
   passa de `restanteObservacao`; **corte por code point**: nome com emoji exatamente na fronteira do corte
   nunca deixa surrogate solto (`decodeURIComponent` não lança, `String.prototype.isWellFormed()`
   é `true`) — **test-writer**
-- [ ] T020 `src/lib/sacola/mensagem.ts`: `ORCAMENTO_URL = 1800`, `NOME_MAX = 40`, `montarPedido`
+- [X] T020 `src/lib/sacola/mensagem.ts`: `ORCAMENTO_URL = 1800`, `NOME_MAX = 40`, `montarPedido`
   (busca binária do `L` comum em `[0, 40]`, corte por `Array.from`, sem reticências),
   `restanteObservacao` e `medidorObservacao` (CS§4, A2: devolve modo e fração, nunca o
   comprimento codificado). Só importa `./observacao`, `./total`, `./textos` — **tech-lead**
-- [ ] T021 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
+- [X] T021 `npm run check` e `npm run test:int` (em série); colar o output real — **júnior**
 - [ ] T022 Commit (humano):
   ```text
   feat(sacola): monta a mensagem do pedido dentro do limite da URL

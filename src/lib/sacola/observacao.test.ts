@@ -52,6 +52,14 @@ const TABELA: ReadonlyArray<readonly [string, string, string]> = [
   ["só invisíveis", "\u200B\u200C\uFEFF\u2060", ""],
   ["espaços e invisíveis", " \u200B \uFEFF \n ", ""],
   ["vazio", "", ""],
+  ["surrogate alto sozinho removido", "a\uD83Db", "ab"],
+  ["surrogate baixo sozinho removido", "a\uDE00b", "ab"],
+  ["surrogate alto no fim removido", "oi\uD83D", "oi"],
+  ["par invertido (baixo antes do alto) removido", "a\uDE00\uD83Db", "ab"],
+  ["surrogate solto na ponta some antes do trim", "\uD83D  oi  \uDE00", "oi"],
+  ["par válido preservado", "a\uD83D\uDE00b", "a\u{1F600}b"],
+  ["surrogate solto ao lado de emoji com ZWJ preserva o emoji", `\uDC00${FAMILIA}\uD83D`, FAMILIA],
+  ["surrogate solto ao lado de seletor de variação preserva o emoji", "\uD83D❤\uFE0F", "❤\uFE0F"],
 ];
 
 describe("OBSERVACAO_MAX", () => {
@@ -69,6 +77,14 @@ describe("normalizarObservacao (FR-015a)", () => {
     for (const [, entrada] of TABELA) {
       const uma = normalizarObservacao(entrada);
       expect(normalizarObservacao(uma)).toBe(uma);
+    }
+  });
+
+  it("a saída é sempre bem formada (sem surrogate solto) e codificável na URL", () => {
+    for (const [, entrada] of TABELA) {
+      const saida = normalizarObservacao(entrada);
+      expect(saida.isWellFormed()).toBe(true);
+      expect(() => encodeURIComponent(saida)).not.toThrow();
     }
   });
 

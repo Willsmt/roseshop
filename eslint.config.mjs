@@ -147,5 +147,7 @@ export default defineConfig([
     "node_modules/**",
     "cloudflare-env.d.ts",
     "references/**",
+    // Esboços e capturas de design não são código do app (ADR-005).
+    "design/**",
   ]),
 ]);

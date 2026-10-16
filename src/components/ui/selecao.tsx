@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-import { classesControle } from "./campo-texto";
+import { classesControle, classesDica, classesRotulo } from "./campo-texto";
 import { MensagemCampo } from "./mensagem-campo";
 
 type SelecaoProps = {
@@ -24,7 +24,7 @@ export function Selecao({ name, rotulo, opcoes, defaultValue, erro, dica, vazio 
 	const descrito = [erro ? idErro : null, dica ? idDica : null].filter(Boolean).join(" ") || undefined;
 	return (
 		<div className="flex flex-col gap-2">
-			<label htmlFor={id} className="text-base font-semibold">
+			<label htmlFor={id} className={classesRotulo}>
 				{rotulo}
 			</label>
 			<select
@@ -44,7 +44,7 @@ export function Selecao({ name, rotulo, opcoes, defaultValue, erro, dica, vazio 
 			</select>
 			{erro ? <MensagemCampo id={idErro}>{erro}</MensagemCampo> : null}
 			{dica ? (
-				<p id={idDica} className="text-base text-neutral-700">
+				<p id={idDica} className={classesDica}>
 					{dica}
 				</p>
 			) : null}

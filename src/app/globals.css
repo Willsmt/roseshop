@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
+/* Esboços e capturas de design não são código do app (ADR-005). */
+@source not "../../design";
+
+/* Fontes locais, sem chamada externa (ADR-005). Os .woff2 vêm sem modificação dos repositórios
+   oficiais; a licença OFL de cada família está ao lado, em public/fonts. */
+@font-face {
+	font-family: "Atkinson Hyperlegible Next";
+	src: url("/fonts/AtkinsonHyperlegibleNext-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Atkinson Hyperlegible Next";
+	src: url("/fonts/AtkinsonHyperlegibleNext-Bold.woff2") format("woff2");
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Young Serif";
+	src: url("/fonts/YoungSerif-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* Fallbacks com métrica ajustada à fonte final, para a troca (swap) não mover o layout. Um rosto
+   por fonte local, porque cada uma pede um ajuste. Razões medidas no Chrome (largura de uma frase
+   de catálogo a 40px): Atkinson = 100,9% da Roboto e 98,3% da Arial; Young Serif = 86,9% da Noto
+   Serif e 102,4% da Times. ascent/descent = métrica da fonte final ÷ size-adjust. */
+@font-face {
+	font-family: "Atkinson fallback Android";
+	src: local("Roboto"), local("Roboto-Regular");
+	size-adjust: 100.9%;
+	ascent-override: 96.6%;
+	descent-override: 32.2%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: "Atkinson fallback";
+	src: local("Arial"), local("Helvetica Neue"), local("Liberation Sans");
+	size-adjust: 98.3%;
+	ascent-override: 99.2%;
+	descent-override: 33.1%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: "Young Serif fallback Android";
+	src: local("Noto Serif"), local("NotoSerif-Regular");
+	size-adjust: 86.9%;
+	ascent-override: 106.4%;
+	descent-override: 31.6%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: "Young Serif fallback";
+	src: local("Times New Roman"), local("Liberation Serif");
+	size-adjust: 102.4%;
+	ascent-override: 90.3%;
+	descent-override: 26.9%;
+	line-gap-override: 0%;
+}
+
+/* Identidade "Janela" (design/DIRECOES.md). Nomes pelo papel, não pela cor. Contraste AA de
+   todo par de texto conferido em design/DIRECOES.md e no relatório da Fase 4. */
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+	color-scheme: light;
+	--cor-superficie: #fffbf8;
+	--cor-superficie-2: #f6ece8;
+	--cor-texto: #3b1f2b;
+	--cor-texto-suave: #6b4a57;
+	--cor-acao: #a8325a;
+	--cor-acao-forte: #8a2549;
+	--cor-ceu: #dce8f2;
+	--cor-luz: #f8ddb6;
+	--cor-sucesso: #3d6b4f;
+	--cor-sucesso-fundo: #e9f2ec;
+	--cor-erro: #a4262c;
+	--cor-erro-fundo: #fbeae8;
+	--cor-linha: #ead8d3;
+
+	/* Mola curta (bounce 0,2; 0,3 s visuais), amostrada do modelo de mola do Motion. */
+	--mola: linear(0, 0.047, 0.156, 0.292, 0.433, 0.564, 0.678, 0.772, 0.847, 0.904, 0.946, 0.975, 0.994, 1.006, 1.012, 1.015, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
+	--mola-duracao: 0.58s;
 }
 
 @theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
+	--color-superficie: var(--cor-superficie);
+	--color-superficie-2: var(--cor-superficie-2);
+	--color-texto: var(--cor-texto);
+	--color-texto-suave: var(--cor-texto-suave);
+	--color-acao: var(--cor-acao);
+	--color-acao-forte: var(--cor-acao-forte);
+	--color-ceu: var(--cor-ceu);
+	--color-luz: var(--cor-luz);
+	--color-sucesso: var(--cor-sucesso);
+	--color-sucesso-fundo: var(--cor-sucesso-fundo);
+	--color-erro: var(--cor-erro);
+	--color-erro-fundo: var(--cor-erro-fundo);
+	--color-linha: var(--cor-linha);
+	--color-foco: var(--cor-acao);
+
+	--font-texto: "Atkinson Hyperlegible Next", "Atkinson fallback Android", "Atkinson fallback", sans-serif;
+	--font-titulo: "Young Serif", "Young Serif fallback Android", "Young Serif fallback", serif;
+
+	/* Texto-base de 17px: acima dos 16px da constitution V, confortável no celular. */
+	--text-base: 1.0625rem;
+	--text-base--line-height: 1.55;
+
+	/* O arco: topo redondo, base quase reta. Para foto, categoria e moldura. */
+	--radius-arco: 999px 999px 0.625rem 0.625rem;
+	--radius-pilula: 999px;
+	--radius-suave: 0.625rem;
+
+	--ease-mola: var(--mola);
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
+@layer base {
+	html {
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
+	}
+
+	body {
+		background: var(--cor-superficie);
+		color: var(--cor-texto);
+		font-family: var(--font-texto);
+		font-size: var(--text-base);
+		line-height: var(--text-base--line-height);
+		-webkit-font-smoothing: antialiased;
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-titulo);
+		font-weight: 400;
+		line-height: 1.15;
+		text-wrap: balance;
+	}
+
+	/* Foco sempre visível, com recuo para não sumir sobre foto nem sobre botão escuro. */
+	:focus-visible {
+		outline: 3px solid var(--cor-acao);
+		outline-offset: 3px;
+	}
+
+	::selection {
+		background: var(--cor-luz);
+		color: var(--cor-texto);
 	}
 }
 
-body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
 }

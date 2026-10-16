@@ -252,10 +252,53 @@ describe("503: banco indisponível (CC§4)", () => {
     expect(registrado).not.toMatch(/73519|0042|segredo/);
   });
 
-  it("qualquer outra exceção é relançada (sem 503 e sem registro)", async () => {
-    const outra = new Error("bug");
-    lerConferencia.mockRejectedValue(outra);
-    await expect(chamar({ codigos: ["0042"] })).rejects.toBe(outra);
-    expect(registrarFalha).not.toHaveBeenCalled();
+});
+
+describe("500: erro que não é do banco (SC-007)", () => {
+  it("outra exceção ⇒ 500 {} com no-store e nosniff; registra só o nome da classe", async () => {
+    lerConferencia.mockRejectedValue(new TypeError("bug com 73519 e 0042"));
+    const r = await chamar({ codigos: ["73519", "0042"] });
+    expect(r.status).toBe(500);
+    expect(await r.json()).toEqual({});
+    cabecalhosDoContrato(r);
+    expect(registrarFalha).toHaveBeenCalledTimes(1);
+    expect(registrarFalha).toHaveBeenCalledWith({
+      evento: "catalogo.erro_inesperado",
+      rota: "/api/catalogo/conferencia",
+      causa: "inesperado",
+      classe: "TypeError",
+    });
+  });
+
+  it("classe própria do erro sai pelo nome do construtor, nunca pela mensagem", async () => {
+    class FalhaDeMontagem extends Error {}
+    lerConferencia.mockRejectedValue(new FalhaDeMontagem("73519"));
+    await chamar({ codigos: ["73519"] });
+    expect(registrarFalha.mock.calls[0][0].classe).toBe("FalhaDeMontagem");
+  });
+
+  it("nome de classe fora do formato de identificador ou valor que não é Error ⇒ 'Desconhecida'", async () => {
+    const erro = new Error("x");
+    Object.defineProperty(erro, "constructor", { value: { name: "falha 73519 0042" } });
+    lerConferencia.mockRejectedValueOnce(erro);
+    await chamar({ codigos: ["73519", "0042"] });
+    lerConferencia.mockRejectedValueOnce("texto com 73519");
+    await chamar({ codigos: ["73519"] });
+    expect(registrarFalha.mock.calls.map(([f]) => f.classe)).toEqual(["Desconhecida", "Desconhecida"]);
+  });
+
+  it("falha na leitura do corpo (stream que erra) também vira 500 {}", async () => {
+    const body = new ReadableStream({
+      pull(c) {
+        c.error(new Error("rede caiu no meio de 73519"));
+      },
+    });
+    const r = await rota.POST(
+      new Request(URL_ROTA, { method: "POST", headers: JSON_CT, body, duplex: "half" } as RequestInit),
+    );
+    expect(r.status).toBe(500);
+    expect(await r.json()).toEqual({});
+    cabecalhosDoContrato(r);
+    expect(JSON.stringify(registrarFalha.mock.calls)).not.toContain("73519");
   });
 });

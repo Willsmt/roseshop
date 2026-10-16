@@ -105,3 +105,8 @@ Achados abertos (decisão humana; nenhum foi corrigido aqui):
    `produto` (CC§2); (iii) em Alternativas, "a constitution reserva Server Actions para mutações"
    lê mais do que a IV diz ("Mutações via Server Actions"), embora a alternativa continue
    descartada pelos outros motivos.
+
+**2026-10-16, decisão do humano depois do aceite (achado 3).** Qualquer erro que não seja
+`BancoIndisponivel` responde 500 `{}` com `no-store` e `nosniff` e é registrado com evento
+`catalogo.erro_inesperado`, causa `inesperado` e só o nome da classe do erro (nunca mensagem,
+pilha, corpo ou códigos), fechando a SC-007 também nesse caminho (contracts/conferencia.md §1 e §4).

@@ -22,6 +22,7 @@ Content-Length: <≤ 1024>
 | Corpo lido por stream passa de 1024 bytes (com ou sem `Content-Length`) | **413** `{}`, leitura cancelada |
 | JSON inválido; objeto com chave diferente de `codigos`; `codigos` fora de 1–15; item fora de `^(?:\d{4}|[1-9]\d{4,9})$`, `"0000"` ou acima de `2147483647` (limite do `lerProduto` e do `integer` do Postgres); repetido | **400** `{}` |
 | Banco indisponível | **503** `{}` + registro (§4) |
+| Qualquer outro erro (leitura do corpo, montagem da resposta etc.) | **500** `{}` + registro só com o nome da classe (§4) |
 
 Não lê cookie, sessão nem `Authorization`; não importa `@/lib/auth`.
 
@@ -53,8 +54,12 @@ de `POST` (research D15).
 
 ## 4. Registro
 
-Só no 503: `registrarFalha({ evento: "catalogo.banco_indisponivel", rota:
-"/api/catalogo/conferencia", causa: "banco" })`. Nenhum outro `console.*` na rota. Nunca o
+No 503: `registrarFalha({ evento: "catalogo.banco_indisponivel", rota:
+"/api/catalogo/conferencia", causa: "banco" })`. No 500 (qualquer erro que não é
+`BancoIndisponivel`; decisão do humano em 2026-10-16): `registrarFalha({ evento:
+"catalogo.erro_inesperado", rota: "/api/catalogo/conferencia", causa: "inesperado", classe })`,
+com `classe` = nome do construtor do erro (identificador; fora do formato ou valor que não é
+`Error` ⇒ `"Desconhecida"`). Nenhum outro `console.*` na rota. Nunca o
 corpo, os códigos, o `Content-Length`, a mensagem da exceção nem cabeçalhos (FR-013, SC-007).
 A conformidade espiona `console.log/info/warn/error/debug` durante todos os casos e falha se
 qualquer código pedido ou trecho do corpo aparecer.

@@ -4,8 +4,9 @@ import { BancoIndisponivel, lerConferencia, registrarFalha } from "@/lib/catalog
 
 // Conferência pública da sacola (feature 006, contracts/conferencia.md, ADR-012). Sem sessão, sem
 // cache, só leitura. Fronteira na ordem 415 → 413 (cabeçalho) → 413 (leitura com teto) → 400, com
-// erros `{}`. Nada do pedido vai para o log: só o 503 do banco é registrado, com a lista fechada
-// de `registrarFalha` (FR-013, SC-007). Só POST é exportado.
+// erros `{}`. Nada do pedido vai para o log: o 503 do banco e o 500 de qualquer outro erro são
+// registrados com a lista fechada de `registrarFalha`; do 500 sai só o nome da classe do erro,
+// nunca a mensagem, a pilha, o corpo nem os códigos (FR-013, SC-007). Só POST é exportado.
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,28 @@ function interpretar(bytes: Uint8Array): string[] | null {
   }
 }
 
+// O nome do construtor é um identificador do código, não dado do pedido; qualquer coisa fora desse
+// formato (ou valor lançado que não é `Error`) vira "Desconhecida".
+function classeDoErro(erro: unknown): string {
+  const nome = erro instanceof Error ? (erro.constructor as { name?: unknown }).name : undefined;
+  return typeof nome === "string" && /^[A-Za-z_$][\w$]{0,63}$/.test(nome) ? nome : "Desconhecida";
+}
+
 export async function POST(req: Request): Promise<Response> {
+  try {
+    return await conferir(req);
+  } catch (erro) {
+    registrarFalha({
+      evento: "catalogo.erro_inesperado",
+      rota: "/api/catalogo/conferencia",
+      causa: "inesperado",
+      classe: classeDoErro(erro),
+    });
+    return vazio(500);
+  }
+}
+
+async function conferir(req: Request): Promise<Response> {
   if (!ehJson(req)) return vazio(415);
   if (excedeCabecalho(req)) return vazio(413);
   const bytes = await lerComTeto(req);

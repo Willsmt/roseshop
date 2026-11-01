@@ -292,6 +292,15 @@ aprovados, por versão exata:
 |---|---|
 | `esbuild@0.28.1`, `esbuild@0.25.4` e `esbuild@0.25.12` | Valida/instala o binário nativo do esbuild (a 0.25.4 é a cópia aninhada em `@opennextjs/aws`; a 0.25.12 vem do override abaixo, usada pelo `drizzle-kit`). |
 | `workerd@1.20261001.1` | Binário do runtime da Cloudflare usado no `preview`. A aprovação é por versão exata e o `workerd` muda a cada atualização do `wrangler`: todo bump do wrangler exige reaprovar com `npm approve-scripts workerd`. |
+
+**Aviso pendente (2026-11-01, branch `fix/deps-audit-nov`)**: com o `wrangler`
+4.156.0 e o `@opennextjs/cloudflare` 1.20.15, o `npm install` avisa que
+`workerd@1.20261023.1` e `esbuild@0.28.2` (aninhados no `wrangler` e no
+`@opennextjs/aws`) têm script de instalação fora do `allowScripts`. Por decisão
+do humano **não foram aprovados**: os binários chegam pelos pacotes de
+plataforma e funcionam sem o script (`workerd --version` = `workerd 2026-10-23`).
+As entradas `workerd@1.20261001.1` e `esbuild@0.25.4` acima ficaram sem pacote
+correspondente na árvore. Reavaliar na próxima revisão de dependências.
 | `unrs-resolver@1.12.2` | Resolver nativo, dependência transitiva de `eslint-config-next` (via `eslint-import-resolver-typescript`). |
 
 Regra: **pacote novo com script de instalação precisa de aprovação explícita**
@@ -311,7 +320,30 @@ do `drizzle-kit`). Verificado no commit `6ed2cfc`: o `drizzle-kit` carrega
 reavaliar a vulnerabilidade; a entrada `esbuild@0.25.12` em `allowScripts`
 depende dele.
 
-### `wrangler` fixado em `4.147.0` (devDependency)
+### `undici` do `miniflare`: sem override (2026-11-01)
+
+Os advisories do `undici` 7.0.0 a 7.30.0 (GHSA-4qv8-2p9j-2685,
+GHSA-f72v-6w45-q472, GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26,
+GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm, GHSA-9fm3-97px-rjf6,
+GHSA-55wc-3pg8-jfw6) foram corrigidos subindo o `wrangler` para 4.156.0: o
+`miniflare` 5.20261023.3-beta declara `undici` 7.30.1. Um override temporário
+(`overrides.miniflare.undici`) chegou a ser testado com o `wrangler` 4.147.0 e
+foi **removido** na mesma branch (`fix/deps-audit-nov`), confirmado por
+`npm ls undici` (`miniflare` -> `undici@7.30.1`, sem "overridden").
+
+### Override `@node-minify/core` -> `glob` 10.5.0 (2026-11-01)
+
+O `@opennextjs/cloudflare` 1.20.15 traz `@opennextjs/aws` 4.1.14, que usa
+`@node-minify/core` 9.0.2, e este fixa `glob` em exatamente 10.3.3, afetado
+pelo GHSA-5j98-mcp5-4vw2 (**high**, injeção de comando na CLI `glob -c`,
+`>=10.2.0 <10.5.0`). O node-minify usa a biblioteca, não a CLI, mas o advisory
+é de runtime e bloquearia o job `security` do CI. O override força `glob`
+10.5.0 (mesmo major) só sob `@node-minify/core`. **Remover** quando o
+`@opennextjs/aws` trouxer um `@node-minify/core` com `glob` >= 10.5.0 (conferir
+com `npm ls glob` e `npm audit --omit=dev --audit-level=high`). Os advisories
+moderados de `glob`/`minimatch` que sobram são risco aceito (tabela abaixo).
+
+### `wrangler` fixado em `4.156.0` (devDependency)
 
 Versão exata, sem `^`. O endpoint S3 local do R2 (`local_dev.experimental_s3_credentials`
 no `wrangler.jsonc`) é **experimental** e seu comportamento depende da versão
@@ -324,6 +356,12 @@ no `wrangler.jsonc`) é **experimental** e seu comportamento depende da versão
 - **Desde a SF9** (roteiro feito em 2026-10-11): todo bump repete o `specs/004-fotos-produto/quickstart.md` §4
   (envio pela tela no `preview`, com o `PUT` para
   `/cdn-cgi/local/r2/s3/roseshop-local/fotos/<uuid>.webp` visto no DevTools, aba Rede).
+- **Subida 4.147.0 -> 4.156.0** (2026-11-01, branch `fix/deps-audit-nov`, junto do
+  `@opennextjs/cloudflare` 1.20.15): o roteiro do §4 **não foi feito no `preview` local**
+  (decisão do humano) e fica **pendente: será feito no dev antes do merge**. Feito no
+  `preview` local só o que não exige login: `/`, `/p/0007`, `/sacola`, `/api/health`,
+  `POST /api/catalogo/conferencia` e `/fotos/<arquivo>` com 200 (banco local com
+  `seed:local`, que também enviou as fotos ao R2 local), sem `wrangler:error`.
 
 ### `aws4fetch` fixado em `1.0.20` (dependência de runtime)
 
@@ -352,7 +390,12 @@ e aplicada pelo job `security` do CI (ver "CI"). Resumo:
 
 | Advisory | Pacote/caminho | Justificativa | Aceita em | Revisar em |
 |---|---|---|---|---|
-| GHSA-vfj7-8cjw-p6xm | `braces`, via `eslint-config-next` | Sem versão corrigida; os padrões glob vêm só da nossa config. | 2026-10-03 | 2026-11-03 |
+| GHSA-vfj7-8cjw-p6xm | `braces`, via `eslint-config-next` | **Encerrada em 2026-11-01**: o `npm audit` não aponta mais o `braces` 3.0.3 (mesma versão de antes); a linha fica só como histórico. | 2026-10-03 | — |
+| GHSA-3g3m-2fjr-6pw4 (moderate, runtime) | `glob` 10.5.0 e 13.0.6, via `@opennextjs/cloudflare` 1.20.15 (`@opennextjs/aws` -> `@node-minify/core`, e direto) | Correção só no `glob` 14.0.2 (major diferente); depende do upstream (OpenNext/node-minify). Usado só no build (`opennextjs-cloudflare build`), sem padrões vindos de cliente. Moderate não bloqueia o CI. | 2026-11-01 | 2026-12-01 |
+| GHSA-g3hv-75wg-m249 (moderate, runtime) | `minimatch` 9.0.9 e 10.2.6, via o mesmo `glob` | Correção só no `minimatch` 11.0.1 (major diferente); depende do upstream. Mesma exposição do `glob` acima. | 2026-11-01 | 2026-12-01 |
+| GHSA-xjj6-f33q-929c, GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm (high); GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, GHSA-9fm3-97px-rjf6, GHSA-55wc-3pg8-jfw6 (moderate) | `undici` 8.11.2, via `jsdom` 30.1.1 (dev) | Só no ambiente de teste do Vitest (jsdom), sem tráfego de cliente. Correção no 8.12.2 (mesmo major); não atualizado por decisão do humano. | 2026-11-01 | 2026-12-01 |
+| GHSA-587h-7wmj-h5pm (high); GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw, GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg (moderate); GHSA-9jrq-w75r-8gcw (low) | `vite` 8.3.2, via `vitest` e `@vitejs/plugin-react` (dev) | Usado só para rodar os testes; o app é empacotado pelo Next/Turbopack e não sobe servidor do vite. Correção fora de 8.3.0 a 8.3.2; não atualizado por decisão do humano. | 2026-11-01 | 2026-12-01 |
+| GHSA-w74x-v6f9-j3xg, GHSA-wjr9-j795-jxcr (moderate); GHSA-xhq7-xmqj-769h, GHSA-333x-w4r6-6crp (low) | `fast-uri` 3.1.8, via `ajv` <- `@commitlint/config-validator` (dev) | Só valida a config do commitlint no hook de commit, com entrada do próprio repositório. Correção no 3.1.9; não atualizado por decisão do humano. | 2026-11-01 | 2026-12-01 |
 
 ## Bindings
 

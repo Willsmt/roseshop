@@ -21,7 +21,8 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
 > inicial com destaques, filtro e "Carregar mais", detalhe com botão do WhatsApp, rota pública
 > de fotos e `noindex`. A **feature 006 (sacola e envio pelo WhatsApp)** está construída e pronta
 > para o merge, também **não em produção**: sacola no aparelho, `/sacola` e conferência pública
-> por `POST`. Este índice só tem documentos para o que já tem código real por trás.
+> por `POST`. A branch `experimento/design-ia` (não integrada em `main`) acrescenta a **identidade
+> visual "Janela"** (ADR-005) e o logo 3D com `three`. Este índice só tem documentos para o que já tem código real por trás.
 
 ## Ordem de leitura sugerida
 
@@ -69,6 +70,10 @@ fonte de verdade é `specs/` (specs de feature e ADRs) e a constitution em
    fluxo de conferência e envio, fronteira travada por teste e lint e pegadinhas. Cabeçalhos do
    worker em [architecture.md](./architecture.md#sacola-e-conferência-feature-006); sinais e
    pendências de entrega em [operacao.md](./operacao.md#sacola-sinais-e-pendências-de-entrega).
+
+11. **[identidade-visual.md](./identidade-visual.md)** — identidade "Janela" (ADR-005, branch
+   `experimento/design-ia`): tokens, fontes locais em `public/fonts`, componentes novos, logo 3D
+   com `three` carregado depois da página, scripts de `design/validacao` e correção do LCP.
 
 ## O que ainda não existe aqui
 

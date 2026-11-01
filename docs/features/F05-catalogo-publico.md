@@ -5,6 +5,8 @@
 > decisão de cache: [ADR-011](../../specs/adr/011-cache-catalogo-workers-dev.md);
 > critérios de sucesso: [`rastreabilidade.md`](../../specs/005-catalogo-publico/rastreabilidade.md).
 
+> Branch `experimento/design-ia` (não integrada em `main`): a aparência mudou (identidade "Janela"), e na página inicial só os 2 primeiros destaques têm foto `eager` (o primeiro com `fetchpriority="high"`); o resto é `lazy`, o que altera a contagem de eager da FR-008 fixada em `page.test.tsx`. Ver [identidade-visual.md](../identidade-visual.md).
+
 ## Visão leiga
 
 É a vitrine da loja, aberta a qualquer pessoa, **sem login**. Quem recebe o link abre a página
@@ -51,7 +53,7 @@ Páginas de erro: `src/app/(public)/error.tsx` (client; "Tentar de novo" faz `ro
 | `src/lib/catalogo/falha.ts`, `registro.ts` | Registro estruturado de falhas (listas fechadas de evento, rota e causa). `falha.ts` é puro para o worker importá-lo; `registro.ts` marca a causa no `ctx` do pedido. |
 | `src/lib/catalogo/prazos.ts` | `NAVEGADOR_PAGINA_S` 60, `NAVEGADOR_LISTA_S` 20, `NAVEGADOR_FOTOS_S` 60. |
 | `cloudflare/publico.ts` | Casca do worker para as rotas públicas: canoniza `/p/<x>`, aplica `Cache-Control`/`X-Robots-Tag` e converte 500 em 503. |
-| `src/app/(public)/_catalogo/` | Componentes: `cartao-produto`, `destaques`, `filtro` (links, sem JS), `lista-catalogo` (client: "Carregar mais" e restauração), `link-catalogo` (client), `galeria`, `botao-whatsapp`, `textos.ts` (todos os textos). |
+| `src/app/(public)/_catalogo/` | Componentes: `cartao-produto`, `destaques`, `filtro` (links, sem JS), `lista-catalogo` (client: "Carregar mais" e restauração), `link-catalogo` (client), `galeria`, `botao-whatsapp`, `textos.ts` (todos os textos). Na branch `experimento/design-ia` (ADR-005) somam-se `topo`, `link-inicio`, `logo-janela`, `logo-3d/` e `pontos-galeria` (ver [identidade-visual.md](../identidade-visual.md)). |
 | `scripts/seed-catalogo-local.ts` e `scripts/seed-catalogo-local/` | Seed de teste (ver abaixo). |
 
 ### Fluxo

@@ -60,6 +60,13 @@ Fotos de produto (feature 004, em andamento), dependências de runtime e de buil
 | `react-easy-crop` | `6.2.3` (**exata**) | Recorte 1:1 com gesto de pinça no passo Fotos do cadastro (SF9); componente de cliente, sem binding nem variável de ambiente. |
 | `wrangler` (dev) | `4.147.0` (**exata**, sem `^`) | O endpoint S3 local do R2 é experimental e depende da versão; ver [operacao.md, "wrangler fixado"](./operacao.md#wrangler-fixado-em-41470-devdependency). |
 
+Logo 3D (branch `experimento/design-ia`, ADR-005), dependências de runtime e de build:
+
+| Pacote | Versão | Observação |
+|---|---|---|
+| `three` | `0.186.1` (**exata**) | Só em `src/app/(public)/_catalogo/logo-3d/cena.ts`, por `import()` dinâmico (chunk lazy, fora do JS inicial). Travado por `src/test/conformance/three-so-no-logo.test.ts`. Detalhes em [identidade-visual.md](./identidade-visual.md). |
+| `@types/three` (dev) | `0.186.0` (**exata**) | Tipos para o `tsc` estrito. |
+
 Não há no `package.json` SDK da OpenAI de propósito: a IA usa `fetch` direto à Responses API
 (ADR-010; ver "Módulo de IA").
 
@@ -67,7 +74,7 @@ Não há no `package.json` SDK da OpenAI de propósito: a IA usa `fetch` direto 
 
 ```
 src/app/
-  layout.tsx    # layout raiz (fonts Geist via next/font/google, <html lang="pt-BR">, title "Roseshop")
+  layout.tsx    # layout raiz (<html lang="pt-BR">, title "Roseshop", preload da fonte Atkinson; fontes locais em public/fonts, ver identidade-visual.md)
   (public)/     # catálogo público (F05): page.tsx (/), p/[codigo]/ (detalhe, not-found), error.tsx, layout.tsx, _catalogo/ (componentes)
   (public)/sacola/page.tsx   # /sacola: casca da sacola (F06); componentes cliente em (public)/_sacola/
   api/catalogo/conferencia/route.ts   # POST: conferência pública da sacola (F06)
@@ -85,7 +92,7 @@ src/app/
   painel/(protegido)/produtos/_fotos/  # fotos no cadastro e na tela Fotos: escolher, recortar, listar, enviar (F04, SF9/SF11)
   painel/(protegido)/produtos/[id]/fotos/  # tela Fotos do produto: adicionar, trocar, mover, remover (F04, SF11)
   painel/fotos/[arquivo]/route.ts   # GET /painel/fotos/<arquivo>: exibição da foto, fora do grupo (protegido) (F04)
-src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso
+src/components/ui/   # componentes base: button, campo-texto, area-texto, selecao, caixa-marcacao, mensagem-campo, aviso, logo (LogoMarca)
 src/lib/auth/   # Auth.js + allowlist + guards (ver "Autenticação e proteção do painel")
 src/lib/categorias/   # módulo de domínio de categorias (barrel somente leitura, painel, actions)
 src/lib/produtos/     # módulo de domínio de produtos (actions, sugestao, painel, validacao, preco, codigo, erros, mensagens)

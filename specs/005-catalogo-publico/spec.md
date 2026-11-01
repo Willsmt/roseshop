@@ -351,6 +351,13 @@ conferir que só a última é entregue.
   "Esgotado", e levar ao detalhe do produto. A foto MUST ser o mesmo arquivo
   gravado pela 004 (sem versão reduzida nesta feature) e, fora da primeira tela
   visível, MUST ser baixada só quando estiver para aparecer na tela.
+  - *Emenda (2026-11-01)*: na página inicial, só os 2 primeiros destaques
+    carregam a foto com `loading="eager"` (o primeiro com
+    `fetchpriority="high"`); o resto dos destaques e toda a lista usam
+    `loading="lazy"`, porque no layout da identidade Janela (ADR-005) ficam fora
+    da primeira tela. A regra anterior (destaques todos eager e os 4 primeiros
+    da lista eager) foi substituída pelo commit `1cd8aa2`; medição e motivo em
+    `design/VALIDACAO.md`.
 
 **Destaques**
 

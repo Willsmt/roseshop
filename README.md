@@ -205,6 +205,12 @@ para escolher modelo e esforço (SC-003 e SC-004 da 004).
 - `aws4fetch@1.0.20` (versão exata): assinatura das URLs de envio ao R2.
 - `react-easy-crop@6.2.3` (versão exata): recorte da foto no aparelho.
 
+#### Dependências novas da identidade visual (branch `experimento/design-ia`)
+
+- `three@0.186.1` (versão exata): logo 3D da página inicial, carregado por `import()` depois da página; só `logo-3d/cena.ts` pode importá-lo.
+- `@types/three@0.186.0` (versão exata, dev): tipos do `three`.
+- Fontes locais (Young Serif e Atkinson Hyperlegible Next, licença OFL) em `public/fonts/`; detalhes em [docs/identidade-visual.md](docs/identidade-visual.md) e no ADR-005.
+
 ### Dependências novas da feature 001
 
 - `next-auth@5.0.0-beta.32` (versão exata): Auth.js v5 com estratégia JWT; não usar `^` nem `~`; atualizar só em PR próprio, depois de ler o changelog e rodar `npm audit --omit=dev` (ADR-003 e ADR-007)
